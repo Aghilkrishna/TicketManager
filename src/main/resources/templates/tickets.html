@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/layout :: head('Tickets')}"></th:block>
+</head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('tickets', ticketTab)}"></aside>
+    <div class="main-panel">
+        <header th:replace="~{fragments/layout :: topbar('', '')}"></header>
+        <main class="content-area">
+            <section class="toolbar-card glass-card mb-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+                    <div>
+                        <div class="section-title" th:text="${ticketPageTitle}">My Open Tickets</div>
+                        <div class="table-subtitle">Search, sort, and navigate your assigned tickets.</div>
+                    </div>
+                    <a class="btn btn-primary btn-lg" href="/tickets/create"><i class="bi bi-plus-circle me-2"></i>Create Ticket</a>
+                </div>
+                <div class="toolbar-grid">
+                    <input id="search" class="form-control" placeholder="Search by ID, title, status, priority, assigned user">
+                    <select id="status" class="form-select">
+                        <option value="">All status</option>
+                        <option>OPEN</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>RESOLVED</option><option>CLOSED</option>
+                    </select>
+                    <select id="priority" class="form-select">
+                        <option value="">All priority</option>
+                        <option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option>
+                    </select>
+                    <select id="sortBy" class="form-select">
+                        <option value="id">Ticket ID</option>
+                        <option value="title">Title</option>
+                        <option value="status">Status</option>
+                        <option value="priority">Priority</option>
+                        <option value="updatedAt" selected>Last Updated</option>
+                    </select>
+                    <select id="direction" class="form-select"><option value="desc">Descending</option><option value="asc">Ascending</option></select>
+                    <button id="applyFilters" class="btn btn-dark">Apply</button>
+                </div>
+            </section>
+
+            <section class="table-card glass-card">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                        <tr>
+                            <th>S.No</th>
+                            <th>Ticket ID</th>
+                            <th>Title</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Assigned User</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody id="ticketTable"></tbody>
+                    </table>
+                </div>
+                <div id="ticketEmpty" class="empty-state d-none">No tickets matched the current selection.</div>
+                <div class="pagination-wrap">
+                    <div id="paginationSummary" class="text-muted small"></div>
+                    <div id="paginationList" class="pagination-list"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+<script th:src="@{/js/app.js}"></script>
+<script th:inline="javascript">
+const forcedStatus = /*[[${forcedStatus}]]*/ 'OPEN';
+const canEditTickets = /*[[${currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')}]]*/ false;
+let currentPage = 0;
+let pageSize = 10;
+
+function renderPagination(data) {
+  const list = document.getElementById('paginationList');
+  const summary = document.getElementById('paginationSummary');
+  list.innerHTML = '';
+  summary.textContent = `Showing page ${data.number + 1} of ${Math.max(data.totalPages, 1)} · ${data.totalElements} tickets`;
+  const addButton = (label, page, disabled = false, active = false) => {
+    const button = document.createElement('button');
+    button.className = 'page-link-btn' + (active ? ' active' : '');
+    button.textContent = label;
+    button.disabled = disabled;
+    button.addEventListener('click', () => {
+      currentPage = page;
+      loadTickets();
+    });
+    list.appendChild(button);
+  };
+  addButton('Prev', Math.max(currentPage - 1, 0), data.first);
+  for (let i = 0; i < data.totalPages; i++) {
+    addButton(String(i + 1), i, false, i === data.number);
+  }
+  addButton('Next', Math.min(currentPage + 1, Math.max(data.totalPages - 1, 0)), data.last);
+}
+
+async function loadTickets() {
+  const params = new URLSearchParams({
+    assignedOnly: 'true',
+    page: String(currentPage),
+    size: String(pageSize),
+    search: document.getElementById('search').value,
+    status: document.getElementById('status').value || forcedStatus,
+    priority: document.getElementById('priority').value,
+    sortBy: document.getElementById('sortBy').value,
+    direction: document.getElementById('direction').value
+  });
+  const res = await fetch('/api/tickets?' + params.toString());
+  const data = await res.json();
+  const body = document.getElementById('ticketTable');
+  const empty = document.getElementById('ticketEmpty');
+  body.innerHTML = '';
+  const tickets = data.content || [];
+  empty.classList.toggle('d-none', tickets.length > 0);
+  tickets.forEach((ticket, index) => {
+    const assignedUsers = [ticket.assignedTo, ...(ticket.serviceUsers || [])].filter(Boolean).join(', ');
+    body.innerHTML += `
+      <tr>
+        <td>${currentPage * pageSize + index + 1}</td>
+        <td>#${ticket.id}</td>
+        <td><a class="fw-semibold text-decoration-none" href="/tickets/view?id=${ticket.id}">${ticket.title}</a></td>
+        <td><div class="text-muted small">${ticket.description.slice(0, 100)}</div></td>
+        <td><span class="status-pill ${ticket.status}">${ticket.status}</span></td>
+        <td><span class="priority-pill ${ticket.priority}">${ticket.priority}</span></td>
+        <td>${assignedUsers || 'Unassigned'}</td>
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-secondary" href="/tickets/view?id=${ticket.id}" title="View"><i class="bi bi-eye"></i></a>
+          ${canEditTickets ? `<a class="btn btn-sm btn-outline-primary" href="/tickets/edit?id=${ticket.id}" title="Edit"><i class="bi bi-pencil"></i></a>` : ''}
+        </td>
+      </tr>`;
+  });
+  renderPagination(data);
+}
+
+document.getElementById('status').value = forcedStatus;
+document.getElementById('applyFilters').addEventListener('click', () => {
+  currentPage = 0;
+  loadTickets();
+});
+loadTickets();
+</script>
+</body>
+</html>

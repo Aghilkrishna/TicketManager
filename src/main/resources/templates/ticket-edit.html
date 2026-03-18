@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/layout :: head('Edit Ticket')}"></th:block>
+</head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('tickets', 'open')}"></aside>
+    <div class="main-panel">
+        <header th:replace="~{fragments/layout :: topbar('Edit Ticket', 'Update ticket information, assignments, and attachments')}"></header>
+        <main class="content-area">
+            <section class="hero-banner glass-card mb-4">
+                <h1 class="h2 fw-bold mb-2">Edit Ticket #<span th:text="${ticket.id}"></span></h1>
+                <p class="mb-0">Apply changes and return to the ticket list once the update succeeds.</p>
+            </section>
+            <section class="form-card glass-card">
+                <form id="ticketForm" class="row g-3" enctype="multipart/form-data">
+                    <div class="col-12">
+                        <label class="form-label">Title</label>
+                        <input class="form-control form-control-lg" name="title" th:value="${ticket.title}" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="description" rows="5" required th:text="${ticket.description}"></textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Schedule Date</label>
+                        <input class="form-control" type="date" name="scheduleDate" th:value="${ticket.scheduleDate}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Priority</label>
+                        <select class="form-select" name="priority">
+                            <option th:selected="${ticket.priority == 'LOW'}">LOW</option>
+                            <option th:selected="${ticket.priority == 'MEDIUM'}">MEDIUM</option>
+                            <option th:selected="${ticket.priority == 'HIGH'}">HIGH</option>
+                            <option th:selected="${ticket.priority == 'CRITICAL'}">CRITICAL</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" name="status">
+                            <option th:selected="${ticket.status == 'OPEN'}">OPEN</option>
+                            <option th:selected="${ticket.status == 'IN_PROGRESS'}">IN_PROGRESS</option>
+                            <option th:selected="${ticket.status == 'ON_HOLD'}">ON_HOLD</option>
+                            <option th:selected="${ticket.status == 'RESOLVED'}">RESOLVED</option>
+                            <option th:selected="${ticket.status == 'CLOSED'}">CLOSED</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Assigned User</label>
+                        <input id="assignedSearch" class="form-control" th:value="${ticket.assignedTo}" placeholder="Search by name, email or phone">
+                        <div id="assignedResults" class="assignment-results mt-2"></div>
+                        <input type="hidden" name="assignedToId" id="assignedToId" th:value="${ticket.assignedToId}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Service Users</label>
+                        <input id="serviceSearch" class="form-control" placeholder="Search by name, email or phone">
+                        <div id="serviceResults" class="assignment-results mt-2"></div>
+                        <div id="selectedServiceUsers" class="selected-users mt-2"></div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Attachments</label>
+                        <input class="form-control" type="file" name="files" multiple>
+                    </div>
+                    <div class="col-12 d-flex gap-2">
+                        <button class="btn btn-primary btn-lg" type="submit">Update Ticket</button>
+                        <a class="btn btn-outline-secondary btn-lg" href="/tickets">Cancel</a>
+                    </div>
+                    <div id="message" class="small col-12"></div>
+                </form>
+            </section>
+        </main>
+    </div>
+</div>
+<script th:src="@{/js/app.js}"></script>
+<script th:inline="javascript">
+const ticketId = /*[[${ticket.id}]]*/ null;
+document.getElementById('ticketForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = new FormData(e.target);
+  if (!data.get('title') || !data.get('description')) {
+    document.getElementById('message').textContent = 'Title and description are required.';
+    return;
+  }
+  const res = await fetch(`/api/tickets/${ticketId}`, {method: 'PATCH', body: data});
+  const payload = await res.json().catch(() => ({}));
+  if (res.ok) window.location.href = '/tickets';
+  else {
+    const message = document.getElementById('message');
+    message.className = 'small col-12 text-danger';
+    message.textContent = payload.message || 'Ticket update failed';
+  }
+});
+const initialServiceUserIds = /*[[${ticket.serviceUserIds}]]*/ [];
+const initialServiceUsers = /*[[${ticket.serviceUsers}]]*/ [];
+const selectedServiceUsers = new Map();
+initialServiceUserIds.forEach((id, index) => selectedServiceUsers.set(id, {id, username: initialServiceUsers[index] || ('User ' + id)}));
+function renderSelectedUsers() {
+  const container = document.getElementById('selectedServiceUsers');
+  container.innerHTML = Array.from(selectedServiceUsers.values()).map(user =>
+    `<span class="selected-user-chip">${user.username}<button type="button" class="btn btn-sm p-0" onclick="removeServiceUser(${user.id})"><i class="bi bi-x"></i></button><input type="hidden" name="serviceUserIds" value="${user.id}"></span>`
+  ).join('');
+}
+window.removeServiceUser = (id) => {
+  selectedServiceUsers.delete(id);
+  renderSelectedUsers();
+};
+async function searchUsers(query, target, onSelect) {
+  if (!query) {
+    target.innerHTML = '';
+    return;
+  }
+  const res = await fetch('/api/users/search?query=' + encodeURIComponent(query));
+  const users = await res.json();
+  target.innerHTML = users.map(user => `
+    <div class="assignment-item">
+      <div><strong>${user.username}</strong><div class="small text-muted">${user.email}${user.phone ? ' · ' + user.phone : ''}</div></div>
+      <button type="button" class="btn btn-sm btn-outline-primary" data-id="${user.id}">Select</button>
+    </div>
+  `).join('');
+  target.querySelectorAll('button').forEach(button => button.addEventListener('click', () => {
+    const user = users.find(item => item.id === Number(button.dataset.id));
+    onSelect(user);
+    target.innerHTML = '';
+  }));
+}
+document.getElementById('assignedSearch').addEventListener('input', e => searchUsers(e.target.value, document.getElementById('assignedResults'), user => {
+  document.getElementById('assignedSearch').value = `${user.username} (${user.email})`;
+  document.getElementById('assignedToId').value = user.id;
+}));
+document.getElementById('serviceSearch').addEventListener('input', e => searchUsers(e.target.value, document.getElementById('serviceResults'), user => {
+  selectedServiceUsers.set(user.id, user);
+  renderSelectedUsers();
+  document.getElementById('serviceSearch').value = '';
+}));
+renderSelectedUsers();
+</script>
+</body>
+</html>

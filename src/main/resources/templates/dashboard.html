@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/layout :: head('Dashboard')}"></th:block>
+</head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('dashboard', '')}"></aside>
+    <div class="main-panel">
+        <header th:replace="~{fragments/layout :: topbar('Dashboard', '')}"></header>
+        <main class="content-area">
+            <section class="hero-banner glass-card mb-4">
+                <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-start">
+                    <div>
+                        <div class="text-uppercase small opacity-75">Overview</div>
+                        <h1 class="display-6 fw-bold mb-2">Welcome back, <span th:text="${profile.username}"></span></h1>
+                        <p class="mb-0">Monitor open workload, track progress, and react to service updates from a single dashboard.</p>
+                    </div>
+                    <div class="metric-trend"><i class="bi bi-activity"></i> Realtime operations</div>
+                </div>
+            </section>
+
+            <section class="metric-grid mb-4">
+                <article class="metric-card"><div class="metric-label">Open Tickets</div><div id="metricOpen" class="metric-value">0</div></article>
+                <article class="metric-card"><div class="metric-label">In Progress</div><div id="metricInProgress" class="metric-value">0</div></article>
+                <article class="metric-card"><div class="metric-label">Pending</div><div id="metricPending" class="metric-value">0</div></article>
+                <article class="metric-card"><div class="metric-label">Closed</div><div id="metricClosed" class="metric-value">0</div></article>
+            </section>
+
+            <section class="chart-card">
+                <div class="section-title mb-3">Ticket Status Overview</div>
+                <canvas id="ticketChart" height="120"></canvas>
+            </section>
+        </main>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script>
+async function loadMetrics() {
+  const res = await fetch('/api/tickets/metrics');
+  const data = await res.json();
+  document.getElementById('metricOpen').textContent = data.open ?? 0;
+  document.getElementById('metricInProgress').textContent = data.inProgress ?? 0;
+  document.getElementById('metricPending').textContent = data.pending ?? 0;
+  document.getElementById('metricClosed').textContent = data.closed ?? 0;
+  new Chart(document.getElementById('ticketChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Open', 'In Progress', 'Pending', 'Resolved', 'Closed'],
+      datasets: [{
+        label: 'Tickets',
+        data: [data.open || 0, data.inProgress || 0, data.pending || 0, data.resolved || 0, data.closed || 0],
+        backgroundColor: ['#0f6cbd', '#14b8a6', '#f59e0b', '#22c55e', '#64748b'],
+        borderRadius: 12
+      }]
+    },
+    options: {
+      plugins: {legend: {display: false}},
+      scales: {y: {beginAtZero: true}}
+    }
+  });
+}
+loadMetrics();
+</script>
+</body>
+</html>

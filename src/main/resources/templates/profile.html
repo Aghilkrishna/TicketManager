@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/layout :: head('Profile')}"></th:block>
+</head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('profile', '')}"></aside>
+    <div class="main-panel">
+        <header th:replace="~{fragments/layout :: topbar('User Profile', '')}"></header>
+        <main class="content-area">
+            <section class="hero-banner glass-card mb-4">
+                <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-3">
+                    <div>
+                        <div class="text-uppercase small opacity-75">Account Center</div>
+                        <h1 class="display-6 fw-bold mb-2" th:text="${profile.username}">Username</h1>
+                        <p class="mb-0">Keep your account information accurate and your login credentials secure.</p>
+                    </div>
+                    <div class="metric-trend"><i class="bi bi-shield-lock"></i> Secure profile settings</div>
+                </div>
+            </section>
+
+            <div class="row g-4">
+                <div class="col-xl-4">
+                    <section class="form-card glass-card h-100">
+                        <div class="section-title mb-4">Account Summary</div>
+                        <div class="vstack gap-4">
+                            <div>
+                                <div class="small text-muted">Username</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.username}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted">Email</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.email}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted">Phone</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.phone != null && !profile.phone.isEmpty() ? profile.phone : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted">Roles</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.roles}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted">Verification</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.emailVerified ? 'Email verified' : 'Pending verification'}"></div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="col-xl-8">
+                    <section class="form-card glass-card">
+                        <div class="section-title mb-2">Update Personal Information</div>
+                        <p class="text-muted mb-4">Edit your profile details below. Leave the password field blank if you do not want to change it.</p>
+                        <form id="profileForm" class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label">Username</label>
+                                <input class="form-control form-control-lg" name="username" th:value="${profile.username}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input class="form-control form-control-lg" type="email" name="email" th:value="${profile.email}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Phone</label>
+                                <input class="form-control form-control-lg" name="phone" th:value="${profile.phone}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">New Password</label>
+                                <input class="form-control form-control-lg" type="password" name="password" placeholder="Enter a new password">
+                            </div>
+                            <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                                <div id="message" class="small"></div>
+                                <button class="btn btn-primary btn-lg" type="submit">Save Profile Changes</button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+<script th:src="@{/js/app.js}"></script>
+<script>
+document.getElementById('profileForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+  const res = await fetch('/api/users/profile', {
+    method: 'PATCH',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json().catch(() => ({}));
+  const message = document.getElementById('message');
+  message.className = 'small ' + (res.ok ? 'text-success' : 'text-danger');
+  message.textContent = res.ok ? 'Profile updated successfully.' : (data.message || 'Update failed');
+});
+</script>
+</body>
+</html>

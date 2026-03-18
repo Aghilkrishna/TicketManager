@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/layout :: head('Register')}"></th:block>
+</head>
+<body>
+<div class="auth-wrap">
+    <section class="auth-banner">
+        <span class="banner-chip">Responsive onboarding</span>
+        <h1 class="display-5 fw-bold">Create an account and join the service workspace.</h1>
+        <p class="lead mt-3">New registrations start with the default user role and can verify access through email.</p>
+    </section>
+    <section class="d-flex align-items-center justify-content-center">
+        <div class="auth-panel">
+            <h2 class="fw-bold mb-2">Register</h2>
+            <p class="text-muted mb-4">Enter valid details to create your account.</p>
+            <form id="registerForm" class="vstack gap-3">
+                <input class="form-control form-control-lg" name="username" placeholder="Username" required minlength="3">
+                <input class="form-control form-control-lg" type="email" name="email" placeholder="Email" required>
+                <input class="form-control form-control-lg" name="phone" placeholder="Phone">
+                <input class="form-control form-control-lg" type="password" name="password" placeholder="Password" required minlength="8">
+                <button class="btn btn-success btn-lg" type="submit">Create account</button>
+            </form>
+            <div id="message" class="small mt-3"></div>
+            <div class="mt-4"><a th:href="@{/login}">Back to login</a></div>
+        </div>
+    </section>
+</div>
+<script>
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+  const res = await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json().catch(() => ({}));
+  const message = document.getElementById('message');
+  message.className = 'small mt-3 ' + (res.ok ? 'text-success' : 'text-danger');
+  message.textContent = data.message || (res.ok ? 'Registration successful' : 'Registration failed');
+});
+</script>
+</body>
+</html>

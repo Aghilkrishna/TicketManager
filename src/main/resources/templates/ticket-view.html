@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/layout :: head('Ticket Details')}"></th:block>
+</head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('tickets', 'open')}"></aside>
+    <div class="main-panel">
+        <header th:replace="~{fragments/layout :: topbar('Ticket Details', 'Review, discuss, and collaborate on the ticket')}"></header>
+        <main class="content-area">
+            <section class="hero-banner glass-card mb-4">
+                <h1 class="h2 fw-bold mb-2" th:text="${ticket.title}">Ticket Title</h1>
+                <p class="mb-0">Ticket #<span id="ticketIdText" th:text="${ticket.id}"></span></p>
+            </section>
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <section class="form-card glass-card mb-4">
+                        <div class="section-title mb-3">Description</div>
+                        <p class="mb-0" th:text="${ticket.description}"></p>
+                    </section>
+                    <section class="form-card glass-card">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="section-title">Comments</div>
+                            <div class="small text-muted">Threaded collaboration with notifications</div>
+                        </div>
+                        <form id="commentForm" class="mb-4">
+                            <input type="hidden" id="parentCommentId">
+                            <textarea id="commentContent" class="form-control mb-2" rows="3" placeholder="Add a comment or reply" required></textarea>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary" type="submit">Post Comment</button>
+                                <button class="btn btn-outline-secondary d-none" type="button" id="cancelReply">Cancel Reply</button>
+                            </div>
+                        </form>
+                        <div id="commentThread" class="comment-thread"></div>
+                    </section>
+                </div>
+                <div class="col-lg-4">
+                    <section class="form-card glass-card">
+                        <div class="section-title mb-3">Metadata</div>
+                        <div class="vstack gap-3">
+                            <div><strong>Schedule Date</strong><div class="text-muted" th:text="${ticket.scheduleDate}"></div></div>
+                            <div><strong>Status</strong><div class="text-muted" th:text="${ticket.status}"></div></div>
+                            <div><strong>Priority</strong><div class="text-muted" th:text="${ticket.priority}"></div></div>
+                            <div><strong>Assigned User</strong><div class="text-muted" th:text="${ticket.assignedTo}"></div></div>
+                            <div><strong>Service Users</strong><div class="text-muted" th:text="${ticket.serviceUsers}"></div></div>
+                        </div>
+                        <div class="mt-4 d-flex gap-2">
+                            <a class="btn btn-outline-secondary" href="/tickets">Back</a>
+                            <a class="btn btn-primary" th:if="${currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')}" th:href="@{/tickets/edit(id=${ticket.id})}">Edit Ticket</a>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+<script th:src="@{/js/app.js}"></script>
+<script th:inline="javascript">
+const ticketId = /*[[${ticket.id}]]*/ 0;
+
+function escapeHtml(value) {
+  return (value || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+function renderComment(comment) {
+  const replies = (comment.replies || []).map(renderComment).join('');
+  return `
+    <div class="comment-card" data-comment-id="${comment.id}">
+      <div class="d-flex justify-content-between align-items-start gap-3">
+        <div>
+          <strong>${escapeHtml(comment.author)}</strong>
+          <div class="small text-muted">${new Date(comment.createdAt).toLocaleString()}${comment.updatedAt && comment.updatedAt !== comment.createdAt ? ' · edited' : ''}</div>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-secondary" type="button" onclick="replyToComment(${comment.id})">Reply</button>
+        </div>
+      </div>
+      <div class="mt-3">${escapeHtml(comment.content).replace(/\n/g, '<br>')}</div>
+      ${replies ? `<div class="comment-replies">${replies}</div>` : ''}
+    </div>`;
+}
+
+async function loadComments() {
+  const res = await fetch(`/api/tickets/${ticketId}/comments`);
+  const comments = await res.json();
+  document.getElementById('commentThread').innerHTML = comments.length ? comments.map(renderComment).join('') : '<div class="empty-state">No comments yet.</div>';
+}
+
+let editingCommentId = null;
+window.replyToComment = (commentId) => {
+  document.getElementById('parentCommentId').value = commentId;
+  document.getElementById('cancelReply').classList.remove('d-none');
+  document.getElementById('commentContent').focus();
+};
+
+document.getElementById('cancelReply').addEventListener('click', () => {
+  editingCommentId = null;
+  document.getElementById('parentCommentId').value = '';
+  document.getElementById('commentContent').value = '';
+  document.getElementById('cancelReply').classList.add('d-none');
+});
+
+document.getElementById('commentForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const content = document.getElementById('commentContent').value;
+  const parentId = document.getElementById('parentCommentId').value || null;
+  await fetch(`/api/tickets/${ticketId}/comments`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({parentId, content})
+  });
+  editingCommentId = null;
+  document.getElementById('parentCommentId').value = '';
+  document.getElementById('commentContent').value = '';
+  document.getElementById('cancelReply').classList.add('d-none');
+  await loadComments();
+});
+
+loadComments();
+</script>
+</body>
+</html>
