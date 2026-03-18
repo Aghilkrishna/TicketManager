@@ -8,6 +8,7 @@ import com.example.ticketmanager.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -32,6 +33,19 @@ public class NotificationService {
         return notificationRepository.findTop20ByUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional
+    public List<AuthDtos.NotificationResponse> viewUnreadForUser(Long userId) {
+        List<AuthDtos.NotificationResponse> items = notificationRepository.findTop20ByUserIdAndReadFlagFalseOrderByCreatedAtDesc(userId).stream()
+                .map(this::toResponse)
+                .toList();
+        notificationRepository.markAllUnreadAsRead(userId);
+        return items;
+    }
+
+    public long unreadCount(Long userId) {
+        return notificationRepository.countByUserIdAndReadFlagFalse(userId);
     }
 
     private AuthDtos.NotificationResponse toResponse(Notification notification) {

@@ -10,45 +10,75 @@
         <header th:replace="~{fragments/layout :: topbar('Realtime Chat', '')}"></header>
         <main class="content-area">
             <div class="chat-layout">
-                <section class="search-results-card glass-card">
-                    <div class="chat-sidebar-section">
-                        <div class="chat-sidebar-heading">
-                            <span>Start New Chat</span>
+                <section class="chat-sidebar-card glass-card">
+                    <div class="chat-sidebar-top">
+                        <div class="chat-profile-pill">
+                            <div class="chat-avatar chat-avatar-lg" id="sidebarCurrentUserAvatar">U</div>
+                            <div>
+                                <div class="section-title" id="sidebarCurrentUserName">Chat</div>
+                                <div class="table-subtitle">Direct messages</div>
+                            </div>
                         </div>
-                        <input id="userSearch" class="form-control mb-2" placeholder="Search by name, email or phone">
-                        <div id="userResults" class="vstack gap-2"></div>
+                        <button class="chat-action-btn" type="button" id="newChatToggle" title="New chat">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                    </div>
+
+                    <div class="chat-search-panel">
+                        <div class="chat-search-box">
+                            <i class="bi bi-search"></i>
+                            <input id="userSearch" class="form-control" placeholder="Search users by name, email or phone">
+                        </div>
                     </div>
 
                     <div class="chat-sidebar-section">
                         <div class="chat-sidebar-heading">
                             <span>Chats</span>
-                            <span class="small text-muted" id="chatCount">0</span>
                         </div>
-                        <input id="conversationSearch" class="form-control mb-3" placeholder="Search existing chats">
                         <div id="conversationList" class="conversation-list"></div>
+                    </div>
+
+                    <div class="chat-sidebar-section chat-contacts-section">
+                        <div class="chat-sidebar-heading">
+                            <span>Contacts</span>
+                        </div>
+                        <div id="userResults" class="chat-user-results"></div>
                     </div>
                 </section>
 
                 <section class="chat-card glass-card">
                     <div class="chat-header">
-                        <div class="chat-header-meta">
-                            <div class="section-title" id="chatTitle">Conversation</div>
-                            <div class="table-subtitle" id="chatSubtitle">Select an existing chat or start a new one.</div>
+                        <div class="chat-contact">
+                            <div class="chat-avatar" id="chatHeaderAvatar">C</div>
+                            <div class="chat-header-meta">
+                                <div class="section-title" id="chatTitle">Conversation</div>
+                                <div class="table-subtitle" id="chatSubtitle">Select an existing chat or start a new one.</div>
+                            </div>
                         </div>
-                        <div class="typing-indicator" id="typingIndicator"></div>
+                        <div class="chat-header-actions">
+                            <div class="typing-indicator" id="typingIndicator"></div>
+                            <button class="chat-header-btn" type="button" title="Search"><i class="bi bi-search"></i></button>
+                            <button class="chat-header-btn" type="button" title="Voice Call"><i class="bi bi-telephone"></i></button>
+                            <button class="chat-header-btn" type="button" title="Video Call"><i class="bi bi-camera-video"></i></button>
+                            <button class="chat-header-btn" type="button" title="Info"><i class="bi bi-three-dots-vertical"></i></button>
+                        </div>
                     </div>
 
                     <div id="chatBox" class="chat-messages">
-                        <div class="empty-state">Select a conversation from the sidebar to see the chat history.</div>
+                        <div class="empty-state chat-empty-state">
+                            <div class="chat-empty-icon"><i class="bi bi-chat-dots"></i></div>
+                            <div class="section-title">Select a conversation</div>
+                            <div class="table-subtitle">Choose a chat from the left panel or search for a contact to start messaging.</div>
+                        </div>
                     </div>
 
                     <div id="emojiBar" class="emoji-bar d-none"></div>
 
-                    <form id="chatForm" class="row g-2 mt-3">
-                        <div class="col-md-7"><input id="messageInput" class="form-control" placeholder="Type a message" required></div>
-                        <div class="col-md-2"><input id="ticketIdInput" class="form-control" placeholder="Ticket ID"></div>
-                        <div class="col-md-1"><button class="btn btn-outline-secondary w-100" id="emojiToggle" type="button" title="Emoji">😊</button></div>
-                        <div class="col-md-2"><button class="btn btn-success w-100" type="submit">Send</button></div>
+                    <form id="chatForm" class="chat-composer">
+                        <button class="composer-icon" id="emojiToggle" type="button" title="Emoji"><i class="bi bi-emoji-smile"></i></button>
+                        <input id="messageInput" class="form-control composer-input" placeholder="Type your message" required>
+                        <button class="composer-icon" type="button" title="Attach file"><i class="bi bi-paperclip"></i></button>
+                        <button class="btn btn-primary composer-send" type="submit"><i class="bi bi-send"></i></button>
                     </form>
                 </section>
             </div>
@@ -67,6 +97,16 @@ let conversations = [];
 let stompClient = null;
 let typingTimeout = null;
 const EMOJIS = ['😀', '😂', '😊', '😍', '👍', '🙏', '🔥', '🎉', '✅', '💬', '🚀', '😎'];
+
+function initials(value) {
+  return (value || '?').trim().charAt(0).toUpperCase();
+}
+
+function updateChatHeader(name, subtitle) {
+  document.getElementById('chatTitle').textContent = name;
+  document.getElementById('chatSubtitle').textContent = subtitle;
+  document.getElementById('chatHeaderAvatar').textContent = initials(name);
+}
 
 function deliveryLabel(status) {
   switch (status) {
@@ -99,14 +139,23 @@ function appendMessage(msg) {
 }
 
 function conversationCard(item) {
+  const preview = item.lastMessage ? escapeHtml(item.lastMessage) : 'No messages yet';
+  const timestamp = item.lastMessageAt
+    ? new Date(item.lastMessageAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
+    : '';
   return `
     <button type="button" class="conversation-item ${item.id === activeConversationId ? 'active' : ''}" data-id="${item.id}" data-other-id="${item.otherUserId}" data-other-name="${escapeHtml(item.otherUsername)}">
-      <div class="conversation-meta">
-        <strong>${escapeHtml(item.otherUsername)}</strong>
-        <small class="text-muted">${item.lastMessageAt ? new Date(item.lastMessageAt).toLocaleDateString() : ''}</small>
+      <div class="chat-avatar">${initials(item.otherUsername)}</div>
+      <div class="conversation-body">
+        <div class="conversation-meta">
+          <strong class="conversation-name">${escapeHtml(item.otherUsername)}</strong>
+          <span class="conversation-time">${timestamp}</span>
+        </div>
+        <div class="conversation-preview">${preview}</div>
       </div>
-      <div class="small text-muted conversation-preview mt-1">${escapeHtml(item.lastMessage || 'No messages yet')}</div>
-      <div class="mt-2">${item.unreadCount ? `<span class="unread-badge">${item.unreadCount}</span>` : ''}</div>
+      <div class="conversation-side">
+        ${item.unreadCount ? `<span class="unread-badge">${item.unreadCount}</span>` : '<span class="conversation-dot"></span>'}
+      </div>
     </button>`;
 }
 
@@ -115,16 +164,14 @@ function bindConversationClicks(root) {
     activeConversationId = Number(button.dataset.id);
     activeRecipientId = Number(button.dataset.otherId);
     activeConversationName = button.dataset.otherName;
-    document.getElementById('chatTitle').textContent = activeConversationName;
-    document.getElementById('chatSubtitle').textContent = 'Messages update in realtime.';
+    updateChatHeader(activeConversationName, 'Messages update in realtime.');
     await loadConversation(activeConversationId);
-    await loadConversations(document.getElementById('conversationSearch').value);
+    await loadConversations();
   }));
 }
 
 function renderConversationSections(items) {
   const root = document.getElementById('conversationList');
-  document.getElementById('chatCount').textContent = items.length;
   root.innerHTML = items.length ? items.map(conversationCard).join('') : '<div class="empty-state">No chats yet.</div>';
   bindConversationClicks(root);
 }
@@ -165,11 +212,16 @@ function populateEmojiBar() {
 
 fetch('/api/auth/me').then(r => r.json()).then(async me => {
   currentUsername = me.username;
+  document.getElementById('sidebarCurrentUserName').textContent = me.username;
+  document.getElementById('sidebarCurrentUserAvatar').textContent = initials(me.username);
+  updateChatHeader('Conversation', 'Select an existing chat or start a new one.');
   populateEmojiBar();
   await loadConversations();
 });
 
-document.getElementById('conversationSearch').addEventListener('input', e => loadConversations(e.target.value));
+document.getElementById('newChatToggle').addEventListener('click', () => {
+  document.getElementById('userSearch').focus();
+});
 
 document.getElementById('userSearch').addEventListener('input', async () => {
   const query = document.getElementById('userSearch').value;
@@ -184,15 +236,22 @@ document.getElementById('userSearch').addEventListener('input', async () => {
   users.forEach(user => {
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = 'btn btn-outline-secondary text-start';
-    card.innerHTML = `<strong>${escapeHtml(user.username)}</strong><div class="small text-muted">${escapeHtml(user.email)}</div>`;
+    card.className = 'conversation-item';
+    card.innerHTML = `
+      <div class="chat-avatar">${initials(user.username)}</div>
+      <div class="conversation-body">
+        <div class="conversation-meta">
+          <strong class="conversation-name">${escapeHtml(user.username)}</strong>
+        </div>
+        <div class="conversation-preview">${escapeHtml(user.email || 'Start a new conversation')}</div>
+      </div>
+      <div class="conversation-side"><span class="conversation-dot"></span></div>`;
     card.onclick = () => {
       activeRecipientId = user.id;
       activeConversationId = null;
       activeConversationName = user.username;
-      document.getElementById('chatTitle').textContent = user.username;
-      document.getElementById('chatSubtitle').textContent = 'New conversation';
-      document.getElementById('chatBox').innerHTML = `<div class="empty-state">Start chatting with ${escapeHtml(user.username)}.</div>`;
+      updateChatHeader(user.username, 'New conversation');
+      document.getElementById('chatBox').innerHTML = `<div class="empty-state chat-empty-state"><div class="chat-empty-icon"><i class="bi bi-chat-square-text"></i></div><div class="section-title">${escapeHtml(user.username)}</div><div class="table-subtitle">Send the first message to start this conversation.</div></div>`;
     };
     list.appendChild(card);
   });
@@ -213,7 +272,6 @@ document.getElementById('chatForm').addEventListener('submit', async (e) => {
   const payload = {
     conversationId: activeConversationId,
     recipientId: activeRecipientId,
-    ticketId: document.getElementById('ticketIdInput').value || null,
     content: document.getElementById('messageInput').value
   };
   const res = await fetch('/api/chat/messages', {
@@ -226,7 +284,7 @@ document.getElementById('chatForm').addEventListener('submit', async (e) => {
   appendMessage(msg);
   emitTyping(false);
   document.getElementById('typingIndicator').textContent = '';
-  await loadConversations(document.getElementById('conversationSearch').value);
+  await loadConversations();
   e.target.reset();
 });
 
@@ -240,7 +298,7 @@ stompClient.connect({}, () => {
       document.getElementById('typingIndicator').textContent = '';
       await loadConversation(msg.conversationId);
     }
-    await loadConversations(document.getElementById('conversationSearch').value);
+    await loadConversations();
   });
 
   stompClient.subscribe('/user/queue/chat-status', ({body}) => {

@@ -34,14 +34,23 @@ function initAppShell() {
     const res = await fetch('/api/notifications');
     if (!res.ok) return;
     const items = await res.json();
-    notificationCount.textContent = items.length;
-    notificationCount.classList.toggle('d-none', items.length === 0);
+    notificationCount.textContent = '0';
+    notificationCount.classList.add('d-none');
     notificationList.innerHTML = items.length ? items.map(item => `
       <div class="notification-item">
         <div>${item.message}</div>
         <div class="notification-time">${new Date(item.createdAt).toLocaleString()}</div>
       </div>
-    `).join('') : `<div class="empty-state">No notifications yet</div>`;
+    `).join('') : `<div class="empty-state">No unseen notifications.</div>`;
+  }
+
+  async function loadNotificationCount() {
+    if (!notificationCount) return;
+    const res = await fetch('/api/notifications/count');
+    if (!res.ok) return;
+    const data = await res.json();
+    notificationCount.textContent = data.count;
+    notificationCount.classList.toggle('d-none', !data.count);
   }
 
   if (notificationToggle && notificationPanel) {
@@ -51,7 +60,28 @@ function initAppShell() {
     });
   }
 
-  loadNotifications();
+  loadNotificationCount();
+
+  if (typeof SockJS !== 'undefined' && typeof Stomp !== 'undefined') {
+    const socket = new SockJS('/ws');
+    const notificationClient = Stomp.over(socket);
+    notificationClient.connect({}, () => {
+      notificationClient.subscribe('/user/queue/notifications', ({body}) => {
+        const item = JSON.parse(body);
+        const current = Number(notificationCount.textContent || '0') || 0;
+        notificationCount.textContent = String(current + 1);
+        notificationCount.classList.remove('d-none');
+        if (notificationPanel && !notificationPanel.classList.contains('d-none') && notificationList) {
+          notificationList.insertAdjacentHTML('afterbegin', `
+            <div class="notification-item">
+              <div>${item.message}</div>
+              <div class="notification-time">${new Date(item.createdAt).toLocaleString()}</div>
+            </div>
+          `);
+        }
+      });
+    });
+  }
 }
 
 document.addEventListener('DOMContentLoaded', initAppShell);
