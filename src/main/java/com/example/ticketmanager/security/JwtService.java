@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class JwtService {
@@ -40,6 +42,23 @@ public class JwtService {
 
     public String extractUsername(String token) {
         return parse(token).getSubject();
+    }
+
+    public AppUserPrincipal extractPrincipal(String token) {
+        Claims claims = parse(token);
+        Object rolesClaim = claims.get("roles");
+        Set<String> roles = rolesClaim instanceof Iterable<?> iterable
+                ? java.util.stream.StreamSupport.stream(iterable.spliterator(), false)
+                .map(String::valueOf)
+                .collect(Collectors.toSet())
+                : Set.of();
+        return new AppUserPrincipal(
+                claims.get("uid", Long.class),
+                claims.getSubject(),
+                "",
+                true,
+                roles
+        );
     }
 
     public boolean isValid(String token) {

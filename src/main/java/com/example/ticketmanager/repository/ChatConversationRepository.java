@@ -9,6 +9,13 @@ import java.util.Optional;
 
 public interface ChatConversationRepository extends JpaRepository<ChatConversation, Long> {
     @Query("""
+            select distinct c from ChatConversation c
+            left join fetch c.participants
+            where c.id = :id
+            """)
+    Optional<ChatConversation> findByIdWithParticipants(@Param("id") Long id);
+
+    @Query("""
             select c from ChatConversation c
             join c.participants p1
             join c.participants p2

@@ -9,30 +9,38 @@ import java.util.Collection;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public record AppUserPrincipal(AppUser user) implements UserDetails {
+public record AppUserPrincipal(
+        Long id,
+        String username,
+        String password,
+        boolean enabled,
+        Set<String> roleNames
+) implements UserDetails {
+    public AppUserPrincipal(AppUser user) {
+        this(
+                user.getId(),
+                user.getUsername(),
+                user.getPassword(),
+                user.isEnabled(),
+                user.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet())
+        );
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName().name()))
+        return roleNames.stream()
+                .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toSet());
-    }
-
-    public Long id() {
-        return user.getId();
-    }
-
-    public Set<String> roleNames() {
-        return user.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet());
     }
 
     @Override
     public String getPassword() {
-        return user.getPassword();
+        return password;
     }
 
     @Override
     public String getUsername() {
-        return user.getUsername();
+        return username;
     }
 
     @Override
@@ -52,6 +60,6 @@ public record AppUserPrincipal(AppUser user) implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return user.isEnabled();
+        return enabled;
     }
 }

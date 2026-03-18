@@ -103,6 +103,7 @@ public class ChatService {
                 .values());
     }
 
+    @Transactional(readOnly = true)
     public void typing(String senderUsername, AuthDtos.ChatTypingEvent event) {
         AppUser sender = userService.getByUsername(senderUsername);
         if (event.conversationId() != null) {
@@ -141,7 +142,7 @@ public class ChatService {
     }
 
     private ChatConversation getConversation(Long id, AppUser user) {
-        ChatConversation conversation = conversationRepository.findById(id)
+        ChatConversation conversation = conversationRepository.findByIdWithParticipants(id)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Conversation not found"));
         boolean member = conversation.getParticipants().stream().anyMatch(participant -> participant.getId().equals(user.getId()));
         if (!member) {
