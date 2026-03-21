@@ -56,7 +56,6 @@
                             </div>
                         </div>
                         <div class="chat-header-actions">
-                            <div class="typing-indicator" id="typingIndicator"></div>
                             <button class="chat-header-btn" type="button" title="Search"><i class="bi bi-search"></i></button>
                             <button class="chat-header-btn" type="button" title="Voice Call"><i class="bi bi-telephone"></i></button>
                             <button class="chat-header-btn" type="button" title="Video Call"><i class="bi bi-camera-video"></i></button>
@@ -96,6 +95,8 @@ let currentUsername = null;
 let conversations = [];
 let stompClient = null;
 let typingTimeout = null;
+let remoteTypingTimeout = null;
+let activeTypingUser = null;
 const EMOJIS = ['😀', '😂', '😊', '😍', '👍', '🙏', '🔥', '🎉', '✅', '💬', '🚀', '😎'];
 
 function initials(value) {
@@ -106,6 +107,42 @@ function updateChatHeader(name, subtitle) {
   document.getElementById('chatTitle').textContent = name;
   document.getElementById('chatSubtitle').textContent = subtitle;
   document.getElementById('chatHeaderAvatar').textContent = initials(name);
+}
+
+function renderTypingIndicator(username, typing) {
+  const box = document.getElementById('chatBox');
+  const existing = document.getElementById('typingBubble');
+  if (!typing || !username) {
+    window.clearTimeout(remoteTypingTimeout);
+    activeTypingUser = null;
+    if (existing) existing.remove();
+    return;
+  }
+  activeTypingUser = username;
+  if (box.querySelector('.empty-state')) box.innerHTML = '';
+  if (!existing) {
+    box.insertAdjacentHTML('beforeend', `
+      <div class="chat-message-row incoming typing-row" id="typingBubble">
+        <div class="chat-message-avatar" id="typingAvatar">${initials(username)}</div>
+        <div class="chat-bubble them typing-bubble">
+          <div class="typing-pill">
+            <span class="typing-dots">
+              <span></span><span></span><span></span>
+            </span>
+          </div>
+        </div>
+      </div>`);
+  } else {
+    const avatar = document.getElementById('typingAvatar');
+    if (avatar) avatar.textContent = initials(username);
+  }
+  window.clearTimeout(remoteTypingTimeout);
+  remoteTypingTimeout = window.setTimeout(() => {
+    if (activeTypingUser === username) {
+      renderTypingIndicator('', false);
+    }
+  }, 2000);
+  box.scrollTop = box.scrollHeight;
 }
 
 function deliveryLabel(status) {
@@ -125,15 +162,20 @@ function appendMessage(msg) {
   if (box.querySelector('.empty-state')) box.innerHTML = '';
   const mine = msg.sender === currentUsername;
   const bubbleClass = mine ? 'chat-bubble me' : 'chat-bubble them';
+  const rowClass = mine ? 'chat-message-row outgoing' : 'chat-message-row incoming';
+  const avatarLabel = mine ? initials(currentUsername) : initials(msg.sender);
   box.innerHTML += `
-    <div class="${bubbleClass}" data-message-id="${msg.id}">
-      <strong>${escapeHtml(msg.sender)}</strong>
-      <div>${escapeHtml(msg.content).replace(/\n/g, '<br>')}</div>
-      ${msg.ticketId ? `<div class="mt-2"><span class="badge text-bg-info">Ticket #${msg.ticketId}</span></div>` : ''}
-      <div class="message-meta">
-        <span>${new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</span>
-        <span class="message-status">${mine ? deliveryLabel(msg.deliveryStatus) : ''}</span>
+    <div class="${rowClass}" data-message-id="${msg.id}">
+      ${mine ? '' : `<div class="chat-message-avatar">${avatarLabel}</div>`}
+      <div class="${bubbleClass}">
+        <div>${escapeHtml(msg.content).replace(/\n/g, '<br>')}</div>
+        ${msg.ticketId ? `<div class="mt-2"><span class="badge text-bg-info">Ticket #${msg.ticketId}</span></div>` : ''}
+        <div class="message-meta">
+          <span>${new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</span>
+          <span class="message-status">${mine ? deliveryLabel(msg.deliveryStatus) : ''}</span>
+        </div>
       </div>
+      ${mine ? `<div class="chat-message-avatar mine">${avatarLabel}</div>` : ''}
     </div>`;
   box.scrollTop = box.scrollHeight;
 }
@@ -295,7 +337,7 @@ stompClient.connect({}, () => {
     const msg = JSON.parse(body);
     if (activeConversationId === msg.conversationId) {
       appendMessage(msg);
-      document.getElementById('typingIndicator').textContent = '';
+      renderTypingIndicator('', false);
       await loadConversation(msg.conversationId);
     }
     await loadConversations();
@@ -310,7 +352,7 @@ stompClient.connect({}, () => {
   stompClient.subscribe('/user/queue/chat-typing', ({body}) => {
     const event = JSON.parse(body);
     if ((activeConversationId && event.conversationId === activeConversationId) || (!activeConversationId && event.recipientId === activeRecipientId)) {
-      document.getElementById('typingIndicator').textContent = event.typing ? `${event.username} is typing...` : '';
+      renderTypingIndicator(event.username, event.typing);
     }
   });
 });

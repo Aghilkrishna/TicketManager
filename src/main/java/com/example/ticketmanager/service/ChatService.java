@@ -122,7 +122,7 @@ public class ChatService {
             messagingTemplate.convertAndSendToUser(
                     recipient.getUsername(),
                     "/queue/chat-typing",
-                    new AuthDtos.ChatTypingEvent(null, sender.getId(), sender.getUsername(), event.typing())
+                    new AuthDtos.ChatTypingEvent(null, recipient.getId(), sender.getUsername(), event.typing())
             );
         }
     }
