@@ -4,6 +4,7 @@ import com.example.ticketmanager.dto.AuthDtos;
 import com.example.ticketmanager.dto.AdminDtos;
 import com.example.ticketmanager.entity.AppFeature;
 import com.example.ticketmanager.entity.AppUser;
+import com.example.ticketmanager.entity.EmailNotificationAction;
 import com.example.ticketmanager.entity.PasswordResetToken;
 import com.example.ticketmanager.entity.Role;
 import com.example.ticketmanager.exception.AppException;
@@ -45,6 +46,7 @@ public class UserService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailService emailService;
     private final com.example.ticketmanager.config.AppProperties appProperties;
+    private final EmailNotificationSettingsService emailNotificationSettingsService;
 
     public AppUser getByUsername(String username) {
         return userRepository.findByUsername(username)
@@ -143,6 +145,16 @@ public class UserService {
         return getByUsername(username).getProfileImageContentType();
     }
 
+    @Transactional(readOnly = true)
+    public byte[] getProfileImage(Long userId) {
+        return getById(userId).getProfileImage();
+    }
+
+    @Transactional(readOnly = true)
+    public String getProfileImageContentType(Long userId) {
+        return getById(userId).getProfileImageContentType();
+    }
+
     public void createPasswordReset(String email) {
         AppUser user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Email not found"));
@@ -152,7 +164,9 @@ public class UserService {
         token.setExpiresAt(LocalDateTime.now().plusHours(2));
         passwordResetTokenRepository.save(token);
         String link = appProperties.baseUrl() + "/reset-password?token=" + token.getToken();
-        emailService.sendPasswordResetEmail(user, link);
+        if (emailNotificationSettingsService.isEnabled(EmailNotificationAction.PASSWORD_RESET)) {
+            emailService.sendPasswordResetEmail(user, link);
+        }
     }
 
     @Transactional
@@ -191,6 +205,14 @@ public class UserService {
                 .filter(part -> !part.isBlank())
                 .map(part -> part.substring(0, 1) + part.substring(1).toLowerCase())
                 .collect(Collectors.joining(" "));
+    }
+
+    public boolean hasRole(AppUser user, String roleName) {
+        return user.getRoles().stream().anyMatch(role -> role.isActive() && roleName.equals(role.getName()));
+    }
+
+    public boolean hasRole(String username, String roleName) {
+        return hasRole(getByUsername(username), roleName);
     }
 
     @Transactional(readOnly = true)

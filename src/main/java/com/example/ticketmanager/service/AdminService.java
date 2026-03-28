@@ -3,6 +3,7 @@ package com.example.ticketmanager.service;
 import com.example.ticketmanager.dto.AdminDtos;
 import com.example.ticketmanager.entity.AppFeature;
 import com.example.ticketmanager.entity.AppUser;
+import com.example.ticketmanager.entity.EmailNotificationAction;
 import com.example.ticketmanager.entity.Role;
 import com.example.ticketmanager.exception.AppException;
 import com.example.ticketmanager.repository.RoleRepository;
@@ -25,12 +26,23 @@ public class AdminService {
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final UserService userService;
+    private final EmailNotificationSettingsService emailNotificationSettingsService;
 
     @Transactional(readOnly = true)
     public List<AdminDtos.FeatureResponse> listFeatures() {
         return Arrays.stream(AppFeature.values())
                 .map(AdminDtos.FeatureResponse::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminDtos.EmailNotificationSettingResponse> listEmailNotificationSettings() {
+        return emailNotificationSettingsService.listSettings();
+    }
+
+    @Transactional
+    public List<AdminDtos.EmailNotificationSettingResponse> updateEmailNotificationSettings(List<AdminDtos.EmailNotificationSettingUpdateItem> items) {
+        return emailNotificationSettingsService.updateSettings(items);
     }
 
     @Transactional(readOnly = true)

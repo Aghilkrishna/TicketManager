@@ -47,7 +47,14 @@ public class DataInitializer {
                     AppFeature.DASHBOARD_ACCESS,
                     AppFeature.PROFILE_ACCESS,
                     AppFeature.TICKETS_VIEW,
+                    AppFeature.SITE_VISIT_EDIT,
                     AppFeature.CHAT_ACCESS
+            ));
+            seedRole("ROLE_VENDOR", "Create and manage vendor-owned tickets", Set.of(
+                    AppFeature.DASHBOARD_ACCESS,
+                    AppFeature.PROFILE_ACCESS,
+                    AppFeature.TICKETS_VIEW,
+                    AppFeature.TICKETS_MANAGE
             ));
             seedRole("ROLE_USER", "Standard end user access", Set.of(
                     AppFeature.DASHBOARD_ACCESS,
@@ -59,6 +66,7 @@ public class DataInitializer {
                 createUser("admin", "admin@example.com", "9999999999", "Admin@123", "ROLE_ADMIN", "ROLE_MANAGER");
                 createUser("manager", "manager@example.com", "8888888888", "Manager@123", "ROLE_MANAGER");
                 createUser("agent", "agent@example.com", "7777777777", "Agent@123", "ROLE_AGENT");
+                createUser("vendor", "vendor@example.com", "5555555555", "Vendor@123", "ROLE_VENDOR");
                 createUser("user", "user@example.com", "6666666666", "User@123", "ROLE_USER");
             }
         };

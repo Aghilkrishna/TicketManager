@@ -2,12 +2,14 @@ package com.example.ticketmanager.service;
 
 import com.example.ticketmanager.dto.AuthDtos;
 import com.example.ticketmanager.entity.AppUser;
+import com.example.ticketmanager.entity.EmailNotificationAction;
 import com.example.ticketmanager.entity.Notification;
 import com.example.ticketmanager.entity.NotificationType;
 import com.example.ticketmanager.repository.NotificationRepository;
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,8 +23,13 @@ public class NotificationService {
     private final SimpMessagingTemplate messagingTemplate;
     private final EmailService emailService;
     private final com.example.ticketmanager.config.AppProperties appProperties;
+    private final EmailNotificationSettingsService emailNotificationSettingsService;
 
     public void notify(AppUser user, NotificationType type, String message, String referenceType, Long referenceId) {
+        notify(user, type, message, referenceType, referenceId, resolveEmailAction(type));
+    }
+
+    public void notify(AppUser user, NotificationType type, String message, String referenceType, Long referenceId, EmailNotificationAction emailAction) {
         Notification notification = new Notification();
         notification.setUser(user);
         notification.setType(type);
@@ -31,11 +38,15 @@ public class NotificationService {
         notification.setReferenceId(referenceId);
         Notification saved = notificationRepository.save(notification);
         messagingTemplate.convertAndSendToUser(user.getUsername(), "/queue/notifications", toResponse(saved));
-        sendEmailNotification(user, type, message, referenceType, referenceId);
+        sendEmailNotification(user, type, message, referenceType, referenceId, emailAction);
     }
 
-    private void sendEmailNotification(AppUser user, NotificationType type, String message, String referenceType, Long referenceId) {
+    @Async
+    void sendEmailNotification(AppUser user, NotificationType type, String message, String referenceType, Long referenceId, EmailNotificationAction emailAction) {
         if (user.getEmail() == null || user.getEmail().isBlank()) {
+            return;
+        }
+        if (emailAction != null && !emailNotificationSettingsService.isEnabled(emailAction)) {
             return;
         }
         try {
@@ -62,6 +73,15 @@ public class NotificationService {
         } catch (Exception ex) {
             log.warn("Failed to send notification email to {}", user.getEmail(), ex);
         }
+    }
+
+    private EmailNotificationAction resolveEmailAction(NotificationType type) {
+        return switch (type) {
+            case COMMENT_ADDED -> EmailNotificationAction.COMMENT_ADDED;
+            case TICKET_UPDATED -> EmailNotificationAction.TICKET_UPDATED;
+            case CHAT_MESSAGE -> EmailNotificationAction.CHAT_MESSAGE;
+            case ACCOUNT_EVENT -> null;
+        };
     }
 
     public List<AuthDtos.NotificationResponse> listForUser(Long userId) {

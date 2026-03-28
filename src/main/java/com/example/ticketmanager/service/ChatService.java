@@ -4,6 +4,7 @@ import com.example.ticketmanager.dto.AuthDtos;
 import com.example.ticketmanager.entity.AppUser;
 import com.example.ticketmanager.entity.ChatConversation;
 import com.example.ticketmanager.entity.ChatMessage;
+import com.example.ticketmanager.entity.EmailNotificationAction;
 import com.example.ticketmanager.entity.NotificationType;
 import com.example.ticketmanager.entity.Ticket;
 import com.example.ticketmanager.exception.AppException;
@@ -57,7 +58,7 @@ public class ChatService {
                     messagingTemplate.convertAndSendToUser(sender.getUsername(), "/queue/chat-status",
                             new AuthDtos.ChatStatusResponse(conversation.getId(), saved.getId(), "DELIVERED", user.getUsername()));
                     notificationService.notify(user, NotificationType.CHAT_MESSAGE,
-                            "New chat message from " + sender.getUsername(), "CHAT", conversation.getId());
+                            "New chat message from " + sender.getUsername(), "CHAT", conversation.getId(), EmailNotificationAction.CHAT_MESSAGE);
                 });
         return response;
     }
@@ -155,6 +156,7 @@ public class ChatService {
         return new AuthDtos.ChatMessageResponse(
                 message.getId(),
                 message.getConversation().getId(),
+                message.getSender().getId(),
                 message.getSender().getUsername(),
                 message.getContent(),
                 message.getRelatedTicket() == null ? null : message.getRelatedTicket().getId(),

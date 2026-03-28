@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 
@@ -95,6 +96,22 @@ public final class AuthDtos {
             @Size(max = 500) String address,
             String serviceType,
             @Size(max = 1000) String locationLink,
+            Integer siteVisits,
+            Long parentTicketId,
+            Long vendorUserId,
+            @Size(max = 500) String vendorNotes,
+            @Size(max = 150) String customerName,
+            @Size(max = 120) String customerFlat,
+            @Size(max = 150) String customerStreet,
+            @Size(max = 80) String customerCity,
+            @Size(max = 80) String customerState,
+            @Size(max = 20) String customerPincode,
+            @Size(max = 1000) String customerLocationLink,
+            String pricingModel,
+            BigDecimal estimatedCost,
+            BigDecimal actualCost,
+            @Size(max = 3000) String additionalNotes,
+            @Size(max = 2000) String initialComment,
             LocalDate scheduleDate,
             String priority,
             String status,
@@ -111,10 +128,31 @@ public final class AuthDtos {
             String serviceType,
             String serviceTypeLabel,
             String locationLink,
+            Integer siteVisits,
+            Long parentTicketId,
+            String parentTicketTitle,
+            Long vendorUserId,
+            String vendorName,
+            String vendorEmail,
+            String vendorPhone,
+            String vendorNotes,
+            String customerName,
+            String customerFlat,
+            String customerStreet,
+            String customerCity,
+            String customerState,
+            String customerPincode,
+            String customerLocationLink,
+            String pricingModel,
+            String pricingModelLabel,
+            BigDecimal estimatedCost,
+            BigDecimal actualCost,
+            String additionalNotes,
             String status,
             String priority,
             LocalDate scheduleDate,
             String createdBy,
+            String updatedBy,
             Long assignedToId,
             String assignedTo,
             Set<Long> serviceUserIds,
@@ -134,6 +172,7 @@ public final class AuthDtos {
     public record TicketCommentResponse(
             Long id,
             Long parentId,
+            Long authorId,
             String author,
             String content,
             boolean canEdit,
@@ -145,6 +184,28 @@ public final class AuthDtos {
 
     public record TicketCommentUpdateRequest(
             @NotBlank @Size(max = 2000) String content
+    ) {
+    }
+
+    public record TicketCommentEvent(
+            Long ticketId,
+            String action,
+            Long commentId
+    ) {
+    }
+
+    public record TicketSiteVisitRequest(
+            java.time.LocalDateTime visitedAt,
+            @Size(max = 2000) String notes
+    ) {
+    }
+
+    public record TicketSiteVisitResponse(
+            Long id,
+            Long agentId,
+            String agentName,
+            LocalDateTime visitedAt,
+            String notes
     ) {
     }
 
@@ -181,6 +242,7 @@ public final class AuthDtos {
     public record ChatMessageResponse(
             Long id,
             Long conversationId,
+            Long senderId,
             String sender,
             String content,
             Long ticketId,

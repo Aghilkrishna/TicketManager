@@ -80,6 +80,17 @@ public class AdminRestController {
         return adminService.listFeatures();
     }
 
+    @GetMapping("/email-notifications")
+    public List<AdminDtos.EmailNotificationSettingResponse> listEmailNotifications() {
+        return adminService.listEmailNotificationSettings();
+    }
+
+    @PutMapping("/email-notifications")
+    public List<AdminDtos.EmailNotificationSettingResponse> updateEmailNotifications(
+            @RequestBody List<AdminDtos.EmailNotificationSettingUpdateItem> items) {
+        return adminService.updateEmailNotificationSettings(items);
+    }
+
     @PutMapping("/roles/{roleId}/features")
     public AdminDtos.RoleSummary updateRoleFeatures(@PathVariable Long roleId,
                                                     @RequestBody AdminDtos.RoleFeatureUpdateRequest request) {

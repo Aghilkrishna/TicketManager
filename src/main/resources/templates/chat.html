@@ -92,6 +92,7 @@ let activeRecipientId = null;
 let activeConversationId = null;
 let activeConversationName = null;
 let currentUsername = null;
+let currentUserId = null;
 let conversations = [];
 let stompClient = null;
 let typingTimeout = null;
@@ -103,10 +104,31 @@ function initials(value) {
   return (value || '?').trim().charAt(0).toUpperCase();
 }
 
+function avatarUrl(userId) {
+  return userId ? `/api/users/avatar/${userId}` : '';
+}
+
+function avatarImage(userId, name, className) {
+  const fallback = initials(name);
+  if (!userId) {
+    return `<div class="${className}">${fallback}</div>`;
+  }
+  return `<img class="${className}" src="${avatarUrl(userId)}" alt="${escapeHtml(name || 'User')}">`;
+}
+
+function setAvatarElement(elementId, userId, name, className) {
+  const element = document.getElementById(elementId);
+  if (!element) {
+    return;
+  }
+  const markup = avatarImage(userId, name, className);
+  element.outerHTML = markup.replace(/^<(img|div)\b/, `<$1 id="${elementId}"`);
+}
+
 function updateChatHeader(name, subtitle) {
   document.getElementById('chatTitle').textContent = name;
   document.getElementById('chatSubtitle').textContent = subtitle;
-  document.getElementById('chatHeaderAvatar').textContent = initials(name);
+  setAvatarElement('chatHeaderAvatar', activeRecipientId, name, 'chat-avatar');
 }
 
 function renderTypingIndicator(username, typing) {
@@ -163,10 +185,9 @@ function appendMessage(msg) {
   const mine = msg.sender === currentUsername;
   const bubbleClass = mine ? 'chat-bubble me' : 'chat-bubble them';
   const rowClass = mine ? 'chat-message-row outgoing' : 'chat-message-row incoming';
-  const avatarLabel = mine ? initials(currentUsername) : initials(msg.sender);
   box.innerHTML += `
     <div class="${rowClass}" data-message-id="${msg.id}">
-      ${mine ? '' : `<div class="chat-message-avatar">${avatarLabel}</div>`}
+      ${mine ? '' : avatarImage(msg.senderId, msg.sender, 'chat-message-avatar')}
       <div class="${bubbleClass}">
         <div>${escapeHtml(msg.content).replace(/\n/g, '<br>')}</div>
         ${msg.ticketId ? `<div class="mt-2"><span class="badge text-bg-info">Ticket #${msg.ticketId}</span></div>` : ''}
@@ -175,7 +196,7 @@ function appendMessage(msg) {
           <span class="message-status">${mine ? deliveryLabel(msg.deliveryStatus) : ''}</span>
         </div>
       </div>
-      ${mine ? `<div class="chat-message-avatar mine">${avatarLabel}</div>` : ''}
+      ${mine ? avatarImage(currentUserId, currentUsername, 'chat-message-avatar mine') : ''}
     </div>`;
   box.scrollTop = box.scrollHeight;
 }
@@ -187,7 +208,7 @@ function conversationCard(item) {
     : '';
   return `
     <button type="button" class="conversation-item ${item.id === activeConversationId ? 'active' : ''}" data-id="${item.id}" data-other-id="${item.otherUserId}" data-other-name="${escapeHtml(item.otherUsername)}">
-      <div class="chat-avatar">${initials(item.otherUsername)}</div>
+      ${avatarImage(item.otherUserId, item.otherUsername, 'chat-avatar')}
       <div class="conversation-body">
         <div class="conversation-meta">
           <strong class="conversation-name">${escapeHtml(item.otherUsername)}</strong>
@@ -253,9 +274,10 @@ function populateEmojiBar() {
 }
 
 fetch('/api/auth/me').then(r => r.json()).then(async me => {
+  currentUserId = me.id;
   currentUsername = me.username;
   document.getElementById('sidebarCurrentUserName').textContent = me.username;
-  document.getElementById('sidebarCurrentUserAvatar').textContent = initials(me.username);
+  setAvatarElement('sidebarCurrentUserAvatar', me.id, me.username, 'chat-avatar chat-avatar-lg');
   updateChatHeader('Conversation', 'Select an existing chat or start a new one.');
   populateEmojiBar();
   await loadConversations();
@@ -280,7 +302,7 @@ document.getElementById('userSearch').addEventListener('input', async () => {
     card.type = 'button';
     card.className = 'conversation-item';
     card.innerHTML = `
-      <div class="chat-avatar">${initials(user.username)}</div>
+      ${avatarImage(user.id, user.username, 'chat-avatar')}
       <div class="conversation-body">
         <div class="conversation-meta">
           <strong class="conversation-name">${escapeHtml(user.username)}</strong>

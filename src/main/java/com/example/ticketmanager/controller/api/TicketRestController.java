@@ -35,12 +35,13 @@ public class TicketRestController {
         return ticketService.create(principal.getName(), request, files);
     }
 
-    @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_MANAGE')")
+    @PreAuthorize("hasRole('ADMIN') or hasAnyAuthority('FEATURE_TICKETS_MANAGE','FEATURE_SITE_VISIT_EDIT')")
     @PatchMapping(path = "/{ticketId}", consumes = {"multipart/form-data"})
-    public AuthDtos.TicketSummary update(@PathVariable Long ticketId,
+    public AuthDtos.TicketSummary update(Principal principal,
+                                         @PathVariable Long ticketId,
                                          @Valid @ModelAttribute AuthDtos.TicketRequest request,
                                          @RequestParam(required = false) MultipartFile[] files) {
-        return ticketService.update(ticketId, request, files);
+        return ticketService.update(ticketId, principal.getName(), request, files);
     }
 
     @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_VIEW')")
@@ -57,6 +58,12 @@ public class TicketRestController {
                                              @RequestParam(defaultValue = "0") int page,
                                              @RequestParam(defaultValue = "10") int size) {
         return ticketService.list(principal.getName(), adminScope, assignedOnly, status, priority, assignedToId, search, page, size, sortBy, direction);
+    }
+
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_VIEW')")
+    @GetMapping("/search")
+    public List<AuthDtos.TicketSummary> search(Principal principal, @RequestParam String query) {
+        return ticketService.searchVisibleTickets(principal.getName(), query);
     }
 
     @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_VIEW')")
@@ -87,6 +94,22 @@ public class TicketRestController {
                                                          @PathVariable Long ticketId,
                                                          @RequestParam(defaultValue = "false") boolean adminScope) {
         return ticketService.listComments(ticketId, principal.getName(), adminScope);
+    }
+
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_VIEW')")
+    @GetMapping("/{ticketId}/site-visits")
+    public List<AuthDtos.TicketSiteVisitResponse> siteVisits(Principal principal,
+                                                             @PathVariable Long ticketId,
+                                                             @RequestParam(defaultValue = "false") boolean adminScope) {
+        return ticketService.listSiteVisits(ticketId, principal.getName(), adminScope);
+    }
+
+    @PreAuthorize("hasRole('ADMIN') or hasAnyAuthority('FEATURE_TICKETS_MANAGE','FEATURE_SITE_VISIT_EDIT')")
+    @PostMapping("/{ticketId}/site-visits")
+    public AuthDtos.TicketSiteVisitResponse addSiteVisit(Principal principal,
+                                                         @PathVariable Long ticketId,
+                                                         @Valid @RequestBody AuthDtos.TicketSiteVisitRequest request) {
+        return ticketService.addSiteVisit(ticketId, principal.getName(), request);
     }
 
     @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_VIEW')")

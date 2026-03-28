@@ -13,6 +13,7 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Slf4j
@@ -54,17 +55,17 @@ public class EmailService {
     }
 
     public void sendTicketNotificationEmail(AppUser user, String subject, String headline, String intro, String actionUrl, String actionLabel) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("userDisplayName", displayName(user));
+        variables.put("headline", headline);
+        variables.put("intro", intro);
+        variables.put("actionUrl", actionUrl);
+        variables.put("actionLabel", actionLabel);
         sendTemplate(
                 user.getEmail(),
                 subject,
                 "email/ticket-notification",
-                Map.of(
-                        "userDisplayName", displayName(user),
-                        "headline", headline,
-                        "intro", intro,
-                        "actionUrl", actionUrl,
-                        "actionLabel", actionLabel
-                )
+                variables
         );
     }
 

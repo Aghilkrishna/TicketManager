@@ -3,6 +3,7 @@ package com.example.ticketmanager.service;
 import com.example.ticketmanager.config.AppProperties;
 import com.example.ticketmanager.dto.AuthDtos;
 import com.example.ticketmanager.entity.AppUser;
+import com.example.ticketmanager.entity.EmailNotificationAction;
 import com.example.ticketmanager.entity.EmailVerificationToken;
 import com.example.ticketmanager.entity.Role;
 import com.example.ticketmanager.exception.AppException;
@@ -39,6 +40,7 @@ public class AuthService {
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final EmailService emailService;
     private final AppProperties appProperties;
+    private final EmailNotificationSettingsService emailNotificationSettingsService;
 
     @Transactional
     public AuthDtos.AuthResponse register(AuthDtos.RegisterRequest request) {
@@ -110,6 +112,8 @@ public class AuthService {
         token.setExpiresAt(LocalDateTime.now().plusHours(24));
         emailVerificationTokenRepository.save(token);
         String link = appProperties.baseUrl() + "/verify-email?token=" + token.getToken();
-        emailService.sendVerificationEmail(user, link);
+        if (emailNotificationSettingsService.isEnabled(EmailNotificationAction.ACCOUNT_VERIFICATION)) {
+            emailService.sendVerificationEmail(user, link);
+        }
     }
 }

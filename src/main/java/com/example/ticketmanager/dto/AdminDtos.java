@@ -64,4 +64,18 @@ public final class AdminDtos {
 
     public record RoleFeatureUpdateRequest(Set<String> features) {
     }
+
+    public record EmailNotificationSettingResponse(
+            String action,
+            String label,
+            String description,
+            boolean enabled
+    ) {
+    }
+
+    public record EmailNotificationSettingUpdateItem(
+            String action,
+            boolean enabled
+    ) {
+    }
 }

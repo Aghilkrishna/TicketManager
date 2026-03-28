@@ -6,11 +6,22 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
 import java.security.Principal;
+import java.util.List;
 import java.util.Set;
 
 @ControllerAdvice
 @RequiredArgsConstructor
 public class GlobalViewModelAdvice {
+    private static final List<String> INDIA_STATES = List.of(
+            "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat",
+            "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh",
+            "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
+            "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh",
+            "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", "Chandigarh",
+            "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir", "Ladakh",
+            "Lakshadweep", "Puducherry"
+    );
+
     private final UserService userService;
 
     @ModelAttribute("currentUsername")
@@ -57,5 +68,10 @@ public class GlobalViewModelAdvice {
             return Set.of();
         }
         return userService.getFeatureAuthorities(userService.getByUsername(principal.getName()));
+    }
+
+    @ModelAttribute("indiaStates")
+    public List<String> indiaStates() {
+        return INDIA_STATES;
     }
 }

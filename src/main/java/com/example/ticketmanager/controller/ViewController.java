@@ -50,28 +50,32 @@ public class ViewController {
 
     @GetMapping("/tickets")
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
-    public String tickets(Model model) {
+    public String tickets(Model model, Principal principal) {
+        boolean vendor = userService.hasRole(principal.getName(), "ROLE_VENDOR");
         model.addAttribute("ticketTab", "open");
-        model.addAttribute("ticketPageTitle", "My Open Tickets");
-        model.addAttribute("ticketSubtitle", "Open tickets currently assigned to you");
+        model.addAttribute("ticketPageTitle", vendor ? "My Tickets" : "My Open Tickets");
+        model.addAttribute("ticketSubtitle", vendor ? "Tickets created by you and available for updates" : "Open tickets currently assigned to you");
         model.addAttribute("forcedStatus", "OPEN");
+        model.addAttribute("assignedOnly", !vendor);
         return "tickets";
     }
 
     @GetMapping("/tickets/closed")
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
-    public String closedTickets(Model model) {
+    public String closedTickets(Model model, Principal principal) {
+        boolean vendor = userService.hasRole(principal.getName(), "ROLE_VENDOR");
         model.addAttribute("ticketTab", "closed");
-        model.addAttribute("ticketPageTitle", "Closed Tickets");
-        model.addAttribute("ticketSubtitle", "Closed tickets assigned to you");
+        model.addAttribute("ticketPageTitle", vendor ? "My Closed Tickets" : "Closed Tickets");
+        model.addAttribute("ticketSubtitle", vendor ? "Closed tickets created by you" : "Closed tickets assigned to you");
         model.addAttribute("forcedStatus", "CLOSED");
+        model.addAttribute("assignedOnly", !vendor);
         return "tickets";
     }
 
     @GetMapping("/tickets/view")
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
     public String viewTicket(@RequestParam Long id, Model model, Principal principal) {
-        boolean adminScope = userService.getProfile(principal.getName()).roles().contains("ROLE_ADMIN");
+        boolean adminScope = userService.hasRole(principal.getName(), "ROLE_ADMIN") || userService.hasRole(principal.getName(), "ROLE_MANAGER");
         model.addAttribute("ticket", ticketService.get(id, principal.getName(), adminScope));
         return "ticket-view";
     }
@@ -82,10 +86,11 @@ public class ViewController {
         return "ticket-create";
     }
 
-    @PreAuthorize("hasAuthority('FEATURE_TICKETS_MANAGE')")
+    @PreAuthorize("hasAnyAuthority('FEATURE_TICKETS_MANAGE','FEATURE_SITE_VISIT_EDIT')")
     @GetMapping("/tickets/edit")
     public String editTicket(@RequestParam Long id, Model model, Principal principal) {
-        model.addAttribute("ticket", ticketService.get(id, principal.getName(), true));
+        boolean adminScope = userService.hasRole(principal.getName(), "ROLE_ADMIN") || userService.hasRole(principal.getName(), "ROLE_MANAGER");
+        model.addAttribute("ticket", ticketService.get(id, principal.getName(), adminScope));
         return "ticket-edit";
     }
 
@@ -122,6 +127,12 @@ public class ViewController {
     @GetMapping("/admin/role-features")
     public String adminRoleFeatures() {
         return "admin-role-features";
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/email-notifications")
+    public String adminEmailNotifications() {
+        return "admin-email-notifications";
     }
 
     @GetMapping("/chat")

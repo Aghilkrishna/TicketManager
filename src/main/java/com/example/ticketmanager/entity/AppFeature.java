@@ -5,6 +5,7 @@ public enum AppFeature {
     PROFILE_ACCESS("Profile Access", "View and update the user profile."),
     TICKETS_VIEW("Ticket Access", "View tickets assigned or visible to the user."),
     TICKETS_MANAGE("Ticket Management", "Create and edit tickets."),
+    SITE_VISIT_EDIT("Site Visit Edit", "Update site visit counters and log visit history."),
     CHAT_ACCESS("Chat Access", "Use the internal chat workspace."),
     ADMIN_SUPPORT_TICKETS("Admin Support Tickets", "Review all support tickets from the admin area."),
     ADMIN_USER_MANAGEMENT("Admin User Management", "Manage registered users and account status."),

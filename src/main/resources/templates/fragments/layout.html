@@ -25,10 +25,10 @@
     </div>
     <nav class="sidebar-nav">
         <a class="nav-item" th:classappend="${activePage == 'dashboard'} ? ' active'" href="/dashboard"><i class="bi bi-grid"></i><span class="nav-label">Dashboard</span></a>
-        <a class="nav-item" th:if="${currentFeatures.contains('FEATURE_TICKETS_VIEW')}" th:classappend="${activePage == 'tickets'} ? ' active'" href="/tickets"><i class="bi bi-ticket-detailed"></i><span class="nav-label">Ticket Management</span></a>
+        <a class="nav-item" th:if="${currentFeatures.contains('FEATURE_TICKETS_VIEW')}" th:classappend="${activePage == 'tickets'} ? ' active'" href="/tickets"><i class="bi bi-ticket-detailed"></i><span class="nav-label" th:text="${currentRoles.contains('ROLE_VENDOR') ? 'My Tickets' : 'Ticket Management'}">Ticket Management</span></a>
         <div class="sidebar-subnav" th:if="${activePage == 'tickets'}">
-            <a class="subnav-item" th:classappend="${activeSubPage == 'open'} ? ' active'" href="/tickets">My Open Tickets</a>
-            <a class="subnav-item" th:classappend="${activeSubPage == 'closed'} ? ' active'" href="/tickets/closed">Closed Tickets</a>
+            <a class="subnav-item" th:classappend="${activeSubPage == 'open'} ? ' active'" href="/tickets" th:text="${currentRoles.contains('ROLE_VENDOR') ? 'My Tickets' : 'My Open Tickets'}">My Open Tickets</a>
+            <a class="subnav-item" th:classappend="${activeSubPage == 'closed'} ? ' active'" href="/tickets/closed" th:text="${currentRoles.contains('ROLE_VENDOR') ? 'My Closed Tickets' : 'Closed Tickets'}">Closed Tickets</a>
         </div>
         <a class="nav-item" th:if="${currentFeatures.contains('FEATURE_PROFILE_ACCESS')}" th:classappend="${activePage == 'profile'} ? ' active'" href="/profile"><i class="bi bi-person-circle"></i><span class="nav-label">User Profile</span></a>
         <a class="nav-item" th:if="${currentFeatures.contains('FEATURE_CHAT_ACCESS')}" th:classappend="${activePage == 'chat'} ? ' active'" href="/chat"><i class="bi bi-chat-dots"></i><span class="nav-label">Chat</span></a>
@@ -38,6 +38,7 @@
             <a class="subnav-item" th:classappend="${activeSubPage == 'users'} ? ' active'" href="/admin/users">User Management</a>
             <a class="subnav-item" th:classappend="${activeSubPage == 'roles'} ? ' active'" href="/admin/roles">Role Management</a>
             <a class="subnav-item" th:classappend="${activeSubPage == 'role-features'} ? ' active'" href="/admin/role-features">Role Features</a>
+            <a class="subnav-item" th:classappend="${activeSubPage == 'email-notifications'} ? ' active'" href="/admin/email-notifications">Email Notification</a>
         </div>
     </nav>
 
