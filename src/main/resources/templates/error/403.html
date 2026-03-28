@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/layout :: head('Access Denied')}"></th:block>
+</head>
+<body>
+<div class="auth-wrap error-wrap">
+    <section class="auth-banner">
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="brand-mark">TM</div>
+            <div>
+                <div class="fw-bold" style="font-size: 1.8rem; line-height: 1.1;">Ticket Manager</div>
+                <div style="font-size: 0.88rem; opacity: 0.78;">Secure account access and support operations</div>
+            </div>
+        </div>
+        <span class="banner-chip"><i class="bi bi-shield-lock me-2"></i>Access Control</span>
+        <h1 class="display-5 fw-bold">This area is outside your current access level.</h1>
+        <p class="lead mt-3">Your account is signed in, but the requested action or page needs different permissions.</p>
+    </section>
+    <section class="d-flex align-items-center justify-content-center">
+        <div class="auth-panel">
+            <div class="error-code">403</div>
+            <h2 class="fw-bold mb-2">Access Denied</h2>
+            <p class="text-muted mb-4" th:text="${errorMessage != null ? errorMessage : 'You do not have permission to view this page.'}">You do not have permission to view this page.</p>
+            <div class="d-flex gap-2 flex-wrap">
+                <a class="btn btn-primary btn-lg" href="/dashboard">Go to Dashboard</a>
+                <a class="btn btn-outline-secondary btn-lg" href="javascript:history.back()">Go Back</a>
+            </div>
+        </div>
+    </section>
+</div>
+</body>
+</html>

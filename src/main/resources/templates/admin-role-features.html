@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/layout :: head('Role Features')}"></th:block>
+</head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('admin', 'role-features')}"></aside>
+    <div class="main-panel">
+        <header th:replace="~{fragments/layout :: topbar('Role Features', 'Assign platform capabilities to each role')}"></header>
+        <main class="content-area">
+            <section class="hero-banner glass-card mb-4">
+                <h1 class="h2 fw-bold mb-2">Role Feature Assignment</h1>
+                <p class="mb-0">Control which application features are available to users through their assigned roles.</p>
+            </section>
+            <section class="form-card glass-card">
+                <div class="row g-4">
+                    <div class="col-lg-4">
+                        <label class="form-label">Role</label>
+                        <select id="featureRoleSelect" class="form-select"></select>
+                        <div id="featureRoleMeta" class="text-muted small mt-2"></div>
+                        <div class="glass-card mt-3 p-3">
+                            <div class="small text-muted mb-2">Assigned Features</div>
+                            <div id="assignedFeatureSummary" class="d-flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-8">
+                        <div class="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
+                            <label class="form-label mb-0">Features</label>
+                            <input id="featureSearch" class="form-control" style="max-width: 320px;" placeholder="Search features">
+                        </div>
+                        <div id="featureList" class="row g-3"></div>
+                        <div class="mt-4">
+                            <button id="saveFeatureAssignments" class="btn btn-primary" type="button">Save Feature Assignments</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+<script th:src="@{/js/app.js}"></script>
+<script>
+let roles = [];
+let features = [];
+
+function featureIcon(name) {
+  if (name.includes('DASHBOARD')) return 'bi-grid';
+  if (name.includes('PROFILE')) return 'bi-person-circle';
+  if (name.includes('CHAT')) return 'bi-chat-dots';
+  if (name.includes('TICKETS_MANAGE')) return 'bi-pencil-square';
+  if (name.includes('TICKETS_VIEW')) return 'bi-ticket-detailed';
+  if (name.includes('USER_MANAGEMENT')) return 'bi-people';
+  if (name.includes('ROLE_MANAGEMENT')) return 'bi-shield-lock';
+  if (name.includes('ROLE_FEATURE_ASSIGNMENT')) return 'bi-sliders';
+  if (name.includes('SUPPORT_TICKETS')) return 'bi-life-preserver';
+  return 'bi-check2-square';
+}
+
+function selectedRole() {
+  const roleId = Number(document.getElementById('featureRoleSelect').value);
+  return roles.find(role => role.id === roleId);
+}
+
+function renderFeatureOptions() {
+  const role = selectedRole();
+  const selected = new Set(role ? role.features : []);
+  const query = document.getElementById('featureSearch').value.trim().toLowerCase();
+  document.getElementById('featureRoleMeta').textContent = role ? `${role.label} · ${role.description || 'No description provided'}` : '';
+  document.getElementById('assignedFeatureSummary').innerHTML = role && role.featureLabels.length
+    ? role.featureLabels.map(label => {
+        return `<span class="badge rounded-pill text-bg-primary-subtle border">${label}</span>`;
+      }).join('')
+    : '<span class="text-muted small">No features assigned yet.</span>';
+  const visibleFeatures = features.filter(feature => {
+    if (!query) return true;
+    return feature.label.toLowerCase().includes(query)
+      || feature.description.toLowerCase().includes(query)
+      || feature.name.toLowerCase().includes(query);
+  });
+  document.getElementById('featureList').innerHTML = visibleFeatures.map(feature => `
+    <div class="col-md-6">
+      <label class="d-block border rounded-4 p-3 h-100 ${selected.has(feature.name) ? 'border-primary bg-light' : ''}" for="feature-${feature.name}" style="cursor:pointer;">
+        <div class="d-flex align-items-start gap-3">
+          <div class="fs-4"><i class="bi ${featureIcon(feature.name)}"></i></div>
+          <div class="flex-grow-1">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <div class="fw-semibold">${feature.label}</div>
+              <input class="form-check-input mt-1" type="checkbox" value="${feature.name}" id="feature-${feature.name}" ${selected.has(feature.name) ? 'checked' : ''}>
+            </div>
+            <div class="text-muted small mt-1">${feature.description}</div>
+          </div>
+        </div>
+      </label>
+    </div>
+  `).join('') || '<div class="col-12"><div class="empty-state">No features matched the current search.</div></div>';
+}
+
+function renderRoleSelect() {
+  const select = document.getElementById('featureRoleSelect');
+  select.innerHTML = roles.map(role => `<option value="${role.id}">${role.label}</option>`).join('');
+  renderFeatureOptions();
+}
+
+async function loadRoleFeatures() {
+  const [rolesRes, featuresRes] = await Promise.all([
+    fetch('/api/admin/roles'),
+    fetch('/api/admin/features')
+  ]);
+  roles = await rolesRes.json();
+  features = await featuresRes.json();
+  renderRoleSelect();
+}
+
+document.getElementById('featureRoleSelect').addEventListener('change', renderFeatureOptions);
+document.getElementById('featureSearch').addEventListener('input', renderFeatureOptions);
+
+document.getElementById('saveFeatureAssignments').addEventListener('click', async () => {
+  const role = selectedRole();
+  if (!role) return;
+  const checked = Array.from(document.querySelectorAll('#featureList input:checked')).map(input => input.value);
+  const res = await fetch(`/api/admin/roles/${role.id}/features`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({features: checked})
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    window.alert(payload.message || 'Failed to update features');
+    return;
+  }
+  await loadRoleFeatures();
+});
+
+loadRoleFeatures();
+</script>
+</body>
+</html>

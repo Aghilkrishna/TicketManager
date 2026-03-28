@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/layout :: head('Request Error')}"></th:block>
+</head>
+<body>
+<div class="auth-wrap error-wrap">
+    <section class="auth-banner">
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="brand-mark">TM</div>
+            <div>
+                <div class="fw-bold" style="font-size: 1.8rem; line-height: 1.1;">Ticket Manager</div>
+                <div style="font-size: 0.88rem; opacity: 0.78;">Secure account access and support operations</div>
+            </div>
+        </div>
+        <span class="banner-chip"><i class="bi bi-info-circle me-2"></i>Request Issue</span>
+        <h1 class="display-5 fw-bold">We could not complete that request.</h1>
+        <p class="lead mt-3">Please review the information you entered and try again.</p>
+    </section>
+    <section class="d-flex align-items-center justify-content-center">
+        <div class="auth-panel">
+            <div class="error-code" th:text="${status != null ? status : 400}">400</div>
+            <h2 class="fw-bold mb-2" th:text="${errorTitle != null ? errorTitle : 'Request Error'}">Request Error</h2>
+            <p class="text-muted mb-4" th:text="${errorMessage != null ? errorMessage : 'The request could not be processed.'}">The request could not be processed.</p>
+            <div class="d-flex gap-2 flex-wrap">
+                <a class="btn btn-primary btn-lg" href="javascript:history.back()">Go Back</a>
+                <a class="btn btn-outline-secondary btn-lg" href="/dashboard">Go to Dashboard</a>
+            </div>
+        </div>
+    </section>
+</div>
+</body>
+</html>

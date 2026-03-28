@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/layout :: head('User Management')}"></th:block>
+</head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('admin', 'users')}"></aside>
+    <div class="main-panel">
+        <header th:replace="~{fragments/layout :: topbar('User Management', 'Review users, roles, and account status')}"></header>
+        <main class="content-area">
+            <section class="hero-banner glass-card mb-4">
+                <h1 class="h2 fw-bold mb-2">User Management</h1>
+                <p class="mb-0">Update user details, role assignments, and activation status without leaving the admin area.</p>
+            </section>
+            <section class="toolbar-card glass-card mb-4">
+                <div class="toolbar-grid">
+                    <input id="userSearch" class="form-control" placeholder="Search by username, email, or mobile number">
+                </div>
+            </section>
+            <section class="table-card glass-card">
+                <div id="userTableError" class="alert alert-danger d-none mb-3" role="alert"></div>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                        <tr>
+                            <th>S.No</th><th>Username</th><th>Mobile</th><th>Email</th><th>Role</th><th>Account Status</th><th class="text-end">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody id="userTable"></tbody>
+                    </table>
+                </div>
+                <div class="pagination-wrap">
+                    <div id="userPaginationSummary" class="text-muted small"></div>
+                    <div id="userPaginationList" class="pagination-list"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+
+<div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form id="userForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="userId">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label">Username</label><input id="userUsername" class="form-control" required></div>
+                        <div class="col-md-6"><label class="form-label">Email</label><input id="userEmail" class="form-control" type="email" required></div>
+                        <div class="col-md-6"><label class="form-label">Phone</label><input id="userPhone" class="form-control"></div>
+                        <div class="col-md-6 d-flex align-items-end"><div class="form-check"><input id="userEnabled" class="form-check-input" type="checkbox"><label class="form-check-label" for="userEnabled">Account active</label></div></div>
+                        <div class="col-12">
+                            <label class="form-label">Roles</label>
+                            <div id="userRoleOptions" class="d-flex flex-wrap gap-3"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-primary" type="submit">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/app.js}"></script>
+<script>
+let users = [];
+let roles = [];
+let userPage = 0;
+const userPageSize = 10;
+let searchDebounceId = null;
+const userModal = new bootstrap.Modal(document.getElementById('userModal'));
+
+function renderUserPagination(data) {
+  const list = document.getElementById('userPaginationList');
+  const summary = document.getElementById('userPaginationSummary');
+  list.innerHTML = '';
+  summary.textContent = `Showing page ${data.number + 1} of ${Math.max(data.totalPages, 1)} · ${data.totalElements} users`;
+  const addButton = (label, page, disabled = false, active = false) => {
+    const button = document.createElement('button');
+    button.className = 'page-link-btn' + (active ? ' active' : '');
+    button.textContent = label;
+    button.disabled = disabled;
+    button.addEventListener('click', () => {
+      userPage = page;
+      loadUsers();
+    });
+    list.appendChild(button);
+  };
+  addButton('Prev', Math.max(userPage - 1, 0), data.first);
+  for (let i = 0; i < data.totalPages; i++) {
+    addButton(String(i + 1), i, false, i === data.number);
+  }
+  addButton('Next', Math.min(userPage + 1, Math.max(data.totalPages - 1, 0)), data.last);
+}
+
+function renderUsers() {
+  const body = document.getElementById('userTable');
+  body.innerHTML = '';
+  users.forEach((user, index) => {
+    const activeBadge = user.enabled ? '<span class="badge text-bg-success">Active</span>' : '<span class="badge text-bg-secondary">Inactive</span>';
+    body.innerHTML += `
+      <tr>
+        <td>${userPage * userPageSize + index + 1}</td>
+        <td><div class="fw-semibold">${user.username}</div></td>
+        <td>${user.phone || '-'}</td>
+        <td>${user.email}</td>
+        <td>${(user.roleLabels || []).join(', ') || '-'}</td>
+        <td>${activeBadge}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-primary" type="button" title="Edit user" onclick="openUserModal(${user.id})">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-sm ${user.enabled ? 'btn-outline-danger' : 'btn-outline-success'}" type="button" title="${user.enabled ? 'Deactivate user' : 'Reactivate user'}" onclick="toggleUserStatus(${user.id})">
+            <i class="bi ${user.enabled ? 'bi-person-x' : 'bi-person-check'}"></i>
+          </button>
+        </td>
+      </tr>`;
+  });
+}
+
+function renderRoleOptions(selectedRoles) {
+  const container = document.getElementById('userRoleOptions');
+  container.innerHTML = roles.map(role => `
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" value="${role.id}" id="role-${role.id}" ${selectedRoles.includes(role.name) ? 'checked' : ''}>
+      <label class="form-check-label" for="role-${role.id}">${role.label}</label>
+    </div>
+  `).join('');
+}
+
+window.openUserModal = (userId) => {
+  const user = users.find(item => item.id === userId);
+  if (!user) return;
+  document.getElementById('userId').value = user.id;
+  document.getElementById('userUsername').value = user.username;
+  document.getElementById('userEmail').value = user.email;
+  document.getElementById('userPhone').value = user.phone || '';
+  document.getElementById('userEnabled').checked = user.enabled;
+  renderRoleOptions(user.roles || []);
+  userModal.show();
+};
+
+window.toggleUserStatus = async (userId) => {
+  const user = users.find(item => item.id === userId);
+  if (!user) return;
+  const nextEnabled = !user.enabled;
+  const confirmed = window.confirm(`${nextEnabled ? 'Reactivate' : 'Deactivate'} ${user.username}?`);
+  if (!confirmed) return;
+  const roleIds = (roles || [])
+    .filter(role => (user.roles || []).includes(role.name))
+    .map(role => role.id);
+  const res = await fetch(`/api/admin/users/${userId}`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      username: user.username,
+      email: user.email,
+      phone: user.phone || '',
+      enabled: nextEnabled,
+      roleIds
+    })
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    window.alert(payload.message || 'Failed to update account status');
+    return;
+  }
+  await loadUsers();
+};
+
+async function loadUsers() {
+  const params = new URLSearchParams({
+    query: document.getElementById('userSearch').value,
+    page: String(userPage),
+    size: String(userPageSize)
+  });
+  const [usersRes, rolesRes] = await Promise.all([
+    fetch('/api/admin/users?' + params.toString()),
+    fetch('/api/admin/roles')
+  ]);
+  const errorBox = document.getElementById('userTableError');
+  if (!usersRes.ok || !rolesRes.ok) {
+    const payload = await usersRes.json().catch(() => ({}));
+    errorBox.textContent = payload.message || 'Failed to load users';
+    errorBox.classList.remove('d-none');
+    document.getElementById('userTable').innerHTML = '';
+    document.getElementById('userPaginationSummary').textContent = '';
+    document.getElementById('userPaginationList').innerHTML = '';
+    return;
+  }
+  errorBox.classList.add('d-none');
+  const userData = await usersRes.json();
+  users = userData.content || [];
+  roles = await rolesRes.json();
+  renderUsers();
+  renderUserPagination(userData);
+}
+
+document.getElementById('userSearch').addEventListener('input', () => {
+  window.clearTimeout(searchDebounceId);
+  searchDebounceId = window.setTimeout(() => {
+    userPage = 0;
+    loadUsers();
+  }, 250);
+});
+
+document.getElementById('userForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const userId = document.getElementById('userId').value;
+  const roleIds = Array.from(document.querySelectorAll('#userRoleOptions input:checked')).map(input => Number(input.value));
+  const res = await fetch(`/api/admin/users/${userId}`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      username: document.getElementById('userUsername').value,
+      email: document.getElementById('userEmail').value,
+      phone: document.getElementById('userPhone').value,
+      enabled: document.getElementById('userEnabled').checked,
+      roleIds
+    })
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    window.alert(payload.message || 'Failed to update user');
+    return;
+  }
+  userModal.hide();
+  await loadUsers();
+});
+
+loadUsers();
+</script>
+</body>
+</html>
