@@ -43,6 +43,16 @@ public class Ticket {
     @Column(nullable = false, length = 4000)
     private String description;
 
+    @Column(length = 500)
+    private String address;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private TicketServiceType serviceType;
+
+    @Column(length = 1000)
+    private String locationLink;
+
     private LocalDate scheduleDate;
 
     @Enumerated(EnumType.STRING)

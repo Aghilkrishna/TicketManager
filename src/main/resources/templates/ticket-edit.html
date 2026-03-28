@@ -10,57 +10,125 @@
         <header th:replace="~{fragments/layout :: topbar('Edit Ticket', 'Update ticket information, assignments, and attachments')}"></header>
         <main class="content-area">
             <section class="hero-banner glass-card mb-4">
-                <h1 class="h2 fw-bold mb-2">Edit Ticket #<span th:text="${ticket.id}"></span></h1>
-                <p class="mb-0">Apply changes and return to the ticket list once the update succeeds.</p>
+                <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                    <div>
+                        <div class="text-uppercase small opacity-75">Support Ticket</div>
+                        <h1 class="h2 fw-bold mb-2">Edit Ticket #<span th:text="${ticket.id}"></span></h1>
+                        <p class="mb-0">Apply changes and keep service, assignment, and scheduling details aligned.</p>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <span class="status-pill" th:classappend="${' ' + ticket.status}" th:text="${ticket.status}">OPEN</span>
+                        <span class="priority-pill" th:classappend="${' ' + ticket.priority}" th:text="${ticket.priority}">MEDIUM</span>
+                    </div>
+                </div>
             </section>
             <section class="form-card glass-card">
                 <form id="ticketForm" class="row g-3" enctype="multipart/form-data">
                     <div class="col-12">
-                        <label class="form-label">Title</label>
-                        <input class="form-control form-control-lg" name="title" th:value="${ticket.title}" required>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Description</label>
-                        <textarea class="form-control" name="description" rows="5" required th:text="${ticket.description}"></textarea>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Schedule Date</label>
-                        <input class="form-control" type="date" name="scheduleDate" th:value="${ticket.scheduleDate}">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Priority</label>
-                        <select class="form-select" name="priority">
-                            <option th:selected="${ticket.priority == 'LOW'}">LOW</option>
-                            <option th:selected="${ticket.priority == 'MEDIUM'}">MEDIUM</option>
-                            <option th:selected="${ticket.priority == 'HIGH'}">HIGH</option>
-                            <option th:selected="${ticket.priority == 'CRITICAL'}">CRITICAL</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Status</label>
-                        <select class="form-select" name="status">
-                            <option th:selected="${ticket.status == 'OPEN'}">OPEN</option>
-                            <option th:selected="${ticket.status == 'IN_PROGRESS'}">IN_PROGRESS</option>
-                            <option th:selected="${ticket.status == 'ON_HOLD'}">ON_HOLD</option>
-                            <option th:selected="${ticket.status == 'RESOLVED'}">RESOLVED</option>
-                            <option th:selected="${ticket.status == 'CLOSED'}">CLOSED</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Assigned User</label>
-                        <input id="assignedSearch" class="form-control" th:value="${ticket.assignedTo}" placeholder="Search by name, email or phone">
-                        <div id="assignedResults" class="assignment-results mt-2"></div>
-                        <input type="hidden" name="assignedToId" id="assignedToId" th:value="${ticket.assignedToId}">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Service Users</label>
-                        <input id="serviceSearch" class="form-control" placeholder="Search by name, email or phone">
-                        <div id="serviceResults" class="assignment-results mt-2"></div>
-                        <div id="selectedServiceUsers" class="selected-users mt-2"></div>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Attachments</label>
-                        <input class="form-control" type="file" name="files" multiple>
+                        <div class="row g-4">
+                            <div class="col-xl-7">
+                                <div class="p-4 rounded-4 border bg-white h-100">
+                                    <div class="section-title mb-3">Ticket Details</div>
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <label class="form-label">Title</label>
+                                            <input class="form-control form-control-lg" name="title" th:value="${ticket.title}" required>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">Description</label>
+                                            <textarea class="form-control" name="description" rows="6" required th:text="${ticket.description}"></textarea>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Service Type</label>
+                                            <select class="form-select" name="serviceType">
+                                                <option value="" th:selected="${ticket.serviceType == null}">Select service type</option>
+                                                <option value="INSTALLATION" th:selected="${ticket.serviceType == 'INSTALLATION'}">Installation</option>
+                                                <option value="REPAIR" th:selected="${ticket.serviceType == 'REPAIR'}">Repair</option>
+                                                <option value="MAINTENANCE" th:selected="${ticket.serviceType == 'MAINTENANCE'}">Maintenance</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Schedule Date</label>
+                                            <input class="form-control" type="date" name="scheduleDate" th:value="${ticket.scheduleDate}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl-5">
+                                <div class="p-4 rounded-4 border bg-white h-100">
+                                    <div class="section-title mb-3">Ticket Controls</div>
+                                    <div class="row g-3">
+                                        <div class="col-md-6 col-xl-12">
+                                            <label class="form-label">Priority</label>
+                                            <select class="form-select" name="priority">
+                                                <option th:selected="${ticket.priority == 'LOW'}">LOW</option>
+                                                <option th:selected="${ticket.priority == 'MEDIUM'}">MEDIUM</option>
+                                                <option th:selected="${ticket.priority == 'HIGH'}">HIGH</option>
+                                                <option th:selected="${ticket.priority == 'CRITICAL'}">CRITICAL</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6 col-xl-12">
+                                            <label class="form-label">Status</label>
+                                            <select class="form-select" name="status">
+                                                <option th:selected="${ticket.status == 'OPEN'}">OPEN</option>
+                                                <option th:selected="${ticket.status == 'IN_PROGRESS'}">IN_PROGRESS</option>
+                                                <option th:selected="${ticket.status == 'ON_HOLD'}">ON_HOLD</option>
+                                                <option th:selected="${ticket.status == 'RESOLVED'}">RESOLVED</option>
+                                                <option th:selected="${ticket.status == 'CLOSED'}">CLOSED</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="small text-muted text-uppercase mb-2">Created By</div>
+                                            <div class="fw-semibold" th:text="${ticket.createdBy}"></div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="small text-muted text-uppercase mb-2">Current Assignee</div>
+                                            <div class="fw-semibold" th:text="${ticket.assignedTo != null ? ticket.assignedTo : 'Unassigned'}"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl-7">
+                                <div class="p-4 rounded-4 border bg-white h-100">
+                                    <div class="section-title mb-3">Service Location</div>
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <label class="form-label">Address</label>
+                                            <textarea class="form-control" name="address" rows="4" th:text="${ticket.address}"></textarea>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">Google Maps Link</label>
+                                            <input class="form-control" type="url" name="locationLink" th:value="${ticket.locationLink}" placeholder="https://maps.google.com/...">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl-5">
+                                <div class="p-4 rounded-4 border bg-white h-100">
+                                    <div class="section-title mb-3">Assignments</div>
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <label class="form-label">Assigned User</label>
+                                            <input id="assignedSearch" class="form-control" th:value="${ticket.assignedTo}" placeholder="Search by name, email or phone">
+                                            <div id="assignedResults" class="assignment-results mt-2"></div>
+                                            <input type="hidden" name="assignedToId" id="assignedToId" th:value="${ticket.assignedToId}">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">Service Users</label>
+                                            <input id="serviceSearch" class="form-control" placeholder="Search by name, email or phone">
+                                            <div id="serviceResults" class="assignment-results mt-2"></div>
+                                            <div id="selectedServiceUsers" class="selected-users mt-2"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="p-4 rounded-4 border bg-white">
+                                    <div class="section-title mb-3">Attachments</div>
+                                    <input class="form-control" type="file" name="files" multiple>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-12 d-flex gap-2">
                         <button class="btn btn-primary btn-lg" type="submit">Update Ticket</button>

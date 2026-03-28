@@ -10,14 +10,73 @@
         <header th:replace="~{fragments/layout :: topbar('Ticket Details', 'Review, discuss, and collaborate on the ticket')}"></header>
         <main class="content-area">
             <section class="hero-banner glass-card mb-4">
-                <h1 class="h2 fw-bold mb-2" th:text="${ticket.title}">Ticket Title</h1>
-                <p class="mb-0">Ticket #<span id="ticketIdText" th:text="${ticket.id}"></span></p>
+                <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                    <div>
+                        <div class="text-uppercase small opacity-75">Support Ticket</div>
+                        <h1 class="h2 fw-bold mb-2" th:text="${ticket.title}">Ticket Title</h1>
+                        <p class="mb-0">Ticket #<span id="ticketIdText" th:text="${ticket.id}"></span></p>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <span class="status-pill" th:classappend="${' ' + ticket.status}" th:text="${ticket.status}">OPEN</span>
+                        <span class="priority-pill" th:classappend="${' ' + ticket.priority}" th:text="${ticket.priority}">MEDIUM</span>
+                    </div>
+                </div>
             </section>
             <div class="row g-4">
-                <div class="col-lg-8">
+                <div class="col-xl-8">
                     <section class="form-card glass-card mb-4">
-                        <div class="section-title mb-3">Description</div>
-                        <p class="mb-0" th:text="${ticket.description}"></p>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="section-title">Ticket Details</div>
+                            <div class="small text-muted">Core request summary and planning details</div>
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-12">
+                                <div class="small text-muted text-uppercase mb-2">Description</div>
+                                <div class="p-3 rounded-4 border bg-white" style="white-space: pre-wrap;" th:text="${ticket.description}"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase mb-2">Created By</div>
+                                <div class="fw-semibold" th:text="${ticket.createdBy}"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase mb-2">Schedule Date</div>
+                                <div class="fw-semibold" th:text="${ticket.scheduleDate != null ? ticket.scheduleDate : 'Not scheduled'}"></div>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="form-card glass-card mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="section-title">Service Requirements</div>
+                            <div class="small text-muted">Location and service planning information</div>
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase mb-2">Service Type</div>
+                                <div class="fw-semibold" th:text="${ticket.serviceTypeLabel != null ? ticket.serviceTypeLabel : 'Not provided'}"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase mb-2">Assigned User</div>
+                                <div class="fw-semibold" th:text="${ticket.assignedTo != null ? ticket.assignedTo : 'Unassigned'}"></div>
+                            </div>
+                            <div class="col-12">
+                                <div class="small text-muted text-uppercase mb-2">Address</div>
+                                <div class="p-3 rounded-4 border bg-white" style="white-space: pre-wrap;" th:text="${ticket.address != null && !ticket.address.isEmpty() ? ticket.address : 'Not provided'}"></div>
+                            </div>
+                            <div class="col-12">
+                                <div class="small text-muted text-uppercase mb-2">Google Maps Location</div>
+                                <div class="p-3 rounded-4 border bg-white">
+                                    <a th:if="${ticket.locationLink != null && !ticket.locationLink.isEmpty()}" th:href="${ticket.locationLink}" target="_blank" rel="noopener noreferrer">Open in Google Maps</a>
+                                    <span th:if="${ticket.locationLink == null || ticket.locationLink.isEmpty()}">Not provided</span>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="small text-muted text-uppercase mb-2">Service Users</div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <span class="selected-user-chip" th:each="serviceUser : ${ticket.serviceUsers}" th:text="${serviceUser}">User</span>
+                                    <span class="text-muted" th:if="${#lists.isEmpty(ticket.serviceUsers)}">No supporting users assigned.</span>
+                                </div>
+                            </div>
+                        </div>
                     </section>
                     <section class="form-card glass-card">
                         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -35,19 +94,35 @@
                         <div id="commentThread" class="comment-thread"></div>
                     </section>
                 </div>
-                <div class="col-lg-4">
+                <div class="col-xl-4">
                     <section class="form-card glass-card">
-                        <div class="section-title mb-3">Metadata</div>
-                        <div class="vstack gap-3">
-                            <div><strong>Schedule Date</strong><div class="text-muted" th:text="${ticket.scheduleDate}"></div></div>
-                            <div><strong>Status</strong><div class="text-muted" th:text="${ticket.status}"></div></div>
-                            <div><strong>Priority</strong><div class="text-muted" th:text="${ticket.priority}"></div></div>
-                            <div><strong>Assigned User</strong><div class="text-muted" th:text="${ticket.assignedTo}"></div></div>
-                            <div><strong>Service Users</strong><div class="text-muted" th:text="${ticket.serviceUsers}"></div></div>
+                        <div class="section-title mb-3">At a Glance</div>
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="p-3 rounded-4 border bg-white h-100">
+                                    <div class="small text-muted text-uppercase mb-2">Status</div>
+                                    <span class="status-pill" th:classappend="${' ' + ticket.status}" th:text="${ticket.status}">OPEN</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-3 rounded-4 border bg-white h-100">
+                                    <div class="small text-muted text-uppercase mb-2">Priority</div>
+                                    <span class="priority-pill" th:classappend="${' ' + ticket.priority}" th:text="${ticket.priority}">MEDIUM</span>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="p-3 rounded-4 border bg-white">
+                                    <div class="small text-muted text-uppercase mb-2">Timeline</div>
+                                    <div class="small text-muted">Created</div>
+                                    <div class="fw-semibold mb-2" th:text="${#temporals.format(ticket.createdAt, 'dd MMM yyyy, hh:mm a')}"></div>
+                                    <div class="small text-muted">Last Updated</div>
+                                    <div class="fw-semibold" th:text="${#temporals.format(ticket.updatedAt, 'dd MMM yyyy, hh:mm a')}"></div>
+                                </div>
+                            </div>
                         </div>
                         <div class="mt-4 d-flex gap-2">
                             <a class="btn btn-outline-secondary" href="/tickets">Back</a>
-                            <a class="btn btn-primary" th:if="${currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')}" th:href="@{/tickets/edit(id=${ticket.id})}">Edit Ticket</a>
+                            <a class="btn btn-primary" th:if="${currentFeatures.contains('FEATURE_TICKETS_MANAGE')}" th:href="@{/tickets/edit(id=${ticket.id})}">Edit Ticket</a>
                         </div>
                     </section>
                 </div>

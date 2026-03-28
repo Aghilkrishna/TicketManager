@@ -23,9 +23,26 @@
                         <label class="form-label">Description</label>
                         <textarea class="form-control" name="description" rows="5" placeholder="Describe the issue or request" required></textarea>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
+                        <label class="form-label">Service Type</label>
+                        <select class="form-select" name="serviceType">
+                            <option value="">Select service type</option>
+                            <option value="INSTALLATION">Installation</option>
+                            <option value="REPAIR">Repair</option>
+                            <option value="MAINTENANCE">Maintenance</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
                         <label class="form-label">Schedule Date</label>
                         <input class="form-control" type="date" name="scheduleDate">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Address</label>
+                        <textarea class="form-control" name="address" rows="3" placeholder="Enter the service location address"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Google Maps Link</label>
+                        <input class="form-control" type="url" name="locationLink" placeholder="https://maps.google.com/...">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Priority</label>

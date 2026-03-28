@@ -7,6 +7,7 @@ import com.example.ticketmanager.entity.Ticket;
 import com.example.ticketmanager.entity.TicketAttachment;
 import com.example.ticketmanager.entity.TicketComment;
 import com.example.ticketmanager.entity.TicketPriority;
+import com.example.ticketmanager.entity.TicketServiceType;
 import com.example.ticketmanager.entity.TicketStatus;
 import com.example.ticketmanager.exception.AppException;
 import com.example.ticketmanager.repository.TicketCommentRepository;
@@ -46,7 +47,7 @@ public class TicketService {
     private final NotificationService notificationService;
     private final com.example.ticketmanager.config.AppProperties appProperties;
 
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAuthority('FEATURE_TICKETS_MANAGE')")
     @Transactional
     public AuthDtos.TicketSummary create(String creatorUsername, AuthDtos.TicketRequest request, MultipartFile[] files) {
         AppUser creator = userService.getByUsername(creatorUsername);
@@ -58,7 +59,7 @@ public class TicketService {
         return toSummary(saved);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAuthority('FEATURE_TICKETS_MANAGE')")
     @Transactional
     public AuthDtos.TicketSummary update(Long ticketId, AuthDtos.TicketRequest request, MultipartFile[] files) {
         Ticket ticket = getTicket(ticketId);
@@ -124,6 +125,10 @@ public class TicketService {
                     cb.like(cb.lower(root.get("id").as(String.class)), like),
                     cb.like(cb.lower(root.get("title")), like),
                     cb.like(cb.lower(root.get("description")), like),
+                    cb.like(cb.lower(root.get("address")), like),
+                    cb.like(cb.lower(root.get("locationLink")), like),
+                    cb.like(cb.lower(root.get("serviceType").as(String.class)), like),
+                    cb.like(cb.lower(root.join("createdBy", JoinType.LEFT).get("username")), like),
                     cb.like(cb.lower(root.join("assignedTo", JoinType.LEFT).get("username")), like),
                     cb.like(cb.lower(root.join("serviceUsers", JoinType.LEFT).get("username")), like)
             ));
@@ -232,8 +237,12 @@ public class TicketService {
         return String.valueOf(ticket.getId()).contains(value)
                 || ticket.getTitle().toLowerCase().contains(value)
                 || ticket.getDescription().toLowerCase().contains(value)
+                || (ticket.getAddress() != null && ticket.getAddress().toLowerCase().contains(value))
+                || (ticket.getLocationLink() != null && ticket.getLocationLink().toLowerCase().contains(value))
+                || (ticket.getServiceType() != null && ticket.getServiceType().name().toLowerCase().contains(value))
                 || ticket.getStatus().name().toLowerCase().contains(value)
                 || ticket.getPriority().name().toLowerCase().contains(value)
+                || ticket.getCreatedBy().getUsername().toLowerCase().contains(value)
                 || (ticket.getAssignedTo() != null && ticket.getAssignedTo().getUsername().toLowerCase().contains(value))
                 || ticket.getServiceUsers().stream().anyMatch(user -> user.getUsername().toLowerCase().contains(value));
     }
@@ -242,6 +251,8 @@ public class TicketService {
         Comparator<Ticket> comparator = switch (sortBy == null ? "updatedAt" : sortBy) {
             case "id" -> Comparator.comparing(Ticket::getId, Comparator.nullsLast(Long::compareTo));
             case "title" -> Comparator.comparing(ticket -> ticket.getTitle().toLowerCase(), Comparator.nullsLast(String::compareTo));
+            case "serviceType" -> Comparator.comparing(ticket -> ticket.getServiceType() == null ? null : ticket.getServiceType().name(), Comparator.nullsLast(String::compareTo));
+            case "createdBy" -> Comparator.comparing(ticket -> ticket.getCreatedBy().getUsername().toLowerCase(), Comparator.nullsLast(String::compareTo));
             case "status" -> Comparator.comparing(ticket -> ticket.getStatus().name(), Comparator.nullsLast(String::compareTo));
             case "priority" -> Comparator.comparing(ticket -> ticket.getPriority().name(), Comparator.nullsLast(String::compareTo));
             case "createdAt" -> Comparator.comparing(Ticket::getCreatedAt, Comparator.nullsLast(LocalDateTime::compareTo));
@@ -291,12 +302,17 @@ public class TicketService {
 
     private boolean canManageAllTickets(String username) {
         AppUser user = userService.getByUsername(username);
-        return user.getRoles().stream().anyMatch(role -> role.getName() == com.example.ticketmanager.entity.RoleName.ROLE_ADMIN);
+        return user.getRoles().stream().anyMatch(role -> role.isActive() && "ROLE_ADMIN".equals(role.getName()));
     }
 
     private void applyRequest(Ticket ticket, AuthDtos.TicketRequest request, AppUser creator) {
         ticket.setTitle(request.title());
         ticket.setDescription(request.description());
+        ticket.setAddress(request.address() == null || request.address().isBlank() ? null : request.address().trim());
+        ticket.setServiceType(request.serviceType() == null || request.serviceType().isBlank()
+                ? null : TicketServiceType.valueOf(request.serviceType()));
+        ticket.setLocationLink(request.locationLink() == null || request.locationLink().isBlank()
+                ? null : request.locationLink().trim());
         ticket.setScheduleDate(request.scheduleDate());
         ticket.setPriority(request.priority() == null || request.priority().isBlank()
                 ? TicketPriority.MEDIUM : TicketPriority.valueOf(request.priority()));
@@ -351,6 +367,10 @@ public class TicketService {
                 ticket.getId(),
                 ticket.getTitle(),
                 ticket.getDescription(),
+                ticket.getAddress(),
+                ticket.getServiceType() == null ? null : ticket.getServiceType().name(),
+                ticket.getServiceType() == null ? null : ticket.getServiceType().label(),
+                ticket.getLocationLink(),
                 ticket.getStatus().name(),
                 ticket.getPriority().name(),
                 ticket.getScheduleDate(),

@@ -10,7 +10,7 @@
     <link th:href="@{/css/app.css}" rel="stylesheet">
 </th:block>
 
-<aside th:fragment="sidebar(activePage, activeTicketTab)" class="sidebar">
+<aside th:fragment="sidebar(activePage, activeSubPage)" class="sidebar">
     <div class="sidebar-header">
         <div class="sidebar-brand">
             <div class="brand-mark">TM</div>
@@ -25,14 +25,20 @@
     </div>
     <nav class="sidebar-nav">
         <a class="nav-item" th:classappend="${activePage == 'dashboard'} ? ' active'" href="/dashboard"><i class="bi bi-grid"></i><span class="nav-label">Dashboard</span></a>
-        <a class="nav-item" th:classappend="${activePage == 'tickets'} ? ' active'" href="/tickets"><i class="bi bi-ticket-detailed"></i><span class="nav-label">Ticket Management</span></a>
+        <a class="nav-item" th:if="${currentFeatures.contains('FEATURE_TICKETS_VIEW')}" th:classappend="${activePage == 'tickets'} ? ' active'" href="/tickets"><i class="bi bi-ticket-detailed"></i><span class="nav-label">Ticket Management</span></a>
         <div class="sidebar-subnav" th:if="${activePage == 'tickets'}">
-            <a class="subnav-item" th:classappend="${activeTicketTab == 'open'} ? ' active'" href="/tickets">My Open Tickets</a>
-            <a class="subnav-item" th:classappend="${activeTicketTab == 'closed'} ? ' active'" href="/tickets/closed">Closed Tickets</a>
+            <a class="subnav-item" th:classappend="${activeSubPage == 'open'} ? ' active'" href="/tickets">My Open Tickets</a>
+            <a class="subnav-item" th:classappend="${activeSubPage == 'closed'} ? ' active'" href="/tickets/closed">Closed Tickets</a>
         </div>
-        <a class="nav-item" th:classappend="${activePage == 'profile'} ? ' active'" href="/profile"><i class="bi bi-person-circle"></i><span class="nav-label">User Profile</span></a>
-        <a class="nav-item" th:classappend="${activePage == 'chat'} ? ' active'" href="/chat"><i class="bi bi-chat-dots"></i><span class="nav-label">Chat</span></a>
-        <a class="nav-item" th:if="${currentRoles.contains('ROLE_ADMIN')}" th:classappend="${activePage == 'admin'} ? ' active'" href="/admin"><i class="bi bi-shield-check"></i><span class="nav-label">Admin</span></a>
+        <a class="nav-item" th:if="${currentFeatures.contains('FEATURE_PROFILE_ACCESS')}" th:classappend="${activePage == 'profile'} ? ' active'" href="/profile"><i class="bi bi-person-circle"></i><span class="nav-label">User Profile</span></a>
+        <a class="nav-item" th:if="${currentFeatures.contains('FEATURE_CHAT_ACCESS')}" th:classappend="${activePage == 'chat'} ? ' active'" href="/chat"><i class="bi bi-chat-dots"></i><span class="nav-label">Chat</span></a>
+        <a class="nav-item" th:if="${currentRoles.contains('ROLE_ADMIN')}" th:classappend="${activePage == 'admin'} ? ' active'" href="/admin/support-tickets"><i class="bi bi-shield-check"></i><span class="nav-label">Admin</span></a>
+        <div class="sidebar-subnav" th:if="${activePage == 'admin' and currentRoles.contains('ROLE_ADMIN')}">
+            <a class="subnav-item" th:classappend="${activeSubPage == 'support-tickets'} ? ' active'" href="/admin/support-tickets">All Support Tickets</a>
+            <a class="subnav-item" th:classappend="${activeSubPage == 'users'} ? ' active'" href="/admin/users">User Management</a>
+            <a class="subnav-item" th:classappend="${activeSubPage == 'roles'} ? ' active'" href="/admin/roles">Role Management</a>
+            <a class="subnav-item" th:classappend="${activeSubPage == 'role-features'} ? ' active'" href="/admin/role-features">Role Features</a>
+        </div>
     </nav>
 
 </aside>
@@ -42,8 +48,9 @@
     <div></div>
     <div class="topbar-actions">
         <a class="profile-button" href="/profile" title="Profile">
-            <i class="bi bi-person-circle"></i>
-            <span th:text="${currentUsername != null ? currentUsername : 'Profile'}">Profile</span>
+            <img th:if="${currentHasProfileImage}" th:src="@{/api/users/profile/picture}" alt="Profile" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
+            <span th:if="${!currentHasProfileImage}" class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light text-dark fw-semibold" style="width: 32px; height: 32px;" th:text="${currentDisplayName != null ? #strings.substring(currentDisplayName,0,1).toUpperCase() : 'P'}">P</span>
+            <span th:text="${currentDisplayName != null ? currentDisplayName : 'Profile'}">Profile</span>
         </a>
         <button class="icon-button position-relative" id="notificationToggle" type="button" title="Notifications">
             <i class="bi bi-bell"></i>

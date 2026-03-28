@@ -1,3 +1,55 @@
+function ensureAlertHost() {
+  let host = document.getElementById('appAlertHost');
+  if (host) return host;
+  host = document.createElement('div');
+  host.id = 'appAlertHost';
+  host.className = 'app-alert-host';
+  document.body.appendChild(host);
+  return host;
+}
+
+function showAppAlert(message, variant = 'danger') {
+  const host = ensureAlertHost();
+  const alert = document.createElement('div');
+  alert.className = `app-alert app-alert-${variant}`;
+  alert.innerHTML = `
+    <div class="app-alert-icon"><i class="bi ${variant === 'danger' ? 'bi-shield-exclamation' : 'bi-info-circle'}"></i></div>
+    <div class="app-alert-body">
+      <div class="app-alert-title">${variant === 'danger' ? 'Access Denied' : 'Notice'}</div>
+      <div class="app-alert-message">${message}</div>
+    </div>
+    <button class="app-alert-close" type="button" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+  `;
+  host.appendChild(alert);
+  const close = () => {
+    alert.classList.add('is-leaving');
+    window.setTimeout(() => alert.remove(), 180);
+  };
+  alert.querySelector('.app-alert-close').addEventListener('click', close);
+  window.setTimeout(close, 4200);
+}
+
+(function patchFetchForAccessDenied() {
+  if (window.__tmFetchPatched) return;
+  window.__tmFetchPatched = true;
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async (...args) => {
+    const response = await nativeFetch(...args);
+    if (response.status === 403) {
+      let message = 'You do not have permission to perform this action.';
+      try {
+        const payload = await response.clone().json();
+        if (payload && payload.message) {
+          message = payload.message;
+        }
+      } catch (_ignored) {
+      }
+      showAppAlert(message, 'danger');
+    }
+    return response;
+  };
+})();
+
 function initAppShell() {
   const logoutBtn = document.getElementById('logoutBtn');
   const notificationToggle = document.getElementById('notificationToggle');

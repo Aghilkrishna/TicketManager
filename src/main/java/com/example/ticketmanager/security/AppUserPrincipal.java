@@ -1,6 +1,8 @@
 package com.example.ticketmanager.security;
 
+import com.example.ticketmanager.entity.AppFeature;
 import com.example.ticketmanager.entity.AppUser;
+import com.example.ticketmanager.entity.Role;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,7 +24,13 @@ public record AppUserPrincipal(
                 user.getUsername(),
                 user.getPassword(),
                 user.isEnabled(),
-                user.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet())
+                user.getRoles().stream()
+                        .filter(Role::isActive)
+                        .flatMap(role -> java.util.stream.Stream.concat(
+                                java.util.stream.Stream.of(role.getName()),
+                                role.getFeatures().stream().map(AppFeature::authority)
+                        ))
+                        .collect(Collectors.toSet())
         );
     }
 

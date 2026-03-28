@@ -5,6 +5,7 @@ import com.example.ticketmanager.entity.AppUser;
 import com.example.ticketmanager.entity.Notification;
 import com.example.ticketmanager.entity.NotificationType;
 import com.example.ticketmanager.repository.NotificationRepository;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -12,11 +13,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final EmailService emailService;
+    private final com.example.ticketmanager.config.AppProperties appProperties;
 
     public void notify(AppUser user, NotificationType type, String message, String referenceType, Long referenceId) {
         Notification notification = new Notification();
@@ -27,6 +31,37 @@ public class NotificationService {
         notification.setReferenceId(referenceId);
         Notification saved = notificationRepository.save(notification);
         messagingTemplate.convertAndSendToUser(user.getUsername(), "/queue/notifications", toResponse(saved));
+        sendEmailNotification(user, type, message, referenceType, referenceId);
+    }
+
+    private void sendEmailNotification(AppUser user, NotificationType type, String message, String referenceType, Long referenceId) {
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            return;
+        }
+        try {
+            String actionUrl = null;
+            String actionLabel = null;
+            if ("TICKET".equalsIgnoreCase(referenceType) && referenceId != null) {
+                actionUrl = appProperties.baseUrl() + "/tickets/view?id=" + referenceId;
+                actionLabel = "Open Ticket";
+            }
+            String subject = switch (type) {
+                case COMMENT_ADDED -> "New ticket comment";
+                case TICKET_UPDATED -> "Ticket updated";
+                case CHAT_MESSAGE -> "New chat message";
+                case ACCOUNT_EVENT -> "Account notification";
+            };
+            emailService.sendTicketNotificationEmail(
+                    user,
+                    subject,
+                    subject,
+                    message,
+                    actionUrl,
+                    actionLabel == null ? "Open App" : actionLabel
+            );
+        } catch (Exception ex) {
+            log.warn("Failed to send notification email to {}", user.getEmail(), ex);
+        }
     }
 
     public List<AuthDtos.NotificationResponse> listForUser(Long userId) {

@@ -13,6 +13,9 @@ spring:
         format_sql: true
   thymeleaf:
     cache: false
+  sql:
+    init:
+      mode: always
   servlet:
     multipart:
       max-file-size: 10MB
@@ -25,7 +28,9 @@ app:
   jwt:
     secret: ${APP_JWT_SECRET:change-me-change-me-change-me-change-me}
     expiration: 86400000
-  base-url: ${APP_BASE_URL:http://localhost:8080}
+  base-url: ${APP_BASE_URL:http://localhost:9090}
   mail:
     enabled: ${APP_MAIL_ENABLED:false}
+    from-address: ${APP_MAIL_FROM_ADDRESS:no-reply@ticketmanager.local}
+    from-name: ${APP_MAIL_FROM_NAME:Ticket Manager}
   upload-dir: ${APP_UPLOAD_DIR:uploads}

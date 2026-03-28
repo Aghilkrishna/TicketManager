@@ -27,7 +27,7 @@ import java.util.List;
 public class TicketRestController {
     private final TicketService ticketService;
 
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_MANAGE')")
     @PostMapping(consumes = {"multipart/form-data"})
     public AuthDtos.TicketSummary create(Principal principal,
                                          @Valid @ModelAttribute AuthDtos.TicketRequest request,
@@ -35,7 +35,7 @@ public class TicketRestController {
         return ticketService.create(principal.getName(), request, files);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_MANAGE')")
     @PatchMapping(path = "/{ticketId}", consumes = {"multipart/form-data"})
     public AuthDtos.TicketSummary update(@PathVariable Long ticketId,
                                          @Valid @ModelAttribute AuthDtos.TicketRequest request,
@@ -43,6 +43,7 @@ public class TicketRestController {
         return ticketService.update(ticketId, request, files);
     }
 
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_VIEW')")
     @GetMapping
     public Page<AuthDtos.TicketSummary> list(Principal principal,
                                              @RequestParam(defaultValue = "false") boolean adminScope,
@@ -58,6 +59,7 @@ public class TicketRestController {
         return ticketService.list(principal.getName(), adminScope, assignedOnly, status, priority, assignedToId, search, page, size, sortBy, direction);
     }
 
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_VIEW')")
     @GetMapping("/{ticketId}")
     public AuthDtos.TicketSummary get(Principal principal,
                                       @PathVariable Long ticketId,
@@ -65,11 +67,13 @@ public class TicketRestController {
         return ticketService.get(ticketId, principal.getName(), adminScope);
     }
 
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_VIEW')")
     @DeleteMapping("/{ticketId}")
     public void delete(Principal principal, @PathVariable Long ticketId) {
         ticketService.delete(ticketId, principal.getName());
     }
 
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_VIEW')")
     @PostMapping("/{ticketId}/comments")
     public AuthDtos.TicketCommentResponse addComment(Principal principal,
                                                      @PathVariable Long ticketId,
@@ -77,6 +81,7 @@ public class TicketRestController {
         return ticketService.addComment(ticketId, principal.getName(), request);
     }
 
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_VIEW')")
     @GetMapping("/{ticketId}/comments")
     public List<AuthDtos.TicketCommentResponse> comments(Principal principal,
                                                          @PathVariable Long ticketId,
@@ -84,6 +89,7 @@ public class TicketRestController {
         return ticketService.listComments(ticketId, principal.getName(), adminScope);
     }
 
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_VIEW')")
     @PatchMapping("/{ticketId}/comments/{commentId}")
     public AuthDtos.TicketCommentResponse updateComment(Principal principal,
                                                         @PathVariable Long ticketId,
@@ -92,6 +98,7 @@ public class TicketRestController {
         return ticketService.updateComment(ticketId, commentId, principal.getName(), request);
     }
 
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_VIEW')")
     @DeleteMapping("/{ticketId}/comments/{commentId}")
     public void deleteComment(Principal principal,
                               @PathVariable Long ticketId,
@@ -99,6 +106,7 @@ public class TicketRestController {
         ticketService.deleteComment(ticketId, commentId, principal.getName());
     }
 
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_VIEW')")
     @GetMapping("/metrics")
     public Object metrics(Principal principal, @RequestParam(defaultValue = "false") boolean adminScope) {
         return ticketService.metrics(principal.getName(), adminScope);

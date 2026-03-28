@@ -33,18 +33,23 @@ public class ViewController {
     }
 
     @GetMapping("/dashboard")
+    @PreAuthorize("hasAuthority('FEATURE_DASHBOARD_ACCESS')")
     public String dashboard(Model model, Principal principal) {
         model.addAttribute("profile", userService.getProfile(principal.getName()));
         return "dashboard";
     }
 
     @GetMapping("/profile")
+    @PreAuthorize("hasAuthority('FEATURE_PROFILE_ACCESS')")
     public String profile(Model model, Principal principal) {
-        model.addAttribute("profile", userService.getProfile(principal.getName()));
+        var profile = userService.getProfile(principal.getName());
+        model.addAttribute("profile", profile);
+        model.addAttribute("profileRoleLabels", profile.roles().stream().map(userService::toRoleLabel).toList());
         return "profile";
     }
 
     @GetMapping("/tickets")
+    @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
     public String tickets(Model model) {
         model.addAttribute("ticketTab", "open");
         model.addAttribute("ticketPageTitle", "My Open Tickets");
@@ -54,6 +59,7 @@ public class ViewController {
     }
 
     @GetMapping("/tickets/closed")
+    @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
     public String closedTickets(Model model) {
         model.addAttribute("ticketTab", "closed");
         model.addAttribute("ticketPageTitle", "Closed Tickets");
@@ -63,19 +69,20 @@ public class ViewController {
     }
 
     @GetMapping("/tickets/view")
+    @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
     public String viewTicket(@RequestParam Long id, Model model, Principal principal) {
         boolean adminScope = userService.getProfile(principal.getName()).roles().contains("ROLE_ADMIN");
         model.addAttribute("ticket", ticketService.get(id, principal.getName(), adminScope));
         return "ticket-view";
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAuthority('FEATURE_TICKETS_MANAGE')")
     @GetMapping("/tickets/create")
     public String createTicket() {
         return "ticket-create";
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAuthority('FEATURE_TICKETS_MANAGE')")
     @GetMapping("/tickets/edit")
     public String editTicket(@RequestParam Long id, Model model, Principal principal) {
         model.addAttribute("ticket", ticketService.get(id, principal.getName(), true));
@@ -85,10 +92,40 @@ public class ViewController {
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin")
     public String admin() {
-        return "admin";
+        return "redirect:/admin/support-tickets";
+    }
+
+    @GetMapping("/access-denied")
+    public String accessDenied() {
+        return "error/403";
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/support-tickets")
+    public String adminSupportTickets() {
+        return "admin-support-tickets";
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/users")
+    public String adminUsers() {
+        return "admin-users";
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/roles")
+    public String adminRoles() {
+        return "admin-roles";
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/role-features")
+    public String adminRoleFeatures() {
+        return "admin-role-features";
     }
 
     @GetMapping("/chat")
+    @PreAuthorize("hasAuthority('FEATURE_CHAT_ACCESS')")
     public String chat() {
         return "chat";
     }

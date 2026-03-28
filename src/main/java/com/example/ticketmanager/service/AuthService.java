@@ -5,7 +5,6 @@ import com.example.ticketmanager.dto.AuthDtos;
 import com.example.ticketmanager.entity.AppUser;
 import com.example.ticketmanager.entity.EmailVerificationToken;
 import com.example.ticketmanager.entity.Role;
-import com.example.ticketmanager.entity.RoleName;
 import com.example.ticketmanager.exception.AppException;
 import com.example.ticketmanager.repository.EmailVerificationTokenRepository;
 import com.example.ticketmanager.repository.RoleRepository;
@@ -25,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.example.ticketmanager.security.JwtAuthenticationFilter.AUTH_COOKIE;
 
@@ -48,7 +48,7 @@ public class AuthService {
         if (userRepository.existsByEmail(request.email())) {
             throw new AppException(HttpStatus.BAD_REQUEST, "Email already exists");
         }
-        Role defaultRole = roleRepository.findByName(RoleName.ROLE_USER)
+        Role defaultRole = roleRepository.findByName("ROLE_USER")
                 .orElseThrow(() -> new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "Default role missing"));
         AppUser user = new AppUser();
         user.setUsername(request.username());
@@ -79,7 +79,7 @@ public class AuthService {
                 user.getId(),
                 user.getUsername(),
                 user.getEmail(),
-                user.getRoles().stream().map(role -> role.getName().name()).collect(java.util.stream.Collectors.toSet()),
+                user.getRoles().stream().filter(Role::isActive).map(Role::getName).collect(Collectors.toSet()),
                 "Login successful"
         );
     }
@@ -110,6 +110,6 @@ public class AuthService {
         token.setExpiresAt(LocalDateTime.now().plusHours(24));
         emailVerificationTokenRepository.save(token);
         String link = appProperties.baseUrl() + "/verify-email?token=" + token.getToken();
-        emailService.send(user.getEmail(), "Verify your account", "Verify your account using this link: " + link);
+        emailService.sendVerificationEmail(user, link);
     }
 }

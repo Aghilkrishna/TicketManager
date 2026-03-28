@@ -42,8 +42,18 @@ public final class AuthDtos {
             String username,
             String email,
             String phone,
+            String firstName,
+            String lastName,
+            String flat,
+            String building,
+            String area,
+            String city,
+            String state,
+            String country,
+            String pincode,
             boolean emailVerified,
-            Set<String> roles
+            Set<String> roles,
+            boolean profileImageUploaded
     ) {
     }
 
@@ -51,7 +61,22 @@ public final class AuthDtos {
             @NotBlank @Size(min = 3, max = 50) String username,
             @NotBlank @Email String email,
             @Pattern(regexp = "^$|^[0-9+\\-() ]{7,20}$", message = "Invalid phone number") String phone,
-            @Size(min = 8, max = 100) String password
+            @Size(max = 80) String firstName,
+            @Size(max = 80) String lastName,
+            @Size(max = 120) String flat,
+            @Size(max = 120) String building,
+            @Size(max = 120) String area,
+            @Size(max = 80) String city,
+            @Size(max = 80) String state,
+            @Size(max = 80) String country,
+            @Size(max = 20) String pincode
+    ) {
+    }
+
+    public record ProfilePasswordChangeRequest(
+            @NotBlank String currentPassword,
+            @NotBlank @Size(min = 8, max = 100) String newPassword,
+            @NotBlank @Size(min = 8, max = 100) String confirmPassword
     ) {
     }
 
@@ -67,6 +92,9 @@ public final class AuthDtos {
     public record TicketRequest(
             @NotBlank @Size(max = 150) String title,
             @NotBlank @Size(max = 4000) String description,
+            @Size(max = 500) String address,
+            String serviceType,
+            @Size(max = 1000) String locationLink,
             LocalDate scheduleDate,
             String priority,
             String status,
@@ -79,6 +107,10 @@ public final class AuthDtos {
             Long id,
             String title,
             String description,
+            String address,
+            String serviceType,
+            String serviceTypeLabel,
+            String locationLink,
             String status,
             String priority,
             LocalDate scheduleDate,
