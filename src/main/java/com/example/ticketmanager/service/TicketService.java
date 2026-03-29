@@ -19,7 +19,6 @@ import com.example.ticketmanager.repository.TicketSiteVisitRepository;
 import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -95,54 +94,20 @@ public class TicketService {
                                              String sortBy, String direction) {
         AppUser user = userService.getByUsername(username);
         Sort sort = Sort.by("desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC,
-                sortBy == null || sortBy.isBlank() ? "updatedAt" : sortBy);
+                mapSortProperty(sortBy));
         Pageable pageable = PageRequest.of(page, size, sort);
         TicketStatus statusFilter = status == null || status.isBlank() ? null : TicketStatus.valueOf(status);
         TicketPriority priorityFilter = priority == null || priority.isBlank() ? null : TicketPriority.valueOf(priority);
         String searchFilter = search == null || search.isBlank() ? null : search;
 
         if (!adminScope) {
-            List<Ticket> tickets = assignedOnly
-                    ? ticketRepository.findAssignedTicketsForUser(user.getId())
-                    : ticketRepository.findVisibleTicketsForUser(user.getId());
-            List<Ticket> filtered = tickets.stream()
-                    .filter(ticket -> statusFilter == null || ticket.getStatus() == statusFilter)
-                    .filter(ticket -> priorityFilter == null || ticket.getPriority() == priorityFilter)
-                    .filter(ticket -> assignedToId == null || (ticket.getAssignedTo() != null && assignedToId.equals(ticket.getAssignedTo().getId())))
-                    .filter(ticket -> matchesSearch(ticket, searchFilter))
-                    .sorted(ticketComparator(sortBy, direction))
-                    .toList();
-            int start = Math.min(page * size, filtered.size());
-            int end = Math.min(start + size, filtered.size());
-            List<AuthDtos.TicketSummary> content = filtered.subList(start, end).stream().map(ticket -> toSummary(ticket, username)).toList();
-            return new PageImpl<>(content, pageable, filtered.size());
+            Page<Ticket> result = assignedOnly
+                    ? ticketRepository.findAssignedTicketsForUser(user.getId(), statusFilter, priorityFilter, assignedToId, searchFilter, pageable)
+                    : ticketRepository.findVisibleTicketsForUser(user.getId(), statusFilter, priorityFilter, assignedToId, searchFilter, pageable);
+            return result.map(ticket -> toListSummary(ticket, username));
         }
-
-        Specification<Ticket> spec = Specification.where(null);
-        if (statusFilter != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), statusFilter));
-        }
-        if (priorityFilter != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("priority"), priorityFilter));
-        }
-        if (assignedToId != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("assignedTo").get("id"), assignedToId));
-        }
-        if (searchFilter != null) {
-            String like = "%" + searchFilter.toLowerCase() + "%";
-            spec = spec.and((root, query, cb) -> cb.or(
-                    cb.like(cb.lower(root.get("id").as(String.class)), like),
-                    cb.like(cb.lower(root.get("title")), like),
-                    cb.like(cb.lower(root.get("description")), like),
-                    cb.like(cb.lower(root.get("address")), like),
-                    cb.like(cb.lower(root.get("locationLink")), like),
-                    cb.like(cb.lower(root.get("serviceType").as(String.class)), like),
-                    cb.like(cb.lower(root.join("createdBy", JoinType.LEFT).get("username")), like),
-                    cb.like(cb.lower(root.join("assignedTo", JoinType.LEFT).get("username")), like),
-                    cb.like(cb.lower(root.join("serviceUsers", JoinType.LEFT).get("username")), like)
-            ));
-        }
-        return ticketRepository.findAll(spec, pageable).map(ticket -> toSummary(ticket, username));
+        return ticketRepository.findAllTicketsForAdmin(statusFilter, priorityFilter, assignedToId, searchFilter, pageable)
+                .map(ticket -> toListSummary(ticket, username));
     }
 
     @Transactional(readOnly = true)
@@ -285,42 +250,6 @@ public class TicketService {
         return ticketRepository.count(scope.and((root, query, cb) -> cb.equal(root.get("status"), status)));
     }
 
-    private boolean matchesSearch(Ticket ticket, String search) {
-        if (search == null || search.isBlank()) {
-            return true;
-        }
-        String value = search.toLowerCase();
-        return String.valueOf(ticket.getId()).contains(value)
-                || ticket.getTitle().toLowerCase().contains(value)
-                || ticket.getDescription().toLowerCase().contains(value)
-                || (ticket.getAddress() != null && ticket.getAddress().toLowerCase().contains(value))
-                || (ticket.getLocationLink() != null && ticket.getLocationLink().toLowerCase().contains(value))
-                || (ticket.getServiceType() != null && ticket.getServiceType().name().toLowerCase().contains(value))
-                || (ticket.getCustomerName() != null && ticket.getCustomerName().toLowerCase().contains(value))
-                || (ticket.getCustomerCity() != null && ticket.getCustomerCity().toLowerCase().contains(value))
-                || (ticket.getVendorUser() != null && ticket.getVendorUser().getUsername().toLowerCase().contains(value))
-                || ticket.getStatus().name().toLowerCase().contains(value)
-                || ticket.getPriority().name().toLowerCase().contains(value)
-                || ticket.getCreatedBy().getUsername().toLowerCase().contains(value)
-                || (ticket.getAssignedTo() != null && ticket.getAssignedTo().getUsername().toLowerCase().contains(value))
-                || ticket.getServiceUsers().stream().anyMatch(user -> user.getUsername().toLowerCase().contains(value));
-    }
-
-    private Comparator<Ticket> ticketComparator(String sortBy, String direction) {
-        Comparator<Ticket> comparator = switch (sortBy == null ? "updatedAt" : sortBy) {
-            case "id" -> Comparator.comparing(Ticket::getId, Comparator.nullsLast(Long::compareTo));
-            case "title" -> Comparator.comparing(ticket -> ticket.getTitle().toLowerCase(), Comparator.nullsLast(String::compareTo));
-            case "serviceType" -> Comparator.comparing(ticket -> ticket.getServiceType() == null ? null : ticket.getServiceType().name(), Comparator.nullsLast(String::compareTo));
-            case "createdBy" -> Comparator.comparing(ticket -> ticket.getCreatedBy().getUsername().toLowerCase(), Comparator.nullsLast(String::compareTo));
-            case "status" -> Comparator.comparing(ticket -> ticket.getStatus().name(), Comparator.nullsLast(String::compareTo));
-            case "priority" -> Comparator.comparing(ticket -> ticket.getPriority().name(), Comparator.nullsLast(String::compareTo));
-            case "createdAt" -> Comparator.comparing(Ticket::getCreatedAt, Comparator.nullsLast(LocalDateTime::compareTo));
-            case "scheduleDate" -> Comparator.comparing(Ticket::getScheduleDate, Comparator.nullsLast(java.time.LocalDate::compareTo));
-            default -> Comparator.comparing(Ticket::getUpdatedAt, Comparator.nullsLast(LocalDateTime::compareTo));
-        };
-        return "asc".equalsIgnoreCase(direction) ? comparator : comparator.reversed();
-    }
-
     private Specification<Ticket> scopeForUser(Long userId, boolean assignedOnly) {
         return (root, query, cb) -> {
             query.distinct(true);
@@ -364,6 +293,18 @@ public class TicketService {
         AppUser user = userService.getByUsername(username);
         return user.getRoles().stream().anyMatch(role -> role.isActive()
                 && ("ROLE_ADMIN".equals(role.getName()) || "ROLE_MANAGER".equals(role.getName())));
+    }
+
+    private String mapSortProperty(String sortBy) {
+        if (sortBy == null || sortBy.isBlank()) {
+            return "updatedAt";
+        }
+        return switch (sortBy) {
+            case "createdBy" -> "createdBy.username";
+            case "assignedTo" -> "assignedTo.username";
+            case "serviceType" -> "serviceType";
+            default -> sortBy;
+        };
     }
 
     private void applyRequest(Ticket ticket, AuthDtos.TicketRequest request, AppUser creator, String actorUsername, boolean isCreate) {
@@ -502,6 +443,51 @@ public class TicketService {
         return toSummary(ticket, null);
     }
 
+    public AuthDtos.TicketSummary toListSummary(Ticket ticket, String viewerUsername) {
+        boolean vendorRestrictedView = viewerUsername != null && isVendorRestrictedView(ticket, viewerUsername);
+        return new AuthDtos.TicketSummary(
+                ticket.getId(),
+                ticket.getTitle(),
+                ticket.getDescription(),
+                null,
+                ticket.getServiceType() == null ? null : ticket.getServiceType().name(),
+                ticket.getServiceType() == null ? null : ticket.getServiceType().label(),
+                null,
+                ticket.getSiteVisits(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                ticket.getStatus().name(),
+                ticket.getPriority().name(),
+                ticket.getScheduleDate(),
+                ticket.getCreatedBy().getUsername(),
+                ticket.getUpdatedBy() == null ? null : ticket.getUpdatedBy().getUsername(),
+                ticket.getAssignedTo() == null ? null : ticket.getAssignedTo().getId(),
+                vendorRestrictedView ? null : (ticket.getAssignedTo() == null ? null : ticket.getAssignedTo().getUsername()),
+                vendorRestrictedView ? Set.of() : ticket.getServiceUsers().stream().map(AppUser::getId).collect(java.util.stream.Collectors.toSet()),
+                vendorRestrictedView ? Set.of() : ticket.getServiceUsers().stream().map(AppUser::getUsername).collect(java.util.stream.Collectors.toSet()),
+                ticket.getCreatedAt(),
+                ticket.getUpdatedAt(),
+                List.<String>of()
+        );
+    }
+
     public AuthDtos.TicketSummary toSummary(Ticket ticket, String viewerUsername) {
         boolean canViewPrice = viewerUsername == null || !userService.hasRole(viewerUsername, "ROLE_AGENT");
         boolean vendorRestrictedView = viewerUsername != null && isVendorRestrictedView(ticket, viewerUsername);
@@ -560,6 +546,21 @@ public class TicketService {
                         || (ticket.getCustomerName() != null && ticket.getCustomerName().toLowerCase().contains(value)))
                 .sorted(Comparator.comparing(Ticket::getUpdatedAt, Comparator.nullsLast(LocalDateTime::compareTo)).reversed())
                 .limit(10)
+                .map(ticket -> toSummary(ticket, username))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuthDtos.TicketSummary> searchParentTicketCandidates(String username, String query, Long excludeTicketId) {
+        String value = query == null ? "" : query.trim().replaceFirst("^#+", "").trim();
+        if (value.isBlank()) {
+            return List.of();
+        }
+        Pageable limit = PageRequest.of(0, 8);
+        List<Ticket> tickets = canManageAllTickets(username)
+                ? ticketRepository.searchAllParentTicketCandidates(value, excludeTicketId, limit)
+                : ticketRepository.searchVisibleParentTicketCandidates(userService.getByUsername(username).getId(), value, excludeTicketId, limit);
+        return tickets.stream()
                 .map(ticket -> toSummary(ticket, username))
                 .toList();
     }

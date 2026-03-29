@@ -24,4 +24,12 @@ public interface ChatConversationRepository extends JpaRepository<ChatConversati
               and size(c.participants) = 2
             """)
     Optional<ChatConversation> findDirectConversation(@Param("userId") Long userId, @Param("otherUserId") Long otherUserId);
+
+    @Query("""
+            select distinct c from ChatConversation c
+            join fetch c.participants participants
+            join c.participants member
+            where member.id = :userId
+            """)
+    java.util.List<ChatConversation> findAllByParticipantIdWithParticipants(@Param("userId") Long userId);
 }

@@ -76,7 +76,7 @@
                     </section>
 
                     <section class="form-card glass-card mb-4">
-                        <div class="section-title mb-3">Customer Section</div>
+                        <div class="section-title section-title-icon mb-3"><i class="bi bi-geo-alt"></i><span>Customer Section</span></div>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <div class="small text-muted text-uppercase mb-1">Customer Name</div>
@@ -122,7 +122,7 @@
                     </section>
 
                     <section class="form-card glass-card mb-4">
-                        <div class="section-title mb-3">Service and Vendor Details</div>
+                        <div class="section-title section-title-icon mb-3"><i class="bi bi-briefcase"></i><span>Service and Vendor Details</span></div>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <div class="small text-muted text-uppercase mb-1">Vendor User</div>
@@ -141,10 +141,10 @@
 
                     <section class="form-card glass-card mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div class="section-title">Site Visit History</div>
+                            <div class="section-title section-title-icon"><i class="bi bi-pin-map"></i><span>Site Visit History</span></div>
                             <div class="small text-muted">Review every recorded site visit, the visiting agent, and the visit notes.</div>
                         </div>
-                        <div id="siteVisitHistory" class="vstack gap-3">
+                        <div id="siteVisitHistory" class="site-visit-list">
                             <div class="empty-state">Loading site visit history...</div>
                         </div>
                     </section>
@@ -173,7 +173,7 @@
 
                     <section class="form-card glass-card">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div class="section-title">Comment History</div>
+                            <div class="section-title section-title-icon"><i class="bi bi-chat-left-text"></i><span>Comment History</span></div>
                             <div class="small text-muted" th:text="${currentRoles.contains('ROLE_VENDOR') ? 'Only your comments are visible in this history.' : 'Review the full communication trail and latest ticket updates.'}">Review the full communication trail and latest ticket updates.</div>
                         </div>
                         <form id="commentForm" class="mb-4">
@@ -253,7 +253,7 @@ function avatarMarkup(userId, username, className = 'chat-message-avatar') {
   if (!userId) {
     return `<div class="${className}">${escapeHtml((username || '?').trim().charAt(0).toUpperCase())}</div>`;
   }
-  return `<img class="${className}" src="/api/users/avatar/${userId}" alt="${escapeHtml(username || 'User')}">`;
+  return `<img class="${className}" src="/api/users/avatar/${userId}" alt="${escapeHtml(username || 'User')}" loading="lazy" decoding="async">`;
 }
 
 function renderComment(comment) {
@@ -278,26 +278,51 @@ function renderComment(comment) {
 function renderSiteVisits(visits) {
   const container = document.getElementById('siteVisitHistory');
   container.innerHTML = visits.length ? visits.map((visit, index) => `
-    <div class="p-3 rounded-4 border bg-white">
-      <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-        <div>
-          <div class="fw-semibold">${escapeHtml(visit.agentName || 'Agent')}</div>
-          <div class="small text-muted">${new Date(visit.visitedAt).toLocaleString()}</div>
-          <div class="small text-muted mt-1">
+    <article class="site-visit-card">
+      <div class="site-visit-header">
+        <div class="site-visit-identity">
+          <div class="site-visit-icon"><i class="bi bi-person-walking"></i></div>
+          <div class="site-visit-meta">
+            <div class="site-visit-agent">${escapeHtml(visit.agentName || 'Agent')}</div>
+            <div class="site-visit-time"><i class="bi bi-calendar-event"></i><span>${formatVisitDateTime(visit.visitedAt)}</span></div>
+          </div>
+        </div>
+        <div class="site-visit-seq"><i class="bi bi-clock-history"></i><span>Visit #${visits.length - index}</span></div>
+      </div>
+      <div class="site-visit-grid">
+        <div class="site-visit-field">
+          <div class="site-visit-field-label"><i class="bi bi-geo-alt"></i><span>Geo Location</span></div>
+          <div class="site-visit-field-value subtle">
             ${visit.latitude != null && visit.longitude != null
               ? `<a href="${buildMapUrl(visit.latitude, visit.longitude)}" target="_blank" rel="noopener noreferrer">Google Maps: ${Number(visit.latitude).toFixed(6)}, ${Number(visit.longitude).toFixed(6)}</a>`
               : 'Location not available'}
           </div>
         </div>
-        <span class="badge text-bg-light">Visit #${visits.length - index}</span>
+        <div class="site-visit-field">
+          <div class="site-visit-field-label"><i class="bi bi-hash"></i><span>Coordinates</span></div>
+          <div class="site-visit-field-value subtle">${visit.latitude != null && visit.longitude != null ? `${Number(visit.latitude).toFixed(6)}, ${Number(visit.longitude).toFixed(6)}` : 'Not available'}</div>
+        </div>
+        <div class="site-visit-field full">
+          <div class="site-visit-field-label"><i class="bi bi-journal-text"></i><span>Visit Notes</span></div>
+          <div class="site-visit-field-value subtle">${visit.notes ? escapeHtml(visit.notes).replace(/\n/g, '<br>') : 'No notes added for this visit.'}</div>
+        </div>
       </div>
-      <div class="mt-3 text-body-secondary">${visit.notes ? escapeHtml(visit.notes).replace(/\n/g, '<br>') : 'No notes added for this visit.'}</div>
-    </div>
+    </article>
   `).join('') : '<div class="empty-state">No site visits recorded yet.</div>';
 }
 
 function buildMapUrl(latitude, longitude) {
   return `https://www.google.com/maps?q=${encodeURIComponent(latitude + ',' + longitude)}`;
+}
+
+function formatVisitDateTime(value) {
+  return new Date(value).toLocaleString([], {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
 async function loadComments() {

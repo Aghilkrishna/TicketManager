@@ -42,7 +42,7 @@
                         <div class="chat-sidebar-heading">
                             <span>Contacts</span>
                         </div>
-                        <div id="userResults" class="chat-user-results"></div>
+                        <div id="userResults" class="chat-user-results autosuggest-panel" hidden></div>
                     </div>
                 </section>
 
@@ -113,7 +113,7 @@ function avatarImage(userId, name, className) {
   if (!userId) {
     return `<div class="${className}">${fallback}</div>`;
   }
-  return `<img class="${className}" src="${avatarUrl(userId)}" alt="${escapeHtml(name || 'User')}">`;
+  return `<img class="${className}" src="${avatarUrl(userId)}" alt="${escapeHtml(name || 'User')}" loading="lazy" decoding="async">`;
 }
 
 function setAvatarElement(elementId, userId, name, className) {
@@ -287,39 +287,47 @@ document.getElementById('newChatToggle').addEventListener('click', () => {
   document.getElementById('userSearch').focus();
 });
 
-document.getElementById('userSearch').addEventListener('input', async () => {
+document.getElementById('userSearch').addEventListener('input', debounce(async () => {
   const query = document.getElementById('userSearch').value;
   const list = document.getElementById('userResults');
-  if (!query) {
+  if (!query || query.trim().length < 2) {
     list.innerHTML = '';
+    list.hidden = true;
     return;
   }
+  list.hidden = false;
+  list.innerHTML = '<div class="autosuggest-empty autosuggest-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Searching contacts...</span></div>';
   const res = await fetch('/api/users/search?query=' + encodeURIComponent(query));
   const users = await res.json();
   list.innerHTML = '';
+  if (!users.length) {
+    list.innerHTML = '<div class="autosuggest-empty">No matching users found.</div>';
+    return;
+  }
   users.forEach(user => {
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = 'conversation-item';
+    card.className = 'autosuggest-item';
     card.innerHTML = `
-      ${avatarImage(user.id, user.username, 'chat-avatar')}
-      <div class="conversation-body">
-        <div class="conversation-meta">
-          <strong class="conversation-name">${escapeHtml(user.username)}</strong>
+      ${avatarImage(user.id, user.username, 'autosuggest-avatar')}
+      <div class="autosuggest-body">
+        <div class="autosuggest-title-row">
+          <strong class="autosuggest-title">${escapeHtml(user.username)}</strong>
         </div>
-        <div class="conversation-preview">${escapeHtml(user.email || 'Start a new conversation')}</div>
+        <div class="autosuggest-subtitle">Start a new conversation</div>
       </div>
-      <div class="conversation-side"><span class="conversation-dot"></span></div>`;
+      <span class="autosuggest-action" aria-hidden="true"><i class="bi bi-chat-square-text"></i></span>`;
     card.onclick = () => {
       activeRecipientId = user.id;
       activeConversationId = null;
       activeConversationName = user.username;
       updateChatHeader(user.username, 'New conversation');
       document.getElementById('chatBox').innerHTML = `<div class="empty-state chat-empty-state"><div class="chat-empty-icon"><i class="bi bi-chat-square-text"></i></div><div class="section-title">${escapeHtml(user.username)}</div><div class="table-subtitle">Send the first message to start this conversation.</div></div>`;
+      list.hidden = true;
     };
     list.appendChild(card);
   });
-});
+}, 220));
 
 document.getElementById('emojiToggle').addEventListener('click', () => {
   document.getElementById('emojiBar').classList.toggle('d-none');

@@ -13,7 +13,7 @@
                 <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-3">
                     <div class="d-flex align-items-center gap-3 flex-wrap">
                         <div>
-                            <img id="profileAvatarPreview" th:src="@{/api/users/avatar/{userId}(userId=${profile.id})}" alt="Profile picture" class="rounded-circle border" style="width: 88px; height: 88px; object-fit: cover;">
+                            <img id="profileAvatarPreview" th:src="@{/api/users/avatar/{userId}(userId=${profile.id})}" alt="Profile picture" class="rounded-circle border" style="width: 88px; height: 88px; object-fit: cover;" loading="lazy" decoding="async">
                         </div>
                     <div>
                         <div class="text-uppercase small opacity-75">Account Center</div>

@@ -65,10 +65,17 @@
                                             <option value="CRITICAL">Critical</option>
                                         </select>
                                     </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label">Parent Ticket</label>
+                                        <input id="parentTicketSearch" class="form-control" placeholder="Search ticket by ID, title, customer or creator">
+                                        <div id="parentTicketResults" class="autosuggest-panel mt-2" hidden></div>
+                                        <input type="hidden" name="parentTicketId" id="parentTicketId">
+                                        <div class="form-text">Optional. Link this ticket to an existing parent ticket when it is part of the same service issue.</div>
+                                    </div>
                                     <div class="col-md-8" th:if="${currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')}">
                                         <label class="form-label">Assigned User</label>
                                         <input id="assignedSearch" class="form-control" placeholder="Search support user by name, email or mobile">
-                                        <div id="assignedResults" class="assignment-results mt-2"></div>
+                                        <div id="assignedResults" class="autosuggest-panel mt-2" hidden></div>
                                         <input type="hidden" name="assignedToId" id="assignedToId">
                                     </div>
                                 </div>
@@ -187,33 +194,106 @@ function mirrorLocationLink() {
   document.getElementById('locationLinkMirror').value = document.getElementById('customerLocationLink').value.trim();
 }
 
+function escapeHtml(value) {
+  return (value || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+function initials(value) {
+  return (value || '?').trim().charAt(0).toUpperCase();
+}
+
+function formatRoleLabel(roleName) {
+  return (roleName || '')
+    .replace(/^ROLE_/, '')
+    .toLowerCase()
+    .replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
+function userSuggestionMarkup(user) {
+  return `
+    <button type="button" class="autosuggest-item" data-id="${user.id}">
+      <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${escapeHtml(user.username || 'User')}" loading="lazy" decoding="async">
+      <div class="autosuggest-body">
+        <div class="autosuggest-title-row">
+          <span class="autosuggest-title">${escapeHtml(user.username)}</span>
+        </div>
+        <div class="autosuggest-subtitle">Select user</div>
+      </div>
+      <span class="autosuggest-action" aria-hidden="true"><i class="bi bi-arrow-up-right"></i></span>
+    </button>`;
+}
+
+function normalizeParentTicketQuery(value) {
+  return (value || '').trim().replace(/^#+/, '').trim();
+}
+
+function parentTicketSuggestionMarkup(ticket) {
+  return `
+    <button type="button" class="autosuggest-item" data-id="${ticket.id}">
+      <div class="autosuggest-avatar ticket-avatar">#</div>
+      <div class="autosuggest-body">
+        <div class="autosuggest-title-row">
+          <span class="autosuggest-title">#${ticket.id}</span>
+          ${ticket.serviceTypeLabel ? `<span class="autosuggest-badge">${escapeHtml(ticket.serviceTypeLabel)}</span>` : ''}
+          <span class="autosuggest-badge neutral">${escapeHtml(ticket.status || 'Open')}</span>
+        </div>
+        <div class="autosuggest-subtitle">${escapeHtml(ticket.title || 'Untitled ticket')}</div>
+        <div class="autosuggest-meta">
+          ${ticket.customerName ? `<span class="autosuggest-badge neutral"><i class="bi bi-person"></i>${escapeHtml(ticket.customerName)}</span>` : ''}
+          ${ticket.createdBy ? `<span class="autosuggest-badge neutral"><i class="bi bi-person-badge"></i>${escapeHtml(ticket.createdBy)}</span>` : ''}
+        </div>
+      </div>
+      <span class="autosuggest-action" aria-hidden="true"><i class="bi bi-diagram-3"></i></span>
+    </button>`;
+}
+
+function showSuggestionState(target, content, visible = true) {
+  target.innerHTML = content;
+  target.hidden = !visible;
+}
+
 async function searchUsers(query, target, filterFn, onSelect) {
-  if (!query) {
-    target.innerHTML = '';
+  if (!query || query.trim().length < 2) {
+    showSuggestionState(target, '', false);
     return;
   }
+  showSuggestionState(target, '<div class="autosuggest-empty autosuggest-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Searching users...</span></div>');
   const res = await fetch('/api/users/search?query=' + encodeURIComponent(query));
   const users = (await res.json()).filter(filterFn);
-  target.innerHTML = users.map(user => `
-    <div class="assignment-item">
-      <div>
-        <strong>${user.username}</strong>
-        <div class="small text-muted">${user.email}${user.phone ? ' · ' + user.phone : ''}</div>
-      </div>
-      <button type="button" class="btn btn-sm btn-outline-primary" data-id="${user.id}">Select</button>
-    </div>
-  `).join('') || '<div class="small text-muted px-2 py-1">No matching users found.</div>';
+  showSuggestionState(target, users.map(userSuggestionMarkup).join('') || '<div class="autosuggest-empty">No matching users found.</div>', true);
   target.querySelectorAll('button[data-id]').forEach(button => button.addEventListener('click', () => {
     const user = users.find(item => item.id === Number(button.dataset.id));
     onSelect(user);
-    target.innerHTML = '';
+    showSuggestionState(target, '', false);
+  }));
+}
+
+async function searchParentTickets(query) {
+  const target = document.getElementById('parentTicketResults');
+  const normalizedQuery = normalizeParentTicketQuery(query);
+  if (!normalizedQuery || normalizedQuery.length < 1) {
+    showSuggestionState(target, '', false);
+    if (!normalizedQuery) {
+      document.getElementById('parentTicketId').value = '';
+    }
+    return;
+  }
+  showSuggestionState(target, '<div class="autosuggest-empty autosuggest-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Searching tickets...</span></div>');
+  const res = await fetch('/api/tickets/parent-search?query=' + encodeURIComponent(normalizedQuery));
+  const tickets = await res.json();
+  showSuggestionState(target, tickets.map(parentTicketSuggestionMarkup).join('') || '<div class="autosuggest-empty">No matching tickets found.</div>', true);
+  target.querySelectorAll('button[data-id]').forEach(button => button.addEventListener('click', () => {
+    const ticket = tickets.find(item => item.id === Number(button.dataset.id));
+    document.getElementById('parentTicketSearch').value = `#${ticket.id} ${ticket.title}`;
+    document.getElementById('parentTicketId').value = ticket.id;
+    showSuggestionState(target, '', false);
   }));
 }
 
 document.querySelectorAll('.address-part').forEach(field => field.addEventListener('input', updateAddressPreview));
 document.getElementById('customerLocationLink').addEventListener('input', mirrorLocationLink);
 if (document.getElementById('assignedSearch')) {
-  document.getElementById('assignedSearch').addEventListener('input', event => searchUsers(
+  document.getElementById('assignedSearch').addEventListener('input', debounce(event => searchUsers(
     event.target.value,
     document.getElementById('assignedResults'),
     user => !hasRole(user, 'ROLE_VENDOR'),
@@ -221,8 +301,9 @@ if (document.getElementById('assignedSearch')) {
       document.getElementById('assignedSearch').value = `${user.username} (${user.email})`;
       document.getElementById('assignedToId').value = user.id;
     }
-  ));
+  ), 220));
 }
+document.getElementById('parentTicketSearch').addEventListener('input', debounce(event => searchParentTickets(event.target.value), 220));
 
 document.getElementById('ticketForm').addEventListener('submit', async event => {
   event.preventDefault();

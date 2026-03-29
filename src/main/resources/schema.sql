@@ -53,6 +53,11 @@ ALTER TABLE tickets ADD COLUMN IF NOT EXISTS estimated_cost NUMERIC(12,2);
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS actual_cost NUMERIC(12,2);
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS additional_notes VARCHAR(3000);
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS updated_by_id BIGINT;
+CREATE INDEX IF NOT EXISTS idx_tickets_created_by_id ON tickets(created_by_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to_id ON tickets(assigned_to_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_vendor_user_id ON tickets(vendor_user_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_status_priority ON tickets(status, priority);
+CREATE INDEX IF NOT EXISTS idx_tickets_updated_at ON tickets(updated_at);
 
 CREATE TABLE IF NOT EXISTS ticket_site_visits (
     id BIGSERIAL PRIMARY KEY,
@@ -67,3 +72,10 @@ CREATE TABLE IF NOT EXISTS ticket_site_visits (
 );
 ALTER TABLE ticket_site_visits ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
 ALTER TABLE ticket_site_visits ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+CREATE INDEX IF NOT EXISTS idx_ticket_service_users_user_ticket ON ticket_service_users(user_id, ticket_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_comments_ticket_created_at ON ticket_comments(ticket_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_ticket_site_visits_ticket_visited_at ON ticket_site_visits(ticket_id, visited_at);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_read_created_at ON notifications(user_id, read_flag, created_at);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_created_at ON chat_messages(conversation_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_unread_lookup ON chat_messages(conversation_id, sender_id, read_at);
+CREATE INDEX IF NOT EXISTS idx_chat_conversation_participants_user_conversation ON chat_conversation_participants(user_id, conversation_id);

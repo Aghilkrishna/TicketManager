@@ -55,8 +55,8 @@
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Parent Ticket</label>
-                                        <input id="parentTicketSearch" class="form-control" th:value="${ticket.parentTicketId != null ? '#'+ ticket.parentTicketId + ' ' + ticket.parentTicketTitle : ''}" placeholder="Search ticket by id or title">
-                                        <div id="parentTicketResults" class="assignment-results mt-2"></div>
+                                        <input id="parentTicketSearch" class="form-control" th:value="${ticket.parentTicketId != null ? '#'+ ticket.parentTicketId + ' ' + ticket.parentTicketTitle : ''}" placeholder="Search ticket by ID, title, customer or creator">
+                                        <div id="parentTicketResults" class="autosuggest-panel mt-2" hidden></div>
                                         <input type="hidden" name="parentTicketId" id="parentTicketId" th:value="${ticket.parentTicketId}">
                                     </div>
                                     <div class="col-12">
@@ -112,7 +112,7 @@
                                     <div class="col-md-6" th:if="${currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')}">
                                         <label class="form-label">Assigned User</label>
                                         <input id="assignedSearch" class="form-control" th:value="${ticket.assignedTo}" placeholder="Search support user by name, email or mobile">
-                                        <div id="assignedResults" class="assignment-results mt-2"></div>
+                                        <div id="assignedResults" class="autosuggest-panel mt-2" hidden></div>
                                         <input type="hidden" name="assignedToId" id="assignedToId" th:value="${ticket.assignedToId}">
                                     </div>
                                 </div>
@@ -128,7 +128,7 @@
                                 <div th:if="${!currentRoles.contains('ROLE_VENDOR')}">
                                     <label class="form-label">Vendor User</label>
                                     <input id="vendorSearch" class="form-control" th:value="${ticket.vendorName}" placeholder="Search vendor by name, email or mobile">
-                                    <div id="vendorResults" class="assignment-results mt-2"></div>
+                                    <div id="vendorResults" class="autosuggest-panel mt-2" hidden></div>
                                     <input type="hidden" name="vendorUserId" id="vendorUserId" th:value="${ticket.vendorUserId}">
                                 </div>
                                 <div class="mt-3">
@@ -249,8 +249,8 @@
                                 </div>
                             </div>
                             <div class="col-lg-7">
-                                <div class="small text-uppercase text-muted mb-2">Recorded Visits</div>
-                                <div id="siteVisitList" class="vstack gap-3">
+                                <div class="small text-uppercase text-muted mb-2"><span class="detail-label"><i class="bi bi-clock-history"></i><span>Recorded Visits</span></span></div>
+                                <div id="siteVisitList" class="site-visit-list">
                                     <div class="empty-state">Loading site visit history...</div>
                                 </div>
                             </div>
@@ -281,6 +281,56 @@ function escapeHtml(value) {
   return (value || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
 }
 
+function formatRoleLabel(roleName) {
+  return (roleName || '')
+    .replace(/^ROLE_/, '')
+    .toLowerCase()
+    .replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
+function userSuggestionMarkup(user) {
+  return `
+    <button type="button" class="autosuggest-item" data-id="${user.id}">
+      <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${escapeHtml(user.username || 'User')}" loading="lazy" decoding="async">
+      <div class="autosuggest-body">
+        <div class="autosuggest-title-row">
+          <span class="autosuggest-title">${escapeHtml(user.username)}</span>
+        </div>
+        <div class="autosuggest-subtitle">Select user</div>
+      </div>
+      <span class="autosuggest-action" aria-hidden="true"><i class="bi bi-arrow-up-right"></i></span>
+    </button>`;
+}
+
+function normalizeParentTicketQuery(value) {
+  return (value || '').trim().replace(/^#+/, '').trim();
+}
+
+function parentTicketSuggestionMarkup(ticket) {
+  return `
+    <button type="button" class="autosuggest-item" data-id="${ticket.id}">
+      <div class="autosuggest-avatar ticket-avatar">#</div>
+      <div class="autosuggest-body">
+        <div class="autosuggest-title-row">
+          <span class="autosuggest-title">#${ticket.id}</span>
+          ${ticket.serviceTypeLabel ? `<span class="autosuggest-badge">${escapeHtml(ticket.serviceTypeLabel)}</span>` : ''}
+          <span class="autosuggest-badge neutral">${escapeHtml(ticket.status || 'Open')}</span>
+        </div>
+        <div class="autosuggest-subtitle">${escapeHtml(ticket.title || 'Untitled ticket')}</div>
+        <div class="autosuggest-meta">
+          ${ticket.customerName ? `<span class="autosuggest-badge neutral"><i class="bi bi-person"></i>${escapeHtml(ticket.customerName)}</span>` : ''}
+          ${ticket.createdBy ? `<span class="autosuggest-badge neutral"><i class="bi bi-person-badge"></i>${escapeHtml(ticket.createdBy)}</span>` : ''}
+        </div>
+      </div>
+      <span class="autosuggest-action" aria-hidden="true"><i class="bi bi-diagram-3"></i></span>
+    </button>`;
+}
+
+function showSuggestionState(target, content, visible = true) {
+  target.innerHTML = content;
+  target.hidden = !visible;
+}
+
 function updateAddressPreview() {
   const parts = [
     document.querySelector('[name="customerFlat"]').value,
@@ -299,50 +349,40 @@ function mirrorLocationLink() {
 }
 
 async function searchUsers(query, target, filterFn, onSelect) {
-  if (!query) {
-    target.innerHTML = '';
+  if (!query || query.trim().length < 2) {
+    showSuggestionState(target, '', false);
     return;
   }
+  showSuggestionState(target, '<div class="autosuggest-empty autosuggest-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Searching users...</span></div>');
   const res = await fetch('/api/users/search?query=' + encodeURIComponent(query));
   const users = (await res.json()).filter(filterFn);
-  target.innerHTML = users.map(user => `
-    <div class="assignment-item">
-      <div>
-        <strong>${user.username}</strong>
-        <div class="small text-muted">${user.email}${user.phone ? ' · ' + user.phone : ''}</div>
-      </div>
-      <button type="button" class="btn btn-sm btn-outline-primary" data-id="${user.id}">Select</button>
-    </div>
-  `).join('') || '<div class="small text-muted px-2 py-1">No matching users found.</div>';
+  showSuggestionState(target, users.map(userSuggestionMarkup).join('') || '<div class="autosuggest-empty">No matching users found.</div>', true);
   target.querySelectorAll('button[data-id]').forEach(button => button.addEventListener('click', () => {
     const user = users.find(item => item.id === Number(button.dataset.id));
     onSelect(user);
-    target.innerHTML = '';
+    showSuggestionState(target, '', false);
   }));
 }
 
 async function searchParentTickets(query) {
   const target = document.getElementById('parentTicketResults');
-  if (!query) {
-    target.innerHTML = '';
+  const normalizedQuery = normalizeParentTicketQuery(query);
+  if (!normalizedQuery || normalizedQuery.length < 1) {
+    showSuggestionState(target, '', false);
+    if (!normalizedQuery) {
+      document.getElementById('parentTicketId').value = '';
+    }
     return;
   }
-  const res = await fetch('/api/tickets/search?query=' + encodeURIComponent(query));
+  showSuggestionState(target, '<div class="autosuggest-empty autosuggest-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Searching tickets...</span></div>');
+  const res = await fetch('/api/tickets/parent-search?query=' + encodeURIComponent(normalizedQuery) + '&excludeTicketId=' + encodeURIComponent(ticketId));
   const tickets = await res.json();
-  target.innerHTML = tickets.map(ticket => `
-    <div class="assignment-item">
-      <div>
-        <strong>#${ticket.id}</strong>
-        <div class="small text-muted">${ticket.title}</div>
-      </div>
-      <button type="button" class="btn btn-sm btn-outline-primary" data-id="${ticket.id}">Select</button>
-    </div>
-  `).join('') || '<div class="small text-muted px-2 py-1">No tickets found.</div>';
+  showSuggestionState(target, tickets.map(parentTicketSuggestionMarkup).join('') || '<div class="autosuggest-empty">No matching tickets found.</div>', true);
   target.querySelectorAll('button[data-id]').forEach(button => button.addEventListener('click', () => {
     const ticket = tickets.find(item => item.id === Number(button.dataset.id));
     document.getElementById('parentTicketSearch').value = `#${ticket.id} ${ticket.title}`;
     document.getElementById('parentTicketId').value = ticket.id;
-    target.innerHTML = '';
+    showSuggestionState(target, '', false);
   }));
 }
 
@@ -352,25 +392,50 @@ function renderSiteVisits(visits) {
     return;
   }
   container.innerHTML = visits.length ? visits.map(visit => `
-    <div class="p-3 rounded-4 border bg-white">
-      <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-        <div>
-          <div class="fw-semibold">${escapeHtml(visit.agentName || 'Agent')}</div>
-          <div class="small text-muted">${new Date(visit.visitedAt).toLocaleString()}</div>
-          <div class="small text-muted mt-1">
+    <article class="site-visit-card">
+      <div class="site-visit-header">
+        <div class="site-visit-identity">
+          <div class="site-visit-icon"><i class="bi bi-person-walking"></i></div>
+          <div class="site-visit-meta">
+            <div class="site-visit-agent">${escapeHtml(visit.agentName || 'Agent')}</div>
+            <div class="site-visit-time"><i class="bi bi-calendar-event"></i><span>${formatVisitDateTime(visit.visitedAt)}</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="site-visit-grid">
+        <div class="site-visit-field">
+          <div class="site-visit-field-label"><i class="bi bi-geo-alt"></i><span>Geo Location</span></div>
+          <div class="site-visit-field-value subtle">
             ${visit.latitude != null && visit.longitude != null
               ? `<a href="${buildMapUrl(visit.latitude, visit.longitude)}" target="_blank" rel="noopener noreferrer">Google Maps: ${Number(visit.latitude).toFixed(6)}, ${Number(visit.longitude).toFixed(6)}</a>`
               : 'Location not available'}
           </div>
         </div>
+        <div class="site-visit-field">
+          <div class="site-visit-field-label"><i class="bi bi-hash"></i><span>Coordinates</span></div>
+          <div class="site-visit-field-value subtle">${visit.latitude != null && visit.longitude != null ? `${Number(visit.latitude).toFixed(6)}, ${Number(visit.longitude).toFixed(6)}` : 'Not available'}</div>
+        </div>
+        <div class="site-visit-field full">
+          <div class="site-visit-field-label"><i class="bi bi-journal-text"></i><span>Visit Notes</span></div>
+          <div class="site-visit-field-value subtle">${visit.notes ? escapeHtml(visit.notes).replace(/\n/g, '<br>') : 'No notes added for this visit.'}</div>
+        </div>
       </div>
-      <div class="mt-3 text-body-secondary">${visit.notes ? escapeHtml(visit.notes).replace(/\n/g, '<br>') : 'No notes added for this visit.'}</div>
-    </div>
+    </article>
   `).join('') : '<div class="empty-state">No site visits recorded yet.</div>';
 }
 
 function buildMapUrl(latitude, longitude) {
   return `https://www.google.com/maps?q=${encodeURIComponent(latitude + ',' + longitude)}`;
+}
+
+function formatVisitDateTime(value) {
+  return new Date(value).toLocaleString([], {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
 function formatGeoDisplay(latitude, longitude) {
@@ -407,7 +472,7 @@ async function loadSiteVisits() {
 }
 
 if (canAssignUsers) {
-  document.getElementById('assignedSearch').addEventListener('input', event => searchUsers(
+  document.getElementById('assignedSearch').addEventListener('input', debounce(event => searchUsers(
     event.target.value,
     document.getElementById('assignedResults'),
     user => !hasRole(user, 'ROLE_VENDOR'),
@@ -415,10 +480,10 @@ if (canAssignUsers) {
       document.getElementById('assignedSearch').value = `${user.username} (${user.email})`;
       document.getElementById('assignedToId').value = user.id;
     }
-  ));
+  ), 220));
   const vendorSearch = document.getElementById('vendorSearch');
   if (vendorSearch) {
-    vendorSearch.addEventListener('input', event => searchUsers(
+    vendorSearch.addEventListener('input', debounce(event => searchUsers(
       event.target.value,
       document.getElementById('vendorResults'),
       user => hasRole(user, 'ROLE_VENDOR'),
@@ -426,13 +491,13 @@ if (canAssignUsers) {
         vendorSearch.value = `${user.username} (${user.email})`;
         document.getElementById('vendorUserId').value = user.id;
       }
-    ));
+    ), 220));
   }
 }
 
 document.querySelectorAll('.address-part').forEach(field => field.addEventListener('input', updateAddressPreview));
 document.getElementById('customerLocationLink').addEventListener('input', mirrorLocationLink);
-document.getElementById('parentTicketSearch').addEventListener('input', event => searchParentTickets(event.target.value));
+document.getElementById('parentTicketSearch').addEventListener('input', debounce(event => searchParentTickets(event.target.value), 220));
 
 if (agentEditor) {
   document.querySelectorAll('#ticketForm input, #ticketForm select, #ticketForm textarea').forEach(field => {

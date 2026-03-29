@@ -67,6 +67,14 @@ public class TicketRestController {
     }
 
     @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_VIEW')")
+    @GetMapping("/parent-search")
+    public List<AuthDtos.TicketSummary> searchParentTickets(Principal principal,
+                                                            @RequestParam String query,
+                                                            @RequestParam(required = false) Long excludeTicketId) {
+        return ticketService.searchParentTicketCandidates(principal.getName(), query, excludeTicketId);
+    }
+
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('FEATURE_TICKETS_VIEW')")
     @GetMapping("/{ticketId}")
     public AuthDtos.TicketSummary get(Principal principal,
                                       @PathVariable Long ticketId,

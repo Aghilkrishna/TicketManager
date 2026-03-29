@@ -81,9 +81,22 @@ public class ChatService {
     @Transactional(readOnly = true)
     public List<AuthDtos.ChatConversationResponse> conversations(String username, String query) {
         AppUser user = userService.getByUsername(username);
-        return new java.util.ArrayList<>(conversationRepository.findAll().stream()
-                .filter(conversation -> conversation.getParticipants().stream().anyMatch(participant -> participant.getId().equals(user.getId())))
-                .map(conversation -> toConversationSummary(conversation, user))
+        List<ChatConversation> conversations = conversationRepository.findAllByParticipantIdWithParticipants(user.getId());
+        List<Long> conversationIds = conversations.stream().map(ChatConversation::getId).toList();
+        java.util.Map<Long, ChatMessage> lastMessageByConversationId = new java.util.HashMap<>();
+        if (!conversationIds.isEmpty()) {
+            messageRepository.findByConversationIdInOrderByCreatedAtDesc(conversationIds).forEach(message ->
+                    lastMessageByConversationId.putIfAbsent(message.getConversation().getId(), message));
+        }
+        java.util.Map<Long, Long> unreadCounts = new java.util.HashMap<>();
+        if (!conversationIds.isEmpty()) {
+            messageRepository.countUnreadByConversationIds(conversationIds, user.getId())
+                    .forEach(row -> unreadCounts.put((Long) row[0], (Long) row[1]));
+        }
+        return new java.util.ArrayList<>(conversations.stream()
+                .map(conversation -> toConversationSummary(conversation, user,
+                        lastMessageByConversationId.get(conversation.getId()),
+                        unreadCounts.getOrDefault(conversation.getId(), 0L)))
                 .filter(conversation -> {
                     if (query == null || query.isBlank()) {
                         return true;
@@ -166,13 +179,14 @@ public class ChatService {
     }
 
     private AuthDtos.ChatConversationResponse toConversationSummary(ChatConversation conversation, AppUser currentUser) {
+        return toConversationSummary(conversation, currentUser, null, 0L);
+    }
+
+    private AuthDtos.ChatConversationResponse toConversationSummary(ChatConversation conversation, AppUser currentUser, ChatMessage lastMessage, long unreadCount) {
         AppUser otherUser = conversation.getParticipants().stream()
                 .filter(participant -> !participant.getId().equals(currentUser.getId()))
                 .findFirst()
                 .orElse(currentUser);
-        List<ChatMessage> messages = messageRepository.findByConversationIdOrderByCreatedAtDesc(conversation.getId());
-        ChatMessage lastMessage = messages.isEmpty() ? null : messages.getFirst();
-        long unreadCount = messageRepository.countByConversationIdAndSenderIdNotAndReadAtIsNull(conversation.getId(), currentUser.getId());
         return new AuthDtos.ChatConversationResponse(
                 conversation.getId(),
                 otherUser.getId(),

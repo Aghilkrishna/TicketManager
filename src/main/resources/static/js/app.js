@@ -86,10 +86,19 @@ function setButtonLoading(button, loading, loadingText = 'Processing...') {
   }
 }
 
+function debounce(fn, wait = 250) {
+  let timeoutId = null;
+  return (...args) => {
+    window.clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(() => fn(...args), wait);
+  };
+}
+
 window.showAppAlert = showAppAlert;
 window.showInlineAlert = showInlineAlert;
 window.clearInlineAlert = clearInlineAlert;
 window.setButtonLoading = setButtonLoading;
+window.debounce = debounce;
 
 (function patchFetchForAccessDenied() {
   if (window.__tmFetchPatched) return;
