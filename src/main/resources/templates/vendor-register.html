@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/layout :: head('Vendor Sign Up')}"></th:block>
+</head>
+<body>
+<div class="auth-wrap">
+    <section class="auth-banner">
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="brand-mark">TM</div>
+            <div>
+                <div class="fw-bold" style="font-size: 1.8rem; line-height: 1.1;">Ticket Manager</div>
+                <div style="font-size: 0.88rem; opacity: 0.78;">Dedicated onboarding for vendor partners</div>
+            </div>
+        </div>
+        <h1 class="display-5 fw-bold">Register your vendor account with business and contact details.</h1>
+        <p class="lead mt-3">This portal is for vendors who create and manage only their own tickets inside the platform.</p>
+    </section>
+    <section class="d-flex align-items-center justify-content-center">
+        <div class="auth-panel">
+            <h2 class="fw-bold mb-2">Vendor registration</h2>
+            <p class="text-muted mb-4">Complete the required details to create a vendor account with the vendor role.</p>
+            <form id="vendorRegisterForm" class="vstack gap-3">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <input class="form-control form-control-lg" name="username" placeholder="Vendor username" required minlength="3">
+                    </div>
+                    <div class="col-md-6">
+                        <input class="form-control form-control-lg" type="email" name="email" placeholder="Business email" required>
+                    </div>
+                    <div class="col-md-6">
+                        <input class="form-control form-control-lg" name="companyName" placeholder="Company name" required>
+                    </div>
+                    <div class="col-md-6">
+                        <input class="form-control form-control-lg" name="contactPerson" placeholder="Contact person" required>
+                    </div>
+                    <div class="col-md-6">
+                        <input class="form-control form-control-lg" name="phone" placeholder="Phone number" required>
+                    </div>
+                    <div class="col-md-6">
+                        <input class="form-control form-control-lg" name="gstNumber" placeholder="GST number" required>
+                    </div>
+                    <div class="col-12">
+                        <input class="form-control form-control-lg" type="password" name="password" placeholder="Password" required minlength="8">
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <div class="fw-semibold mb-2">Business address</div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <input class="form-control" name="flat" placeholder="Flat / Unit">
+                        </div>
+                        <div class="col-md-6">
+                            <input class="form-control" name="building" placeholder="Building / Company block">
+                        </div>
+                        <div class="col-12">
+                            <input class="form-control" name="area" placeholder="Area / Street">
+                        </div>
+                        <div class="col-md-4">
+                            <input class="form-control" name="city" placeholder="City">
+                        </div>
+                        <div class="col-md-4">
+                            <input class="form-control" name="state" placeholder="State">
+                        </div>
+                        <div class="col-md-4">
+                            <input class="form-control" name="pincode" placeholder="Pincode">
+                        </div>
+                        <div class="col-12">
+                            <input class="form-control" name="country" placeholder="Country" value="India">
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-success btn-lg mt-2" type="submit">Create vendor account</button>
+            </form>
+            <div id="message" class="small mt-3"></div>
+            <div class="mt-4 d-flex justify-content-between align-items-center">
+                <a th:href="@{/vendor/login}">Back to vendor login</a>
+                <a th:href="@{/register}">Regular user sign up</a>
+            </div>
+        </div>
+    </section>
+</div>
+<script>
+document.getElementById('vendorRegisterForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+  const res = await fetch('/api/auth/vendor/register', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json().catch(() => ({}));
+  const message = document.getElementById('message');
+  message.className = 'small mt-3 ' + (res.ok ? 'text-success' : 'text-danger');
+  message.textContent = data.message || (res.ok ? 'Vendor registration successful' : 'Vendor registration failed');
+  if (res.ok) e.target.reset();
+});
+</script>
+</body>
+</html>

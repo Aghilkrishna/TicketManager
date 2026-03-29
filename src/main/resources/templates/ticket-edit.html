@@ -234,6 +234,11 @@
                                         <input id="siteVisitAt" class="form-control" type="datetime-local">
                                     </div>
                                     <div class="col-12">
+                                        <label class="form-label">Current Geo Location</label>
+                                        <input id="siteVisitGeoDisplay" class="form-control" type="text" readonly placeholder="Fetching your current location...">
+                                        <div class="form-text">This location is captured automatically from your device and stored as read-only site visit history.</div>
+                                    </div>
+                                    <div class="col-12">
                                         <label class="form-label">Visit Notes</label>
                                         <textarea id="siteVisitNotes" class="form-control" rows="5" maxlength="2000" placeholder="Add notes about work completed, observations, or next steps"></textarea>
                                     </div>
@@ -352,11 +357,43 @@ function renderSiteVisits(visits) {
         <div>
           <div class="fw-semibold">${escapeHtml(visit.agentName || 'Agent')}</div>
           <div class="small text-muted">${new Date(visit.visitedAt).toLocaleString()}</div>
+          <div class="small text-muted mt-1">
+            ${visit.latitude != null && visit.longitude != null
+              ? `<a href="${buildMapUrl(visit.latitude, visit.longitude)}" target="_blank" rel="noopener noreferrer">Google Maps: ${Number(visit.latitude).toFixed(6)}, ${Number(visit.longitude).toFixed(6)}</a>`
+              : 'Location not available'}
+          </div>
         </div>
       </div>
       <div class="mt-3 text-body-secondary">${visit.notes ? escapeHtml(visit.notes).replace(/\n/g, '<br>') : 'No notes added for this visit.'}</div>
     </div>
   `).join('') : '<div class="empty-state">No site visits recorded yet.</div>';
+}
+
+function buildMapUrl(latitude, longitude) {
+  return `https://www.google.com/maps?q=${encodeURIComponent(latitude + ',' + longitude)}`;
+}
+
+function formatGeoDisplay(latitude, longitude) {
+  return `Lat ${Number(latitude).toFixed(6)}, Lng ${Number(longitude).toFixed(6)}`;
+}
+
+function getCurrentPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocation is not supported on this device.'));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, error => {
+      const message = error.code === error.PERMISSION_DENIED
+        ? 'Location access is required to log a site visit.'
+        : 'Unable to fetch your current location. Please try again.';
+      reject(new Error(message));
+    }, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    });
+  });
 }
 
 async function loadSiteVisits() {
@@ -411,20 +448,53 @@ if (agentEditor) {
 
 if (agentEditor) {
   const siteVisitAt = document.getElementById('siteVisitAt');
+  const geoDisplay = document.getElementById('siteVisitGeoDisplay');
   const setDefaultVisitTime = () => {
     const now = new Date();
     siteVisitAt.value = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   };
+  const refreshGeoDisplay = async () => {
+    geoDisplay.value = 'Fetching your current location...';
+    try {
+      const position = await getCurrentPosition();
+      geoDisplay.dataset.latitude = String(position.coords.latitude);
+      geoDisplay.dataset.longitude = String(position.coords.longitude);
+      geoDisplay.value = formatGeoDisplay(position.coords.latitude, position.coords.longitude);
+      return position;
+    } catch (error) {
+      geoDisplay.dataset.latitude = '';
+      geoDisplay.dataset.longitude = '';
+      geoDisplay.value = error.message;
+      throw error;
+    }
+  };
   setDefaultVisitTime();
+  refreshGeoDisplay().catch(() => {});
   document.getElementById('siteVisitSubmit').addEventListener('click', async () => {
     const message = document.getElementById('siteVisitMessage');
     const submitButton = document.getElementById('siteVisitSubmit');
+    message.className = 'small text-muted';
+    message.textContent = 'Capturing current location...';
     submitButton.disabled = true;
+    let position;
+    try {
+      position = await getCurrentPosition();
+      geoDisplay.dataset.latitude = String(position.coords.latitude);
+      geoDisplay.dataset.longitude = String(position.coords.longitude);
+      geoDisplay.value = formatGeoDisplay(position.coords.latitude, position.coords.longitude);
+    } catch (error) {
+      submitButton.disabled = false;
+      message.className = 'small text-danger';
+      message.textContent = error.message;
+      return;
+    }
     const res = await fetch(`/api/tickets/${ticketId}/site-visits`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         visitedAt: siteVisitAt.value || null,
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
         notes: document.getElementById('siteVisitNotes').value
       })
     });
@@ -435,6 +505,7 @@ if (agentEditor) {
     if (res.ok) {
       document.getElementById('siteVisitNotes').value = '';
       setDefaultVisitTime();
+      refreshGeoDisplay().catch(() => {});
       await loadSiteVisits();
       const counter = document.querySelector('input[name="siteVisits"]');
       if (counter) {

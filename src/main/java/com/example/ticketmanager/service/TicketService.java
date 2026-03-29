@@ -241,6 +241,8 @@ public class TicketService {
         siteVisit.setTicket(ticket);
         siteVisit.setAgent(actor);
         siteVisit.setVisitedAt(request.visitedAt());
+        siteVisit.setLatitude(validateLatitude(request.latitude()));
+        siteVisit.setLongitude(validateLongitude(request.longitude()));
         siteVisit.setNotes(request.notes() == null || request.notes().isBlank() ? null : request.notes().trim());
         TicketSiteVisit saved = ticketSiteVisitRepository.save(siteVisit);
         ticket.setSiteVisits((ticket.getSiteVisits() == null ? 0 : ticket.getSiteVisits()) + 1);
@@ -624,7 +626,23 @@ public class TicketService {
                 siteVisit.getAgent().getId(),
                 siteVisit.getAgent().getUsername(),
                 siteVisit.getVisitedAt(),
+                siteVisit.getLatitude(),
+                siteVisit.getLongitude(),
                 siteVisit.getNotes()
         );
+    }
+
+    private double validateLatitude(Double latitude) {
+        if (latitude == null || latitude < -90 || latitude > 90) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "A valid current location is required to log a site visit");
+        }
+        return latitude;
+    }
+
+    private double validateLongitude(Double longitude) {
+        if (longitude == null || longitude < -180 || longitude > 180) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "A valid current location is required to log a site visit");
+        }
+        return longitude;
     }
 }

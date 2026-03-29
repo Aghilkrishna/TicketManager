@@ -37,6 +37,12 @@ public class TicketSiteVisit {
     @Column(name = "visited_at", nullable = false)
     private LocalDateTime visitedAt;
 
+    @Column(nullable = false)
+    private Double latitude;
+
+    @Column(nullable = false)
+    private Double longitude;
+
     @Column(length = 2000)
     private String notes;
 

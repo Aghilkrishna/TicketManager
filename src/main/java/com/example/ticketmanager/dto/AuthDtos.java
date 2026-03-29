@@ -29,6 +29,24 @@ public final class AuthDtos {
     ) {
     }
 
+    public record VendorRegisterRequest(
+            @NotBlank @Size(min = 3, max = 50) String username,
+            @NotBlank @Email String email,
+            @NotBlank @Size(min = 8, max = 100) String password,
+            @NotBlank @Size(max = 150) String companyName,
+            @NotBlank @Size(max = 120) String contactPerson,
+            @NotBlank @Pattern(regexp = "^[0-9+\\-() ]{7,20}$", message = "Invalid phone number") String phone,
+            @NotBlank @Size(max = 30) String gstNumber,
+            @Size(max = 120) String flat,
+            @Size(max = 120) String building,
+            @Size(max = 120) String area,
+            @Size(max = 80) String city,
+            @Size(max = 80) String state,
+            @Size(max = 80) String country,
+            @Size(max = 20) String pincode
+    ) {
+    }
+
     public record AuthResponse(
             Long id,
             String username,
@@ -196,6 +214,8 @@ public final class AuthDtos {
 
     public record TicketSiteVisitRequest(
             java.time.LocalDateTime visitedAt,
+            Double latitude,
+            Double longitude,
             @Size(max = 2000) String notes
     ) {
     }
@@ -205,6 +225,8 @@ public final class AuthDtos {
             Long agentId,
             String agentName,
             LocalDateTime visitedAt,
+            Double latitude,
+            Double longitude,
             String notes
     ) {
     }

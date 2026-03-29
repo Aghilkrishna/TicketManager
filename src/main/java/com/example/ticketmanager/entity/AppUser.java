@@ -46,6 +46,15 @@ public class AppUser {
     @Column(length = 80)
     private String lastName;
 
+    @Column(length = 150)
+    private String companyName;
+
+    @Column(length = 120)
+    private String contactPerson;
+
+    @Column(length = 30)
+    private String gstNumber;
+
     @Column(length = 120)
     private String flat;
 

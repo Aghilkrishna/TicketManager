@@ -32,6 +32,16 @@ public class ViewController {
         return "register";
     }
 
+    @GetMapping("/vendor/login")
+    public String vendorLogin() {
+        return "vendor-login";
+    }
+
+    @GetMapping("/vendor/register")
+    public String vendorRegister() {
+        return "vendor-register";
+    }
+
     @GetMapping("/dashboard")
     @PreAuthorize("hasAuthority('FEATURE_DASHBOARD_ACCESS')")
     public String dashboard(Model model, Principal principal) {

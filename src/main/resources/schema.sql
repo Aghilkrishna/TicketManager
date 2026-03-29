@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS email_notification_settings (
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(80);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(80);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name VARCHAR(150);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS contact_person VARCHAR(120);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gst_number VARCHAR(30);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS flat VARCHAR(120);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS building VARCHAR(120);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS area VARCHAR(120);
@@ -56,7 +59,11 @@ CREATE TABLE IF NOT EXISTS ticket_site_visits (
     ticket_id BIGINT NOT NULL,
     agent_id BIGINT NOT NULL,
     visited_at TIMESTAMP NOT NULL,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
     notes VARCHAR(2000),
     CONSTRAINT fk_ticket_site_visits_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
     CONSTRAINT fk_ticket_site_visits_agent FOREIGN KEY (agent_id) REFERENCES users(id)
 );
+ALTER TABLE ticket_site_visits ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
+ALTER TABLE ticket_site_visits ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
