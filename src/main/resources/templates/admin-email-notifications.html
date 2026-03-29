@@ -57,6 +57,10 @@ async function loadEmailNotificationSettings() {
 }
 
 document.getElementById('saveEmailNotificationSettings').addEventListener('click', async () => {
+  const button = document.getElementById('saveEmailNotificationSettings');
+  const message = document.getElementById('emailNotificationMessage');
+  clearInlineAlert(message);
+  setButtonLoading(button, true, 'Saving settings...');
   const payload = Array.from(document.querySelectorAll('#emailNotificationList input[type="checkbox"]')).map(input => ({
     action: input.dataset.action,
     enabled: input.checked
@@ -67,9 +71,8 @@ document.getElementById('saveEmailNotificationSettings').addEventListener('click
     body: JSON.stringify(payload)
   });
   const data = await res.json().catch(() => ([]));
-  const message = document.getElementById('emailNotificationMessage');
-  message.className = 'small ' + (res.ok ? 'text-success' : 'text-danger');
-  message.textContent = res.ok ? 'Email notification settings updated successfully.' : ((data && data.message) || 'Failed to update email notification settings.');
+  setButtonLoading(button, false);
+  showInlineAlert(message, res.ok ? 'Email notification settings updated successfully.' : ((data && data.message) || 'Failed to update email notification settings.'), res.ok ? 'success' : 'danger', res.ok ? 'Settings Saved' : 'Save Failed');
   if (res.ok) {
     emailNotificationSettings = data;
     renderEmailNotificationSettings();

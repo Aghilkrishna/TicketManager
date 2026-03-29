@@ -217,17 +217,19 @@ document.getElementById('profileImageForm').addEventListener('submit', async (e)
   const input = document.getElementById('profileImageInput');
   const message = document.getElementById('profileMessage');
   if (!input.files.length) {
-    message.className = 'small text-danger';
-    message.textContent = 'Select an image to upload.';
+    showInlineAlert(message, 'Select an image to upload.', 'danger', 'Upload Failed');
     return;
   }
+  const button = e.target.querySelector('button[type="submit"]');
+  clearInlineAlert(message);
+  setButtonLoading(button, true, 'Uploading image...');
   const croppedBlob = await cropImageToSquare(input.files[0]);
   const formData = new FormData();
   formData.append('file', croppedBlob, 'profile-picture.png');
   const res = await fetch('/api/users/profile/picture', {method: 'POST', body: formData});
   const data = await res.json().catch(() => ({}));
-  message.className = 'small ' + (res.ok ? 'text-success' : 'text-danger');
-  message.textContent = res.ok ? 'Profile picture updated successfully.' : (data.message || 'Profile picture upload failed');
+  setButtonLoading(button, false);
+  showInlineAlert(message, res.ok ? 'Profile picture updated successfully.' : (data.message || 'Profile picture upload failed'), res.ok ? 'success' : 'danger', res.ok ? 'Upload Complete' : 'Upload Failed');
   if (res.ok) {
     const avatarUrl = `/api/users/avatar/[[${profile.id}]]?v=${Date.now()}`;
     const existingImage = document.getElementById('profileAvatarPreview');
@@ -245,30 +247,36 @@ document.getElementById('profileImageForm').addEventListener('submit', async (e)
 
 document.getElementById('profileForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const button = e.target.querySelector('button[type="submit"]');
   const payload = Object.fromEntries(new FormData(e.target).entries());
+  const message = document.getElementById('profileMessage');
+  clearInlineAlert(message);
+  setButtonLoading(button, true, 'Saving profile...');
   const res = await fetch('/api/users/profile', {
     method: 'PATCH',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(payload)
   });
   const data = await res.json().catch(() => ({}));
-  const message = document.getElementById('profileMessage');
-  message.className = 'small ' + (res.ok ? 'text-success' : 'text-danger');
-  message.textContent = res.ok ? 'Profile updated successfully.' : (data.message || 'Update failed');
+  setButtonLoading(button, false);
+  showInlineAlert(message, res.ok ? 'Profile updated successfully.' : (data.message || 'Update failed'), res.ok ? 'success' : 'danger', res.ok ? 'Profile Saved' : 'Update Failed');
 });
 
 document.getElementById('passwordForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const button = e.target.querySelector('button[type="submit"]');
   const payload = Object.fromEntries(new FormData(e.target).entries());
+  const message = document.getElementById('passwordMessage');
+  clearInlineAlert(message);
+  setButtonLoading(button, true, 'Updating password...');
   const res = await fetch('/api/users/profile/password', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(payload)
   });
   const data = await res.json().catch(() => ({}));
-  const message = document.getElementById('passwordMessage');
-  message.className = 'small ' + (res.ok ? 'text-success' : 'text-danger');
-  message.textContent = res.ok ? 'Password updated successfully.' : (data.message || 'Password update failed');
+  setButtonLoading(button, false);
+  showInlineAlert(message, res.ok ? 'Password updated successfully.' : (data.message || 'Password update failed'), res.ok ? 'success' : 'danger', res.ok ? 'Password Updated' : 'Update Failed');
   if (res.ok) {
     e.target.reset();
   }

@@ -159,7 +159,7 @@
                     <button class="btn btn-primary btn-lg" type="submit">Create Ticket</button>
                     <a class="btn btn-outline-secondary btn-lg" href="/tickets">Cancel</a>
                 </div>
-                <div id="message" class="small col-12"></div>
+                <div id="message" class="col-12" hidden></div>
             </form>
         </main>
     </div>
@@ -229,16 +229,20 @@ document.getElementById('ticketForm').addEventListener('submit', async event => 
   updateAddressPreview();
   mirrorLocationLink();
   const form = event.target;
+  const message = document.getElementById('message');
+  const button = form.querySelector('button[type="submit"]');
+  clearInlineAlert(message);
+  setButtonLoading(button, true, 'Creating ticket...');
   const data = new FormData(form);
   const res = await fetch('/api/tickets', {method: 'POST', body: data});
   const payload = await res.json().catch(() => ({}));
+  setButtonLoading(button, false);
   if (res.ok) {
+    showAppAlert('Ticket created successfully.', 'success', 'Ticket Created');
     window.location.href = '/tickets';
     return;
   }
-  const message = document.getElementById('message');
-  message.className = 'small col-12 text-danger';
-  message.textContent = payload.message || 'Ticket save failed';
+  showInlineAlert(message, payload.message || 'Ticket save failed', 'danger', 'Create Failed');
 });
 
 updateAddressPreview();

@@ -8,14 +8,34 @@ function ensureAlertHost() {
   return host;
 }
 
-function showAppAlert(message, variant = 'danger') {
+function alertMeta(variant, title) {
+  if (title) {
+    return {
+      title,
+      icon: variant === 'success' ? 'bi-check-circle' : variant === 'warning' ? 'bi-exclamation-triangle' : variant === 'info' ? 'bi-info-circle' : 'bi-shield-exclamation'
+    };
+  }
+  if (variant === 'success') {
+    return {title: 'Success', icon: 'bi-check-circle'};
+  }
+  if (variant === 'warning') {
+    return {title: 'Warning', icon: 'bi-exclamation-triangle'};
+  }
+  if (variant === 'info') {
+    return {title: 'Notice', icon: 'bi-info-circle'};
+  }
+  return {title: 'Access Denied', icon: 'bi-shield-exclamation'};
+}
+
+function showAppAlert(message, variant = 'danger', title = null) {
   const host = ensureAlertHost();
+  const meta = alertMeta(variant, title);
   const alert = document.createElement('div');
   alert.className = `app-alert app-alert-${variant}`;
   alert.innerHTML = `
-    <div class="app-alert-icon"><i class="bi ${variant === 'danger' ? 'bi-shield-exclamation' : 'bi-info-circle'}"></i></div>
+    <div class="app-alert-icon"><i class="bi ${meta.icon}"></i></div>
     <div class="app-alert-body">
-      <div class="app-alert-title">${variant === 'danger' ? 'Access Denied' : 'Notice'}</div>
+      <div class="app-alert-title">${meta.title}</div>
       <div class="app-alert-message">${message}</div>
     </div>
     <button class="app-alert-close" type="button" aria-label="Close"><i class="bi bi-x-lg"></i></button>
@@ -28,6 +48,48 @@ function showAppAlert(message, variant = 'danger') {
   alert.querySelector('.app-alert-close').addEventListener('click', close);
   window.setTimeout(close, 4200);
 }
+
+function showInlineAlert(target, message, variant = 'danger', title = null) {
+  if (!target) return;
+  const meta = alertMeta(variant, title);
+  target.hidden = false;
+  target.className = `app-inline-alert app-inline-alert-${variant}`;
+  target.innerHTML = `
+    <div class="app-inline-alert-icon"><i class="bi ${meta.icon}"></i></div>
+    <div class="app-inline-alert-copy">
+      <div class="app-inline-alert-title">${meta.title}</div>
+      <div class="app-inline-alert-text">${message}</div>
+    </div>
+  `;
+}
+
+function clearInlineAlert(target) {
+  if (!target) return;
+  target.hidden = true;
+  target.className = '';
+  target.innerHTML = '';
+}
+
+function setButtonLoading(button, loading, loadingText = 'Processing...') {
+  if (!button) return;
+  if (loading) {
+    if (!button.dataset.originalHtml) {
+      button.dataset.originalHtml = button.innerHTML;
+    }
+    button.disabled = true;
+    button.innerHTML = `<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>${loadingText}`;
+    return;
+  }
+  button.disabled = false;
+  if (button.dataset.originalHtml) {
+    button.innerHTML = button.dataset.originalHtml;
+  }
+}
+
+window.showAppAlert = showAppAlert;
+window.showInlineAlert = showInlineAlert;
+window.clearInlineAlert = clearInlineAlert;
+window.setButtonLoading = setButtonLoading;
 
 (function patchFetchForAccessDenied() {
   if (window.__tmFetchPatched) return;

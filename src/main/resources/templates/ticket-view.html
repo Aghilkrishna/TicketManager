@@ -184,6 +184,7 @@
                                 <button class="btn btn-outline-secondary d-none" type="button" id="cancelReply">Cancel Reply</button>
                             </div>
                         </form>
+                        <div id="commentMessage" hidden></div>
                         <div id="commentThread" class="comment-thread"></div>
                     </section>
                 </div>
@@ -331,9 +332,9 @@ document.getElementById('cancelReply').addEventListener('click', () => {
 document.getElementById('commentForm').addEventListener('submit', async event => {
   event.preventDefault();
   const submitButton = event.target.querySelector('button[type="submit"]');
-  const previousLabel = submitButton.innerHTML;
-  submitButton.disabled = true;
-  submitButton.innerHTML = 'Posting...';
+  const message = document.getElementById('commentMessage');
+  clearInlineAlert(message);
+  setButtonLoading(submitButton, true, 'Posting comment...');
   const content = document.getElementById('commentContent').value;
   const parentId = document.getElementById('parentCommentId').value || null;
   const response = await fetch(`/api/tickets/${ticketId}/comments`, {
@@ -341,14 +342,16 @@ document.getElementById('commentForm').addEventListener('submit', async event =>
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({parentId, content})
   });
-  submitButton.disabled = false;
-  submitButton.innerHTML = previousLabel;
+  setButtonLoading(submitButton, false);
   if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    showInlineAlert(message, payload.message || 'Failed to post comment.', 'danger', 'Post Failed');
     return;
   }
   document.getElementById('parentCommentId').value = '';
   document.getElementById('commentContent').value = '';
   document.getElementById('cancelReply').classList.add('d-none');
+  showInlineAlert(message, 'Comment posted successfully.', 'success', 'Comment Added');
   await loadComments();
 });
 

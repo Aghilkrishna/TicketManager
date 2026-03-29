@@ -243,7 +243,7 @@
                                         <textarea id="siteVisitNotes" class="form-control" rows="5" maxlength="2000" placeholder="Add notes about work completed, observations, or next steps"></textarea>
                                     </div>
                                     <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-3">
-                                        <div id="siteVisitMessage" class="small"></div>
+                                        <div id="siteVisitMessage" class="w-100" hidden></div>
                                         <button id="siteVisitSubmit" class="btn btn-outline-primary" type="button">Add Site Visit</button>
                                     </div>
                                 </div>
@@ -262,7 +262,7 @@
                     <button class="btn btn-primary btn-lg" type="submit" th:if="${!currentRoles.contains('ROLE_AGENT')}">Update Ticket</button>
                     <a class="btn btn-outline-secondary btn-lg" th:href="${currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')} ? '/admin/support-tickets' : '/tickets'">Cancel</a>
                 </div>
-                <div id="message" class="small col-12"></div>
+                <div id="message" class="col-12" hidden></div>
             </form>
         </main>
     </div>
@@ -473,9 +473,8 @@ if (agentEditor) {
   document.getElementById('siteVisitSubmit').addEventListener('click', async () => {
     const message = document.getElementById('siteVisitMessage');
     const submitButton = document.getElementById('siteVisitSubmit');
-    message.className = 'small text-muted';
-    message.textContent = 'Capturing current location...';
-    submitButton.disabled = true;
+    clearInlineAlert(message);
+    setButtonLoading(submitButton, true, 'Recording visit...');
     let position;
     try {
       position = await getCurrentPosition();
@@ -483,9 +482,8 @@ if (agentEditor) {
       geoDisplay.dataset.longitude = String(position.coords.longitude);
       geoDisplay.value = formatGeoDisplay(position.coords.latitude, position.coords.longitude);
     } catch (error) {
-      submitButton.disabled = false;
-      message.className = 'small text-danger';
-      message.textContent = error.message;
+      setButtonLoading(submitButton, false);
+      showInlineAlert(message, error.message, 'danger', 'Location Required');
       return;
     }
     const res = await fetch(`/api/tickets/${ticketId}/site-visits`, {
@@ -499,9 +497,8 @@ if (agentEditor) {
       })
     });
     const data = await res.json().catch(() => ({}));
-    submitButton.disabled = false;
-    message.className = 'small ' + (res.ok ? 'text-success' : 'text-danger');
-    message.textContent = res.ok ? 'Site visit recorded.' : (data.message || 'Failed to record site visit.');
+    setButtonLoading(submitButton, false);
+    showInlineAlert(message, res.ok ? 'Site visit recorded.' : (data.message || 'Failed to record site visit.'), res.ok ? 'success' : 'danger', res.ok ? 'Visit Logged' : 'Save Failed');
     if (res.ok) {
       document.getElementById('siteVisitNotes').value = '';
       setDefaultVisitTime();
@@ -520,16 +517,20 @@ document.getElementById('ticketForm').addEventListener('submit', async event => 
   event.preventDefault();
   updateAddressPreview();
   mirrorLocationLink();
+  const message = document.getElementById('message');
+  const button = event.target.querySelector('button[type="submit"]');
+  clearInlineAlert(message);
+  setButtonLoading(button, true, 'Updating ticket...');
   const data = new FormData(event.target);
   const res = await fetch(`/api/tickets/${ticketId}`, {method: 'PATCH', body: data});
   const payload = await res.json().catch(() => ({}));
+  setButtonLoading(button, false);
   if (res.ok) {
+    showAppAlert('Ticket updated successfully.', 'success', 'Ticket Updated');
     window.location.href = `/tickets/view?id=${ticketId}`;
     return;
   }
-  const message = document.getElementById('message');
-  message.className = 'small col-12 text-danger';
-  message.textContent = payload.message || 'Ticket update failed';
+  showInlineAlert(message, payload.message || 'Ticket update failed', 'danger', 'Update Failed');
 });
 
 updateAddressPreview();

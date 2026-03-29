@@ -624,6 +624,18 @@ body {
     border-color: rgba(239, 68, 68, 0.18);
 }
 
+.app-alert-success {
+    border-color: rgba(20, 184, 166, 0.2);
+}
+
+.app-alert-warning {
+    border-color: rgba(245, 158, 11, 0.22);
+}
+
+.app-alert-info {
+    border-color: rgba(15, 108, 189, 0.2);
+}
+
 .app-alert-icon {
     width: 2.4rem;
     height: 2.4rem;
@@ -633,6 +645,21 @@ body {
     background: rgba(239, 68, 68, 0.12);
     color: var(--danger);
     font-size: 1rem;
+}
+
+.app-alert-success .app-alert-icon {
+    background: rgba(20, 184, 166, 0.12);
+    color: var(--accent);
+}
+
+.app-alert-warning .app-alert-icon {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--warning);
+}
+
+.app-alert-info .app-alert-icon {
+    background: rgba(15, 108, 189, 0.12);
+    color: var(--primary);
 }
 
 .app-alert-title {
@@ -655,6 +682,79 @@ body {
     color: #64748b;
     display: grid;
     place-items: center;
+}
+
+.app-inline-alert {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.85rem;
+    align-items: start;
+    margin-top: 1rem;
+    padding: 0.95rem 1rem;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.app-inline-alert[hidden] {
+    display: none;
+}
+
+.app-inline-alert-danger {
+    border-color: rgba(239, 68, 68, 0.18);
+}
+
+.app-inline-alert-success {
+    border-color: rgba(20, 184, 166, 0.2);
+}
+
+.app-inline-alert-warning {
+    border-color: rgba(245, 158, 11, 0.22);
+}
+
+.app-inline-alert-info {
+    border-color: rgba(15, 108, 189, 0.2);
+}
+
+.app-inline-alert-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    font-size: 0.95rem;
+}
+
+.app-inline-alert-danger .app-inline-alert-icon {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--danger);
+}
+
+.app-inline-alert-success .app-inline-alert-icon {
+    background: rgba(20, 184, 166, 0.12);
+    color: var(--accent);
+}
+
+.app-inline-alert-warning .app-inline-alert-icon {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--warning);
+}
+
+.app-inline-alert-info .app-inline-alert-icon {
+    background: rgba(15, 108, 189, 0.12);
+    color: var(--primary);
+}
+
+.app-inline-alert-title {
+    font-weight: 700;
+    margin-bottom: 0.15rem;
+}
+
+.app-inline-alert-text {
+    color: var(--muted);
+    line-height: 1.45;
+    font-size: 0.92rem;
 }
 
 @keyframes appAlertIn {
