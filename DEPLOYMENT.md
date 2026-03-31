@@ -39,7 +39,7 @@ sudo apt install -y docker-compose-plugin
     ```bash
     cp prod.env.example .env
     ```
-3.  Edit the `.env` file with your production secrets (JWT secret, Mail credentials, etc.):
+3.  Edit the `.env` file with your production secrets (JWT secret, Mail credentials, etc.). **Crucially, replace the placeholder database credentials with your own secure values.**
     ```bash
     nano .env
     ```

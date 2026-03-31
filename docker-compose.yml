@@ -5,8 +5,8 @@ services:
     restart: always
     environment:
       POSTGRES_DB: ${DB_NAME:-ticketmanager}
-      POSTGRES_USER: ${DB_USERNAME:-neondb_owner}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-npg_Vwa6ESqm9GHl}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -27,8 +27,8 @@ services:
       DB_HOST: db
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:-ticketmanager}
-      DB_USERNAME: ${DB_USERNAME:-neondb_owner}
-      DB_PASSWORD: ${DB_PASSWORD:-npg_Vwa6ESqm9GHl}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD}
       DB_SSLMODE: disable
       DB_CHANNEL_BINDING: disable
       
