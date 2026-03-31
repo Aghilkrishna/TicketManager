@@ -71,6 +71,12 @@ public class Ticket {
     @Column(length = 150)
     private String customerName;
 
+    @Column(length = 100)
+    private String customerEmail;
+
+    @Column(length = 20)
+    private String customerPhone;
+
     @Column(length = 120)
     private String customerFlat;
 

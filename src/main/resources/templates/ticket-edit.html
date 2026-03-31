@@ -153,9 +153,17 @@
                     <section class="form-card glass-card h-100">
                         <div class="section-title mb-3">Customer Section</div>
                         <div class="row g-3">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label">Customer Name</label>
                                 <input class="form-control" name="customerName" th:value="${ticket.customerName}" maxlength="150">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Email ID</label>
+                                <input class="form-control" name="customerEmail" type="email" th:value="${ticket.customerEmail}" maxlength="100">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Mobile Number</label>
+                                <input class="form-control" name="customerPhone" th:value="${ticket.customerPhone}" maxlength="20">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Flat / House No.</label>
