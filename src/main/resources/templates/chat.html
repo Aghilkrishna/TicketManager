@@ -24,25 +24,19 @@
                         </button>
                     </div>
 
-                    <div class="chat-search-panel">
+                    <div class="chat-search-panel" id="searchPanel" hidden>
                         <div class="chat-search-box">
                             <i class="bi bi-search"></i>
                             <input id="userSearch" class="form-control" placeholder="Search users by name, email or phone">
                         </div>
                     </div>
 
+
                     <div class="chat-sidebar-section">
-                        <div class="chat-sidebar-heading">
+                        <div class="chat-sidebar-heading" id="sidebarHeading">
                             <span>Chats</span>
                         </div>
                         <div id="conversationList" class="conversation-list"></div>
-                    </div>
-
-                    <div class="chat-sidebar-section chat-contacts-section">
-                        <div class="chat-sidebar-heading">
-                            <span>Contacts</span>
-                        </div>
-                        <div id="userResults" class="chat-user-results autosuggest-panel" hidden></div>
                     </div>
                 </section>
 
@@ -55,7 +49,7 @@
                                 <div class="table-subtitle" id="chatSubtitle">Select an existing chat or start a new one.</div>
                             </div>
                         </div>
-                        <div class="chat-header-actions">
+                        <div class="chat-header-actions d-none">
                             <button class="chat-header-btn" type="button" title="Search"><i class="bi bi-search"></i></button>
                             <button class="chat-header-btn" type="button" title="Voice Call"><i class="bi bi-telephone"></i></button>
                             <button class="chat-header-btn" type="button" title="Video Call"><i class="bi bi-camera-video"></i></button>
@@ -131,6 +125,14 @@ function updateChatHeader(name, subtitle) {
   setAvatarElement('chatHeaderAvatar', activeRecipientId, name, 'chat-avatar');
 }
 
+function debounce(func, timeout = 300) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { func.apply(this, args); }, timeout);
+  };
+}
+
 function renderTypingIndicator(username, typing) {
   const box = document.getElementById('chatBox');
   const existing = document.getElementById('typingBubble');
@@ -185,7 +187,7 @@ function appendMessage(msg) {
   const mine = msg.sender === currentUsername;
   const bubbleClass = mine ? 'chat-bubble me' : 'chat-bubble them';
   const rowClass = mine ? 'chat-message-row outgoing' : 'chat-message-row incoming';
-  box.innerHTML += `
+  const markup = `
     <div class="${rowClass}" data-message-id="${msg.id}">
       ${mine ? '' : avatarImage(msg.senderId, msg.sender, 'chat-message-avatar')}
       <div class="${bubbleClass}">
@@ -198,6 +200,7 @@ function appendMessage(msg) {
       </div>
       ${mine ? avatarImage(currentUserId, currentUsername, 'chat-message-avatar mine') : ''}
     </div>`;
+  box.insertAdjacentHTML('beforeend', markup);
   box.scrollTop = box.scrollHeight;
 }
 
@@ -284,26 +287,41 @@ fetch('/api/auth/me').then(r => r.json()).then(async me => {
 });
 
 document.getElementById('newChatToggle').addEventListener('click', () => {
-  document.getElementById('userSearch').focus();
+  const panel = document.getElementById('searchPanel');
+  const input = document.getElementById('userSearch');
+  panel.hidden = !panel.hidden;
+  if (!panel.hidden) {
+    input.focus();
+  } else {
+    input.value = '';
+    document.getElementById('sidebarHeading').innerHTML = '<span>Chats</span>';
+    renderConversationSections(conversations);
+  }
 });
 
 document.getElementById('userSearch').addEventListener('input', debounce(async () => {
   const query = document.getElementById('userSearch').value;
-  const list = document.getElementById('userResults');
+  const list = document.getElementById('conversationList');
+  const heading = document.getElementById('sidebarHeading');
+  
   if (!query || query.trim().length < 2) {
-    list.innerHTML = '';
-    list.hidden = true;
+    heading.innerHTML = '<span>Chats</span>';
+    renderConversationSections(conversations);
     return;
   }
-  list.hidden = false;
+  
+  heading.innerHTML = '<span>Search Results</span>';
   list.innerHTML = '<div class="autosuggest-empty autosuggest-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Searching contacts...</span></div>';
+  
   const res = await fetch('/api/users/search?query=' + encodeURIComponent(query));
   const users = await res.json();
   list.innerHTML = '';
+  
   if (!users.length) {
     list.innerHTML = '<div class="autosuggest-empty">No matching users found.</div>';
     return;
   }
+  
   users.forEach(user => {
     const card = document.createElement('button');
     card.type = 'button';
@@ -323,7 +341,10 @@ document.getElementById('userSearch').addEventListener('input', debounce(async (
       activeConversationName = user.username;
       updateChatHeader(user.username, 'New conversation');
       document.getElementById('chatBox').innerHTML = `<div class="empty-state chat-empty-state"><div class="chat-empty-icon"><i class="bi bi-chat-square-text"></i></div><div class="section-title">${escapeHtml(user.username)}</div><div class="table-subtitle">Send the first message to start this conversation.</div></div>`;
-      list.hidden = true;
+      document.getElementById('searchPanel').hidden = true;
+      document.getElementById('userSearch').value = '';
+      heading.innerHTML = '<span>Chats</span>';
+      renderConversationSections(conversations);
     };
     list.appendChild(card);
   });
@@ -341,23 +362,41 @@ document.getElementById('messageInput').addEventListener('input', () => {
 
 document.getElementById('chatForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const payload = {
-    conversationId: activeConversationId,
-    recipientId: activeRecipientId,
-    content: document.getElementById('messageInput').value
-  };
-  const res = await fetch('/api/chat/messages', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(payload)
-  });
-  const msg = await res.json();
-  activeConversationId = msg.conversationId;
-  appendMessage(msg);
-  emitTyping(false);
-  document.getElementById('typingIndicator').textContent = '';
-  await loadConversations();
-  e.target.reset();
+  const form = e.target;
+  const input = document.getElementById('messageInput');
+  const btn = form.querySelector('button[type="submit"]');
+  const content = input.value.trim();
+  if (!content) return;
+
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>';
+
+  try {
+    const payload = {
+      conversationId: activeConversationId,
+      recipientId: activeRecipientId,
+      content: content
+    };
+    const res = await fetch('/api/chat/messages', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Failed to send message');
+    const msg = await res.json();
+    activeConversationId = msg.conversationId;
+    appendMessage(msg);
+    emitTyping(false);
+    input.value = '';
+    await loadConversations();
+  } catch (err) {
+    console.error(err);
+    alert('Failed to send message. Please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
 });
 
 const socket = new SockJS('/ws');

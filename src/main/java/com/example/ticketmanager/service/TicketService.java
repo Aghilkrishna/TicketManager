@@ -335,6 +335,8 @@ public class TicketService {
         ticket.setParentTicket(request.parentTicketId() == null ? null : getTicket(request.parentTicketId()));
         ticket.setVendorNotes(request.vendorNotes() == null || request.vendorNotes().isBlank() ? null : request.vendorNotes().trim());
         ticket.setCustomerName(request.customerName() == null || request.customerName().isBlank() ? null : request.customerName().trim());
+        ticket.setCustomerEmail(request.customerEmail() == null || request.customerEmail().isBlank() ? null : request.customerEmail().trim());
+        ticket.setCustomerPhone(request.customerPhone() == null || request.customerPhone().isBlank() ? null : request.customerPhone().trim());
         ticket.setCustomerFlat(request.customerFlat() == null || request.customerFlat().isBlank() ? null : request.customerFlat().trim());
         ticket.setCustomerStreet(request.customerStreet() == null || request.customerStreet().isBlank() ? null : request.customerStreet().trim());
         ticket.setCustomerCity(request.customerCity() == null || request.customerCity().isBlank() ? null : request.customerCity().trim());
@@ -481,6 +483,8 @@ public class TicketService {
                 null,
                 null,
                 null,
+                null,
+                null,
                 ticket.getStatus().name(),
                 ticket.getPriority().name(),
                 ticket.getScheduleDate(),
@@ -497,8 +501,18 @@ public class TicketService {
     }
 
     public AuthDtos.TicketSummary toSummary(Ticket ticket, String viewerUsername) {
-        boolean canViewPrice = viewerUsername == null || !userService.hasRole(viewerUsername, "ROLE_AGENT");
+        boolean isAgent = viewerUsername != null && userService.hasRole(viewerUsername, "ROLE_AGENT");
+        boolean canViewPrice = !isAgent;
         boolean vendorRestrictedView = viewerUsername != null && isVendorRestrictedView(ticket, viewerUsername);
+
+        String customerEmail = ticket.getCustomerEmail();
+        String customerPhone = ticket.getCustomerPhone();
+
+        if (isAgent) {
+            customerEmail = maskEmail(customerEmail);
+            customerPhone = maskPhone(customerPhone);
+        }
+
         return new AuthDtos.TicketSummary(
                 ticket.getId(),
                 ticket.getTitle(),
@@ -516,6 +530,8 @@ public class TicketService {
                 ticket.getVendorUser() == null || vendorRestrictedView ? null : ticket.getVendorUser().getPhone(),
                 ticket.getVendorNotes(),
                 ticket.getCustomerName(),
+                customerEmail,
+                customerPhone,
                 ticket.getCustomerFlat(),
                 ticket.getCustomerStreet(),
                 ticket.getCustomerCity(),
@@ -540,6 +556,30 @@ public class TicketService {
                 ticket.getUpdatedAt(),
                 ticket.getAttachments().stream().map(TicketAttachment::getOriginalFileName).toList()
         );
+    }
+
+    private String maskEmail(String email) {
+        if (email == null || email.isBlank() || !email.contains("@")) {
+            return email;
+        }
+        int atIndex = email.indexOf("@");
+        String namePart = email.substring(0, atIndex);
+        String domainPart = email.substring(atIndex);
+        if (namePart.length() <= 2) {
+            return "**" + domainPart;
+        }
+        return namePart.substring(0, 2) + "****" + domainPart;
+    }
+
+    private String maskPhone(String phone) {
+        if (phone == null || phone.isBlank()) {
+            return phone;
+        }
+        String p = phone.trim();
+        if (p.length() <= 4) {
+            return "****";
+        }
+        return p.substring(0, p.length() - 4) + "****";
     }
 
     public List<AuthDtos.TicketSummary> searchVisibleTickets(String username, String query) {
