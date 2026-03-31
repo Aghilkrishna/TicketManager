@@ -7,47 +7,217 @@
 <div class="app-shell">
     <aside th:replace="~{fragments/layout :: sidebar('tickets', 'open')}"></aside>
     <div class="main-panel">
-        <header th:replace="~{fragments/layout :: topbar('Ticket Details', 'Review, discuss, and collaborate on the ticket')}"></header>
+        <header th:replace="~{fragments/layout :: topbar('Ticket Details', 'Review the full ticket context, service requirements, and conversation history')}"></header>
         <main class="content-area">
             <section class="hero-banner glass-card mb-4">
-                <h1 class="h2 fw-bold mb-2" th:text="${ticket.title}">Ticket Title</h1>
-                <p class="mb-0">Ticket #<span id="ticketIdText" th:text="${ticket.id}"></span></p>
+                <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                    <div>
+                        <div class="text-uppercase small opacity-75">Support Ticket</div>
+                        <h1 class="h2 fw-bold mb-2" th:text="${ticket.title}">Ticket Title</h1>
+                        <p class="mb-0">Ticket #<span th:text="${ticket.id}"></span> · Created by <span th:text="${ticket.createdBy}"></span></p>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <span class="status-pill" th:classappend="${' ' + ticket.status}" th:text="${ticket.status}">OPEN</span>
+                        <span class="priority-pill" th:classappend="${' ' + ticket.priority}" th:text="${ticket.priority}">MEDIUM</span>
+                    </div>
+                </div>
             </section>
+
             <div class="row g-4">
-                <div class="col-lg-8">
+                <div class="col-xl-8">
                     <section class="form-card glass-card mb-4">
-                        <div class="section-title mb-3">Description</div>
-                        <p class="mb-0" th:text="${ticket.description}"></p>
+                        <div class="section-title mb-3">Ticket Section</div>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <div class="small text-muted text-uppercase mb-1">Ticket ID</div>
+                                <div class="fw-semibold" th:text="${ticket.id}"></div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="small text-muted text-uppercase mb-1">Type of Service</div>
+                                <div class="fw-semibold" th:text="${ticket.serviceTypeLabel != null ? ticket.serviceTypeLabel : 'Not provided'}"></div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="small text-muted text-uppercase mb-1">Schedule Date</div>
+                                <div class="fw-semibold" th:text="${ticket.scheduleDate != null ? ticket.scheduleDate : 'Not scheduled'}"></div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="small text-muted text-uppercase mb-1">Site Visits</div>
+                                <div class="fw-semibold" th:text="${ticket.siteVisits != null ? ticket.siteVisits : 0}"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase mb-1">Created By</div>
+                                <div class="fw-semibold" th:text="${ticket.createdBy}"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase mb-1">Updated By</div>
+                                <div class="fw-semibold" th:text="${ticket.updatedBy != null ? ticket.updatedBy : '-'}"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase mb-1">Created Date</div>
+                                <div class="fw-semibold" th:text="${ticket.createdAt != null ? #temporals.format(ticket.createdAt, 'dd MMM yyyy, hh:mm a') : '-'}"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase mb-1">Updated Date</div>
+                                <div class="fw-semibold" th:text="${ticket.updatedAt != null ? #temporals.format(ticket.updatedAt, 'dd MMM yyyy, hh:mm a') : '-'}"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase mb-1">Parent Ticket</div>
+                                <div class="fw-semibold" th:text="${ticket.parentTicketId != null ? '#'+ticket.parentTicketId+' '+ticket.parentTicketTitle : 'Not linked'}"></div>
+                            </div>
+                            <div class="col-md-6" th:if="${!currentRoles.contains('ROLE_VENDOR')}">
+                                <div class="small text-muted text-uppercase mb-1">Assigned User</div>
+                                <div class="fw-semibold" th:text="${ticket.assignedTo != null ? ticket.assignedTo : 'Unassigned'}"></div>
+                            </div>
+                            <div class="col-12">
+                                <div class="small text-muted text-uppercase mb-2">Description</div>
+                                <div class="p-3 rounded-4 border bg-white" style="white-space: pre-wrap;" th:text="${ticket.description}"></div>
+                            </div>
+                        </div>
                     </section>
+
+                    <section class="form-card glass-card mb-4">
+                        <div class="section-title section-title-icon mb-3"><i class="bi bi-geo-alt"></i><span>Customer Section</span></div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase mb-1">Customer Name</div>
+                                <div class="fw-semibold" th:text="${ticket.customerName != null ? ticket.customerName : 'Not provided'}"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase mb-1">Pincode</div>
+                                <div class="fw-semibold" th:text="${ticket.customerPincode != null ? ticket.customerPincode : '-'}"></div>
+                            </div>
+                            <div class="col-12">
+                                <div class="small text-muted text-uppercase mb-1">Customer Address</div>
+                                <div class="p-3 rounded-4 border bg-white" th:text="${ticket.address != null && !ticket.address.isEmpty() ? ticket.address : 'Not provided'}"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="small text-muted text-uppercase mb-1">Flat / House No.</div>
+                                <div class="fw-semibold" th:text="${ticket.customerFlat != null ? ticket.customerFlat : '-'}"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="small text-muted text-uppercase mb-1">Street / Area</div>
+                                <div class="fw-semibold" th:text="${ticket.customerStreet != null ? ticket.customerStreet : '-'}"></div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="small text-muted text-uppercase mb-1">City</div>
+                                <div class="fw-semibold" th:text="${ticket.customerCity != null ? ticket.customerCity : '-'}"></div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="small text-muted text-uppercase mb-1">State</div>
+                                <div class="fw-semibold" th:text="${ticket.customerState != null ? ticket.customerState : '-'}"></div>
+                            </div>
+                            <div class="col-12">
+                                <div class="small text-muted text-uppercase mb-1">Customer Location</div>
+                                <div class="p-3 rounded-4 border bg-white">
+                                    <a th:if="${ticket.customerLocationLink != null && !ticket.customerLocationLink.isEmpty()}"
+                                       class="external-map-link"
+                                       th:attr="data-url=${ticket.customerLocationLink}"
+                                       href="#"
+                                       target="_blank"
+                                       rel="noopener noreferrer">Open in Google Maps</a>
+                                    <span th:if="${ticket.customerLocationLink == null || ticket.customerLocationLink.isEmpty()}">Not provided</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="form-card glass-card mb-4">
+                        <div class="section-title section-title-icon mb-3"><i class="bi bi-briefcase"></i><span>Service and Vendor Details</span></div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase mb-1">Vendor User</div>
+                                <div class="fw-semibold" th:text="${ticket.vendorName != null ? ticket.vendorName : 'Not linked'}"></div>
+                            </div>
+                            <div class="col-md-6" th:if="${!currentRoles.contains('ROLE_VENDOR')}">
+                                <div class="small text-muted text-uppercase mb-1">Vendor Contact</div>
+                                <div class="fw-semibold" th:text="${ticket.vendorEmail != null ? ticket.vendorEmail + (ticket.vendorPhone != null ? ' · ' + ticket.vendorPhone : '') : 'Not available'}"></div>
+                            </div>
+                            <div class="col-12">
+                                <div class="small text-muted text-uppercase mb-1">Vendor Notes</div>
+                                <div class="p-3 rounded-4 border bg-white" style="white-space: pre-wrap;" th:text="${ticket.vendorNotes != null && !ticket.vendorNotes.isEmpty() ? ticket.vendorNotes : 'No vendor notes added.'}"></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="form-card glass-card mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="section-title section-title-icon"><i class="bi bi-pin-map"></i><span>Site Visit History</span></div>
+                            <div class="small text-muted">Review every recorded site visit, the visiting agent, and the visit notes.</div>
+                        </div>
+                        <div id="siteVisitHistory" class="site-visit-list">
+                            <div class="empty-state">Loading site visit history...</div>
+                        </div>
+                    </section>
+
+                    <section class="form-card glass-card mb-4" th:if="${currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')}">
+                        <div class="section-title mb-3">Price Section</div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="small text-muted text-uppercase mb-1">Pricing Model</div>
+                                <div class="fw-semibold" th:text="${ticket.pricingModelLabel != null ? ticket.pricingModelLabel : 'Not provided'}"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="small text-muted text-uppercase mb-1">Estimated Cost</div>
+                                <div class="fw-semibold" th:text="${ticket.estimatedCost != null ? ticket.estimatedCost : '-'}"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="small text-muted text-uppercase mb-1">Actual Cost</div>
+                                <div class="fw-semibold" th:text="${ticket.actualCost != null ? ticket.actualCost : '-'}"></div>
+                            </div>
+                            <div class="col-12">
+                                <div class="small text-muted text-uppercase mb-1">Additional Notes</div>
+                                <div class="p-3 rounded-4 border bg-white" style="white-space: pre-wrap;" th:text="${ticket.additionalNotes != null && !ticket.additionalNotes.isEmpty() ? ticket.additionalNotes : 'No additional notes added.'}"></div>
+                            </div>
+                        </div>
+                    </section>
+
                     <section class="form-card glass-card">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div class="section-title">Comments</div>
-                            <div class="small text-muted">Threaded collaboration with notifications</div>
+                            <div class="section-title section-title-icon"><i class="bi bi-chat-left-text"></i><span>Comment History</span></div>
+                            <div class="small text-muted" th:text="${currentRoles.contains('ROLE_VENDOR') ? 'Only your comments are visible in this history.' : 'Review the full communication trail and latest ticket updates.'}">Review the full communication trail and latest ticket updates.</div>
                         </div>
                         <form id="commentForm" class="mb-4">
                             <input type="hidden" id="parentCommentId">
-                            <textarea id="commentContent" class="form-control mb-2" rows="3" placeholder="Add a comment or reply" required></textarea>
+                            <textarea id="commentContent" class="form-control mb-2" rows="4" placeholder="Add a comment or update" maxlength="2000" required></textarea>
                             <div class="d-flex gap-2">
                                 <button class="btn btn-primary" type="submit">Post Comment</button>
                                 <button class="btn btn-outline-secondary d-none" type="button" id="cancelReply">Cancel Reply</button>
                             </div>
                         </form>
+                        <div id="commentMessage" hidden></div>
                         <div id="commentThread" class="comment-thread"></div>
                     </section>
                 </div>
-                <div class="col-lg-4">
+
+                <div class="col-xl-4">
                     <section class="form-card glass-card">
-                        <div class="section-title mb-3">Metadata</div>
-                        <div class="vstack gap-3">
-                            <div><strong>Schedule Date</strong><div class="text-muted" th:text="${ticket.scheduleDate}"></div></div>
-                            <div><strong>Status</strong><div class="text-muted" th:text="${ticket.status}"></div></div>
-                            <div><strong>Priority</strong><div class="text-muted" th:text="${ticket.priority}"></div></div>
-                            <div><strong>Assigned User</strong><div class="text-muted" th:text="${ticket.assignedTo}"></div></div>
-                            <div><strong>Service Users</strong><div class="text-muted" th:text="${ticket.serviceUsers}"></div></div>
+                        <div class="section-title mb-3">At a Glance</div>
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="p-3 rounded-4 border bg-white h-100">
+                                    <div class="small text-muted text-uppercase mb-2">Status</div>
+                                    <span class="status-pill" th:classappend="${' ' + ticket.status}" th:text="${ticket.status}">OPEN</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-3 rounded-4 border bg-white h-100">
+                                    <div class="small text-muted text-uppercase mb-2">Priority</div>
+                                    <span class="priority-pill" th:classappend="${' ' + ticket.priority}" th:text="${ticket.priority}">MEDIUM</span>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="p-3 rounded-4 border bg-white">
+                                    <div class="small text-muted text-uppercase mb-2">Attachments</div>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <span class="selected-user-chip" th:each="attachment : ${ticket.attachmentNames}" th:text="${attachment}">file.pdf</span>
+                                        <span class="text-muted" th:if="${#lists.isEmpty(ticket.attachmentNames)}">No attachments uploaded.</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="mt-4 d-flex gap-2">
-                            <a class="btn btn-outline-secondary" href="/tickets">Back</a>
-                            <a class="btn btn-primary" th:if="${currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')}" th:href="@{/tickets/edit(id=${ticket.id})}">Edit Ticket</a>
+                        <div class="mt-4 d-flex gap-2 flex-wrap">
+                            <a class="btn btn-outline-secondary" th:href="${currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')} ? '/admin/support-tickets' : '/tickets'">Back</a>
+                            <a class="btn btn-primary" th:if="${currentFeatures.contains('FEATURE_TICKETS_MANAGE') or currentFeatures.contains('FEATURE_SITE_VISIT_EDIT')}" th:href="@{/tickets/edit(id=${ticket.id})}">Edit Ticket</a>
                         </div>
                     </section>
                 </div>
@@ -56,11 +226,34 @@
     </div>
 </div>
 <script th:src="@{/js/app.js}"></script>
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 <script th:inline="javascript">
 const ticketId = /*[[${ticket.id}]]*/ 0;
+const vendorViewer = /*[[${currentRoles.contains('ROLE_VENDOR')}]]*/ false;
+let commentClient = null;
+let commentLoading = false;
 
 function escapeHtml(value) {
   return (value || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+function normalizeExternalUrl(value) {
+  const trimmed = (value || '').trim();
+  if (!trimmed) {
+    return '#';
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return 'https://' + trimmed.replace(/^\/+/, '');
+}
+
+function avatarMarkup(userId, username, className = 'chat-message-avatar') {
+  if (!userId) {
+    return `<div class="${className}">${escapeHtml((username || '?').trim().charAt(0).toUpperCase())}</div>`;
+  }
+  return `<img class="${className}" src="/api/users/avatar/${userId}" alt="${escapeHtml(username || 'User')}" loading="lazy" decoding="async">`;
 }
 
 function renderComment(comment) {
@@ -68,26 +261,87 @@ function renderComment(comment) {
   return `
     <div class="comment-card" data-comment-id="${comment.id}">
       <div class="d-flex justify-content-between align-items-start gap-3">
-        <div>
+        <div class="d-flex align-items-start gap-3">
+          ${avatarMarkup(comment.authorId, comment.author)}
+          <div>
           <strong>${escapeHtml(comment.author)}</strong>
           <div class="small text-muted">${new Date(comment.createdAt).toLocaleString()}${comment.updatedAt && comment.updatedAt !== comment.createdAt ? ' · edited' : ''}</div>
         </div>
-        <div class="d-flex gap-2">
-          <button class="btn btn-sm btn-outline-secondary" type="button" onclick="replyToComment(${comment.id})">Reply</button>
         </div>
+        ${vendorViewer ? '' : `<button class="btn btn-sm btn-outline-secondary" type="button" onclick="replyToComment(${comment.id})">Reply</button>`}
       </div>
       <div class="mt-3">${escapeHtml(comment.content).replace(/\n/g, '<br>')}</div>
       ${replies ? `<div class="comment-replies">${replies}</div>` : ''}
     </div>`;
 }
 
+function renderSiteVisits(visits) {
+  const container = document.getElementById('siteVisitHistory');
+  container.innerHTML = visits.length ? visits.map((visit, index) => `
+    <article class="site-visit-card">
+      <div class="site-visit-header">
+        <div class="site-visit-identity">
+          <div class="site-visit-icon"><i class="bi bi-person-walking"></i></div>
+          <div class="site-visit-meta">
+            <div class="site-visit-agent">${escapeHtml(visit.agentName || 'Agent')}</div>
+            <div class="site-visit-time"><i class="bi bi-calendar-event"></i><span>${formatVisitDateTime(visit.visitedAt)}</span></div>
+          </div>
+        </div>
+        <div class="site-visit-seq"><i class="bi bi-clock-history"></i><span>Visit #${visits.length - index}</span></div>
+      </div>
+      <div class="site-visit-grid">
+        <div class="site-visit-field">
+          <div class="site-visit-field-label"><i class="bi bi-geo-alt"></i><span>Geo Location</span></div>
+          <div class="site-visit-field-value subtle">
+            ${visit.latitude != null && visit.longitude != null
+              ? `<a href="${buildMapUrl(visit.latitude, visit.longitude)}" target="_blank" rel="noopener noreferrer">Google Maps: ${Number(visit.latitude).toFixed(6)}, ${Number(visit.longitude).toFixed(6)}</a>`
+              : 'Location not available'}
+          </div>
+        </div>
+        <div class="site-visit-field">
+          <div class="site-visit-field-label"><i class="bi bi-hash"></i><span>Coordinates</span></div>
+          <div class="site-visit-field-value subtle">${visit.latitude != null && visit.longitude != null ? `${Number(visit.latitude).toFixed(6)}, ${Number(visit.longitude).toFixed(6)}` : 'Not available'}</div>
+        </div>
+        <div class="site-visit-field full">
+          <div class="site-visit-field-label"><i class="bi bi-journal-text"></i><span>Visit Notes</span></div>
+          <div class="site-visit-field-value subtle">${visit.notes ? escapeHtml(visit.notes).replace(/\n/g, '<br>') : 'No notes added for this visit.'}</div>
+        </div>
+      </div>
+    </article>
+  `).join('') : '<div class="empty-state">No site visits recorded yet.</div>';
+}
+
+function buildMapUrl(latitude, longitude) {
+  return `https://www.google.com/maps?q=${encodeURIComponent(latitude + ',' + longitude)}`;
+}
+
+function formatVisitDateTime(value) {
+  return new Date(value).toLocaleString([], {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
 async function loadComments() {
+  if (commentLoading) {
+    return;
+  }
+  commentLoading = true;
   const res = await fetch(`/api/tickets/${ticketId}/comments`);
   const comments = await res.json();
   document.getElementById('commentThread').innerHTML = comments.length ? comments.map(renderComment).join('') : '<div class="empty-state">No comments yet.</div>';
+  commentLoading = false;
 }
 
-let editingCommentId = null;
+async function loadSiteVisits() {
+  const res = await fetch(`/api/tickets/${ticketId}/site-visits`);
+  const visits = await res.json();
+  renderSiteVisits(visits);
+}
+
 window.replyToComment = (commentId) => {
   document.getElementById('parentCommentId').value = commentId;
   document.getElementById('cancelReply').classList.remove('d-none');
@@ -95,29 +349,56 @@ window.replyToComment = (commentId) => {
 };
 
 document.getElementById('cancelReply').addEventListener('click', () => {
-  editingCommentId = null;
   document.getElementById('parentCommentId').value = '';
   document.getElementById('commentContent').value = '';
   document.getElementById('cancelReply').classList.add('d-none');
 });
 
-document.getElementById('commentForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
+document.getElementById('commentForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const submitButton = event.target.querySelector('button[type="submit"]');
+  const message = document.getElementById('commentMessage');
+  clearInlineAlert(message);
+  setButtonLoading(submitButton, true, 'Posting comment...');
   const content = document.getElementById('commentContent').value;
   const parentId = document.getElementById('parentCommentId').value || null;
-  await fetch(`/api/tickets/${ticketId}/comments`, {
+  const response = await fetch(`/api/tickets/${ticketId}/comments`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({parentId, content})
   });
-  editingCommentId = null;
+  setButtonLoading(submitButton, false);
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    showInlineAlert(message, payload.message || 'Failed to post comment.', 'danger', 'Post Failed');
+    return;
+  }
   document.getElementById('parentCommentId').value = '';
   document.getElementById('commentContent').value = '';
   document.getElementById('cancelReply').classList.add('d-none');
+  showInlineAlert(message, 'Comment posted successfully.', 'success', 'Comment Added');
   await loadComments();
 });
 
+document.querySelectorAll('.external-map-link').forEach(link => {
+  link.href = normalizeExternalUrl(link.dataset.url);
+});
+
+if (typeof SockJS !== 'undefined' && typeof Stomp !== 'undefined') {
+  const socket = new SockJS('/ws');
+  commentClient = Stomp.over(socket);
+  commentClient.connect({}, () => {
+    commentClient.subscribe('/user/queue/ticket-comments', async ({body}) => {
+      const event = JSON.parse(body);
+      if (event.ticketId === ticketId) {
+        await loadComments();
+      }
+    });
+  });
+}
+
 loadComments();
+loadSiteVisits();
 </script>
 </body>
 </html>

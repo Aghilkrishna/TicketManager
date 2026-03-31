@@ -12,6 +12,6 @@ public record AppProperties(
     public record Jwt(String secret, long expiration) {
     }
 
-    public record Mail(boolean enabled) {
+    public record Mail(boolean enabled, String fromAddress, String fromName) {
     }
 }

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/layout :: head('Page Not Found')}"></th:block>
+</head>
+<body>
+<div class="auth-wrap error-wrap">
+    <section class="auth-banner">
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="brand-mark">TM</div>
+            <div>
+                <div class="fw-bold" style="font-size: 1.8rem; line-height: 1.1;">Ticket Manager</div>
+                <div style="font-size: 0.88rem; opacity: 0.78;">Secure account access and support operations</div>
+            </div>
+        </div>
+        <span class="banner-chip"><i class="bi bi-signpost-split me-2"></i>Route Not Found</span>
+        <h1 class="display-5 fw-bold">The page you asked for is not available.</h1>
+        <p class="lead mt-3">The link may be outdated, the address may be incorrect, or the page may have been moved.</p>
+    </section>
+    <section class="d-flex align-items-center justify-content-center">
+        <div class="auth-panel">
+            <div class="error-code">404</div>
+            <h2 class="fw-bold mb-2">Page Not Found</h2>
+            <p class="text-muted mb-4">We could not find the page for <span th:text="${path != null ? path : 'this request'}">this request</span>.</p>
+            <div class="d-flex gap-2 flex-wrap">
+                <a class="btn btn-primary btn-lg" href="/dashboard">Go to Dashboard</a>
+                <a class="btn btn-outline-secondary btn-lg" href="/login">Back to Login</a>
+            </div>
+        </div>
+    </section>
+</div>
+</body>
+</html>

@@ -10,45 +10,74 @@
         <header th:replace="~{fragments/layout :: topbar('Realtime Chat', '')}"></header>
         <main class="content-area">
             <div class="chat-layout">
-                <section class="search-results-card glass-card">
-                    <div class="chat-sidebar-section">
-                        <div class="chat-sidebar-heading">
-                            <span>Start New Chat</span>
+                <section class="chat-sidebar-card glass-card">
+                    <div class="chat-sidebar-top">
+                        <div class="chat-profile-pill">
+                            <div class="chat-avatar chat-avatar-lg" id="sidebarCurrentUserAvatar">U</div>
+                            <div>
+                                <div class="section-title" id="sidebarCurrentUserName">Chat</div>
+                                <div class="table-subtitle">Direct messages</div>
+                            </div>
                         </div>
-                        <input id="userSearch" class="form-control mb-2" placeholder="Search by name, email or phone">
-                        <div id="userResults" class="vstack gap-2"></div>
+                        <button class="chat-action-btn" type="button" id="newChatToggle" title="New chat">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                    </div>
+
+                    <div class="chat-search-panel">
+                        <div class="chat-search-box">
+                            <i class="bi bi-search"></i>
+                            <input id="userSearch" class="form-control" placeholder="Search users by name, email or phone">
+                        </div>
                     </div>
 
                     <div class="chat-sidebar-section">
                         <div class="chat-sidebar-heading">
                             <span>Chats</span>
-                            <span class="small text-muted" id="chatCount">0</span>
                         </div>
-                        <input id="conversationSearch" class="form-control mb-3" placeholder="Search existing chats">
                         <div id="conversationList" class="conversation-list"></div>
+                    </div>
+
+                    <div class="chat-sidebar-section chat-contacts-section">
+                        <div class="chat-sidebar-heading">
+                            <span>Contacts</span>
+                        </div>
+                        <div id="userResults" class="chat-user-results autosuggest-panel" hidden></div>
                     </div>
                 </section>
 
                 <section class="chat-card glass-card">
                     <div class="chat-header">
-                        <div class="chat-header-meta">
-                            <div class="section-title" id="chatTitle">Conversation</div>
-                            <div class="table-subtitle" id="chatSubtitle">Select an existing chat or start a new one.</div>
+                        <div class="chat-contact">
+                            <div class="chat-avatar" id="chatHeaderAvatar">C</div>
+                            <div class="chat-header-meta">
+                                <div class="section-title" id="chatTitle">Conversation</div>
+                                <div class="table-subtitle" id="chatSubtitle">Select an existing chat or start a new one.</div>
+                            </div>
                         </div>
-                        <div class="typing-indicator" id="typingIndicator"></div>
+                        <div class="chat-header-actions">
+                            <button class="chat-header-btn" type="button" title="Search"><i class="bi bi-search"></i></button>
+                            <button class="chat-header-btn" type="button" title="Voice Call"><i class="bi bi-telephone"></i></button>
+                            <button class="chat-header-btn" type="button" title="Video Call"><i class="bi bi-camera-video"></i></button>
+                            <button class="chat-header-btn" type="button" title="Info"><i class="bi bi-three-dots-vertical"></i></button>
+                        </div>
                     </div>
 
                     <div id="chatBox" class="chat-messages">
-                        <div class="empty-state">Select a conversation from the sidebar to see the chat history.</div>
+                        <div class="empty-state chat-empty-state">
+                            <div class="chat-empty-icon"><i class="bi bi-chat-dots"></i></div>
+                            <div class="section-title">Select a conversation</div>
+                            <div class="table-subtitle">Choose a chat from the left panel or search for a contact to start messaging.</div>
+                        </div>
                     </div>
 
                     <div id="emojiBar" class="emoji-bar d-none"></div>
 
-                    <form id="chatForm" class="row g-2 mt-3">
-                        <div class="col-md-7"><input id="messageInput" class="form-control" placeholder="Type a message" required></div>
-                        <div class="col-md-2"><input id="ticketIdInput" class="form-control" placeholder="Ticket ID"></div>
-                        <div class="col-md-1"><button class="btn btn-outline-secondary w-100" id="emojiToggle" type="button" title="Emoji">😊</button></div>
-                        <div class="col-md-2"><button class="btn btn-success w-100" type="submit">Send</button></div>
+                    <form id="chatForm" class="chat-composer">
+                        <button class="composer-icon" id="emojiToggle" type="button" title="Emoji"><i class="bi bi-emoji-smile"></i></button>
+                        <input id="messageInput" class="form-control composer-input" placeholder="Type your message" required>
+                        <button class="composer-icon" type="button" title="Attach file"><i class="bi bi-paperclip"></i></button>
+                        <button class="btn btn-primary composer-send" type="submit"><i class="bi bi-send"></i></button>
                     </form>
                 </section>
             </div>
@@ -63,10 +92,80 @@ let activeRecipientId = null;
 let activeConversationId = null;
 let activeConversationName = null;
 let currentUsername = null;
+let currentUserId = null;
 let conversations = [];
 let stompClient = null;
 let typingTimeout = null;
+let remoteTypingTimeout = null;
+let activeTypingUser = null;
 const EMOJIS = ['😀', '😂', '😊', '😍', '👍', '🙏', '🔥', '🎉', '✅', '💬', '🚀', '😎'];
+
+function initials(value) {
+  return (value || '?').trim().charAt(0).toUpperCase();
+}
+
+function avatarUrl(userId) {
+  return userId ? `/api/users/avatar/${userId}` : '';
+}
+
+function avatarImage(userId, name, className) {
+  const fallback = initials(name);
+  if (!userId) {
+    return `<div class="${className}">${fallback}</div>`;
+  }
+  return `<img class="${className}" src="${avatarUrl(userId)}" alt="${escapeHtml(name || 'User')}" loading="lazy" decoding="async">`;
+}
+
+function setAvatarElement(elementId, userId, name, className) {
+  const element = document.getElementById(elementId);
+  if (!element) {
+    return;
+  }
+  const markup = avatarImage(userId, name, className);
+  element.outerHTML = markup.replace(/^<(img|div)\b/, `<$1 id="${elementId}"`);
+}
+
+function updateChatHeader(name, subtitle) {
+  document.getElementById('chatTitle').textContent = name;
+  document.getElementById('chatSubtitle').textContent = subtitle;
+  setAvatarElement('chatHeaderAvatar', activeRecipientId, name, 'chat-avatar');
+}
+
+function renderTypingIndicator(username, typing) {
+  const box = document.getElementById('chatBox');
+  const existing = document.getElementById('typingBubble');
+  if (!typing || !username) {
+    window.clearTimeout(remoteTypingTimeout);
+    activeTypingUser = null;
+    if (existing) existing.remove();
+    return;
+  }
+  activeTypingUser = username;
+  if (box.querySelector('.empty-state')) box.innerHTML = '';
+  if (!existing) {
+    box.insertAdjacentHTML('beforeend', `
+      <div class="chat-message-row incoming typing-row" id="typingBubble">
+        <div class="chat-message-avatar" id="typingAvatar">${initials(username)}</div>
+        <div class="chat-bubble them typing-bubble">
+          <div class="typing-pill">
+            <span class="typing-dots">
+              <span></span><span></span><span></span>
+            </span>
+          </div>
+        </div>
+      </div>`);
+  } else {
+    const avatar = document.getElementById('typingAvatar');
+    if (avatar) avatar.textContent = initials(username);
+  }
+  window.clearTimeout(remoteTypingTimeout);
+  remoteTypingTimeout = window.setTimeout(() => {
+    if (activeTypingUser === username) {
+      renderTypingIndicator('', false);
+    }
+  }, 2000);
+  box.scrollTop = box.scrollHeight;
+}
 
 function deliveryLabel(status) {
   switch (status) {
@@ -85,28 +184,41 @@ function appendMessage(msg) {
   if (box.querySelector('.empty-state')) box.innerHTML = '';
   const mine = msg.sender === currentUsername;
   const bubbleClass = mine ? 'chat-bubble me' : 'chat-bubble them';
+  const rowClass = mine ? 'chat-message-row outgoing' : 'chat-message-row incoming';
   box.innerHTML += `
-    <div class="${bubbleClass}" data-message-id="${msg.id}">
-      <strong>${escapeHtml(msg.sender)}</strong>
-      <div>${escapeHtml(msg.content).replace(/\n/g, '<br>')}</div>
-      ${msg.ticketId ? `<div class="mt-2"><span class="badge text-bg-info">Ticket #${msg.ticketId}</span></div>` : ''}
-      <div class="message-meta">
-        <span>${new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</span>
-        <span class="message-status">${mine ? deliveryLabel(msg.deliveryStatus) : ''}</span>
+    <div class="${rowClass}" data-message-id="${msg.id}">
+      ${mine ? '' : avatarImage(msg.senderId, msg.sender, 'chat-message-avatar')}
+      <div class="${bubbleClass}">
+        <div>${escapeHtml(msg.content).replace(/\n/g, '<br>')}</div>
+        ${msg.ticketId ? `<div class="mt-2"><span class="badge text-bg-info">Ticket #${msg.ticketId}</span></div>` : ''}
+        <div class="message-meta">
+          <span>${new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</span>
+          <span class="message-status">${mine ? deliveryLabel(msg.deliveryStatus) : ''}</span>
+        </div>
       </div>
+      ${mine ? avatarImage(currentUserId, currentUsername, 'chat-message-avatar mine') : ''}
     </div>`;
   box.scrollTop = box.scrollHeight;
 }
 
 function conversationCard(item) {
+  const preview = item.lastMessage ? escapeHtml(item.lastMessage) : 'No messages yet';
+  const timestamp = item.lastMessageAt
+    ? new Date(item.lastMessageAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
+    : '';
   return `
     <button type="button" class="conversation-item ${item.id === activeConversationId ? 'active' : ''}" data-id="${item.id}" data-other-id="${item.otherUserId}" data-other-name="${escapeHtml(item.otherUsername)}">
-      <div class="conversation-meta">
-        <strong>${escapeHtml(item.otherUsername)}</strong>
-        <small class="text-muted">${item.lastMessageAt ? new Date(item.lastMessageAt).toLocaleDateString() : ''}</small>
+      ${avatarImage(item.otherUserId, item.otherUsername, 'chat-avatar')}
+      <div class="conversation-body">
+        <div class="conversation-meta">
+          <strong class="conversation-name">${escapeHtml(item.otherUsername)}</strong>
+          <span class="conversation-time">${timestamp}</span>
+        </div>
+        <div class="conversation-preview">${preview}</div>
       </div>
-      <div class="small text-muted conversation-preview mt-1">${escapeHtml(item.lastMessage || 'No messages yet')}</div>
-      <div class="mt-2">${item.unreadCount ? `<span class="unread-badge">${item.unreadCount}</span>` : ''}</div>
+      <div class="conversation-side">
+        ${item.unreadCount ? `<span class="unread-badge">${item.unreadCount}</span>` : '<span class="conversation-dot"></span>'}
+      </div>
     </button>`;
 }
 
@@ -115,16 +227,14 @@ function bindConversationClicks(root) {
     activeConversationId = Number(button.dataset.id);
     activeRecipientId = Number(button.dataset.otherId);
     activeConversationName = button.dataset.otherName;
-    document.getElementById('chatTitle').textContent = activeConversationName;
-    document.getElementById('chatSubtitle').textContent = 'Messages update in realtime.';
+    updateChatHeader(activeConversationName, 'Messages update in realtime.');
     await loadConversation(activeConversationId);
-    await loadConversations(document.getElementById('conversationSearch').value);
+    await loadConversations();
   }));
 }
 
 function renderConversationSections(items) {
   const root = document.getElementById('conversationList');
-  document.getElementById('chatCount').textContent = items.length;
   root.innerHTML = items.length ? items.map(conversationCard).join('') : '<div class="empty-state">No chats yet.</div>';
   bindConversationClicks(root);
 }
@@ -164,39 +274,60 @@ function populateEmojiBar() {
 }
 
 fetch('/api/auth/me').then(r => r.json()).then(async me => {
+  currentUserId = me.id;
   currentUsername = me.username;
+  document.getElementById('sidebarCurrentUserName').textContent = me.username;
+  setAvatarElement('sidebarCurrentUserAvatar', me.id, me.username, 'chat-avatar chat-avatar-lg');
+  updateChatHeader('Conversation', 'Select an existing chat or start a new one.');
   populateEmojiBar();
   await loadConversations();
 });
 
-document.getElementById('conversationSearch').addEventListener('input', e => loadConversations(e.target.value));
+document.getElementById('newChatToggle').addEventListener('click', () => {
+  document.getElementById('userSearch').focus();
+});
 
-document.getElementById('userSearch').addEventListener('input', async () => {
+document.getElementById('userSearch').addEventListener('input', debounce(async () => {
   const query = document.getElementById('userSearch').value;
   const list = document.getElementById('userResults');
-  if (!query) {
+  if (!query || query.trim().length < 2) {
     list.innerHTML = '';
+    list.hidden = true;
     return;
   }
+  list.hidden = false;
+  list.innerHTML = '<div class="autosuggest-empty autosuggest-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Searching contacts...</span></div>';
   const res = await fetch('/api/users/search?query=' + encodeURIComponent(query));
   const users = await res.json();
   list.innerHTML = '';
+  if (!users.length) {
+    list.innerHTML = '<div class="autosuggest-empty">No matching users found.</div>';
+    return;
+  }
   users.forEach(user => {
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = 'btn btn-outline-secondary text-start';
-    card.innerHTML = `<strong>${escapeHtml(user.username)}</strong><div class="small text-muted">${escapeHtml(user.email)}</div>`;
+    card.className = 'autosuggest-item';
+    card.innerHTML = `
+      ${avatarImage(user.id, user.username, 'autosuggest-avatar')}
+      <div class="autosuggest-body">
+        <div class="autosuggest-title-row">
+          <strong class="autosuggest-title">${escapeHtml(user.username)}</strong>
+        </div>
+        <div class="autosuggest-subtitle">Start a new conversation</div>
+      </div>
+      <span class="autosuggest-action" aria-hidden="true"><i class="bi bi-chat-square-text"></i></span>`;
     card.onclick = () => {
       activeRecipientId = user.id;
       activeConversationId = null;
       activeConversationName = user.username;
-      document.getElementById('chatTitle').textContent = user.username;
-      document.getElementById('chatSubtitle').textContent = 'New conversation';
-      document.getElementById('chatBox').innerHTML = `<div class="empty-state">Start chatting with ${escapeHtml(user.username)}.</div>`;
+      updateChatHeader(user.username, 'New conversation');
+      document.getElementById('chatBox').innerHTML = `<div class="empty-state chat-empty-state"><div class="chat-empty-icon"><i class="bi bi-chat-square-text"></i></div><div class="section-title">${escapeHtml(user.username)}</div><div class="table-subtitle">Send the first message to start this conversation.</div></div>`;
+      list.hidden = true;
     };
     list.appendChild(card);
   });
-});
+}, 220));
 
 document.getElementById('emojiToggle').addEventListener('click', () => {
   document.getElementById('emojiBar').classList.toggle('d-none');
@@ -213,7 +344,6 @@ document.getElementById('chatForm').addEventListener('submit', async (e) => {
   const payload = {
     conversationId: activeConversationId,
     recipientId: activeRecipientId,
-    ticketId: document.getElementById('ticketIdInput').value || null,
     content: document.getElementById('messageInput').value
   };
   const res = await fetch('/api/chat/messages', {
@@ -226,7 +356,7 @@ document.getElementById('chatForm').addEventListener('submit', async (e) => {
   appendMessage(msg);
   emitTyping(false);
   document.getElementById('typingIndicator').textContent = '';
-  await loadConversations(document.getElementById('conversationSearch').value);
+  await loadConversations();
   e.target.reset();
 });
 
@@ -237,10 +367,10 @@ stompClient.connect({}, () => {
     const msg = JSON.parse(body);
     if (activeConversationId === msg.conversationId) {
       appendMessage(msg);
-      document.getElementById('typingIndicator').textContent = '';
+      renderTypingIndicator('', false);
       await loadConversation(msg.conversationId);
     }
-    await loadConversations(document.getElementById('conversationSearch').value);
+    await loadConversations();
   });
 
   stompClient.subscribe('/user/queue/chat-status', ({body}) => {
@@ -252,7 +382,7 @@ stompClient.connect({}, () => {
   stompClient.subscribe('/user/queue/chat-typing', ({body}) => {
     const event = JSON.parse(body);
     if ((activeConversationId && event.conversationId === activeConversationId) || (!activeConversationId && event.recipientId === activeRecipientId)) {
-      document.getElementById('typingIndicator').textContent = event.typing ? `${event.username} is typing...` : '';
+      renderTypingIndicator(event.username, event.typing);
     }
   });
 });

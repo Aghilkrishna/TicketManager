@@ -11,10 +11,16 @@
         <main class="content-area">
             <section class="hero-banner glass-card mb-4">
                 <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-start">
-                    <div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div>
+                            <img th:if="${profile.profileImageUploaded}" th:src="@{/api/users/profile/picture}" alt="Profile picture" class="rounded-circle border" style="width: 72px; height: 72px; object-fit: cover;">
+                            <div th:if="${!profile.profileImageUploaded}" class="rounded-circle border d-flex align-items-center justify-content-center fw-semibold bg-light text-dark" style="width: 72px; height: 72px;" th:text="${profile.firstName != null && !profile.firstName.isBlank() ? #strings.substring(profile.firstName,0,1).toUpperCase() : #strings.substring(profile.username,0,1).toUpperCase()}">U</div>
+                        </div>
+                        <div>
                         <div class="text-uppercase small opacity-75">Overview</div>
-                        <h1 class="display-6 fw-bold mb-2">Welcome back, <span th:text="${profile.username}"></span></h1>
+                        <h1 class="display-6 fw-bold mb-2">Welcome back, <span th:text="${profile.firstName != null && !profile.firstName.isBlank() ? profile.firstName : profile.username}"></span></h1>
                         <p class="mb-0">Monitor open workload, track progress, and react to service updates from a single dashboard.</p>
+                        </div>
                     </div>
                     <div class="metric-trend"><i class="bi bi-activity"></i> Realtime operations</div>
                 </div>

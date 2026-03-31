@@ -13,9 +13,9 @@
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
                     <div>
                         <div class="section-title" th:text="${ticketPageTitle}">My Open Tickets</div>
-                        <div class="table-subtitle">Search, sort, and navigate your assigned tickets.</div>
+                        <div class="table-subtitle" th:text="${ticketSubtitle}">Search, sort, and navigate your assigned tickets.</div>
                     </div>
-                    <a class="btn btn-primary btn-lg" href="/tickets/create"><i class="bi bi-plus-circle me-2"></i>Create Ticket</a>
+                    <a class="btn btn-primary btn-lg" th:if="${currentFeatures.contains('FEATURE_TICKETS_MANAGE')}" href="/tickets/create"><i class="bi bi-plus-circle me-2"></i>Create Ticket</a>
                 </div>
                 <div class="toolbar-grid">
                     <input id="search" class="form-control" placeholder="Search by ID, title, status, priority, assigned user">
@@ -30,6 +30,8 @@
                     <select id="sortBy" class="form-select">
                         <option value="id">Ticket ID</option>
                         <option value="title">Title</option>
+                        <option value="serviceType">Service Type</option>
+                        <option value="createdBy">Created By</option>
                         <option value="status">Status</option>
                         <option value="priority">Priority</option>
                         <option value="updatedAt" selected>Last Updated</option>
@@ -47,6 +49,8 @@
                             <th>S.No</th>
                             <th>Ticket ID</th>
                             <th>Title</th>
+                            <th>Type</th>
+                            <th>Created By</th>
                             <th>Description</th>
                             <th>Status</th>
                             <th>Priority</th>
@@ -69,7 +73,8 @@
 <script th:src="@{/js/app.js}"></script>
 <script th:inline="javascript">
 const forcedStatus = /*[[${forcedStatus}]]*/ 'OPEN';
-const canEditTickets = /*[[${currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')}]]*/ false;
+const canEditTickets = /*[[${currentFeatures.contains('FEATURE_TICKETS_MANAGE')}]]*/ false;
+const assignedOnly = /*[[${assignedOnly}]]*/ true;
 let currentPage = 0;
 let pageSize = 10;
 
@@ -98,7 +103,7 @@ function renderPagination(data) {
 
 async function loadTickets() {
   const params = new URLSearchParams({
-    assignedOnly: 'true',
+    assignedOnly: String(assignedOnly),
     page: String(currentPage),
     size: String(pageSize),
     search: document.getElementById('search').value,
@@ -121,6 +126,8 @@ async function loadTickets() {
         <td>${currentPage * pageSize + index + 1}</td>
         <td>#${ticket.id}</td>
         <td><a class="fw-semibold text-decoration-none" href="/tickets/view?id=${ticket.id}">${ticket.title}</a></td>
+        <td>${ticket.serviceTypeLabel || '-'}</td>
+        <td>${ticket.createdBy || '-'}</td>
         <td><div class="text-muted small">${ticket.description.slice(0, 100)}</div></td>
         <td><span class="status-pill ${ticket.status}">${ticket.status}</span></td>
         <td><span class="priority-pill ${ticket.priority}">${ticket.priority}</span></td>

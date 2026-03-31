@@ -1,38 +1,38 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <th:block th:replace="~{fragments/layout :: head('Admin Dashboard')}"></th:block>
+    <th:block th:replace="~{fragments/layout :: head('All Support Tickets')}"></th:block>
 </head>
 <body>
 <div class="app-shell">
-    <aside th:replace="~{fragments/layout :: sidebar('admin', '')}"></aside>
+    <aside th:replace="~{fragments/layout :: sidebar('admin', 'support-tickets')}"></aside>
     <div class="main-panel">
-        <header th:replace="~{fragments/layout :: topbar('Admin Dashboard', 'Global reporting and administrative oversight')}"></header>
+        <header th:replace="~{fragments/layout :: topbar('All Support Tickets', 'Review every support ticket across the platform')}"></header>
         <main class="content-area">
             <section class="hero-banner glass-card mb-4">
-                <h1 class="h2 fw-bold mb-2">Administrative Overview</h1>
-                <p class="mb-0">Track overall system load and high-level usage across the ticket platform.</p>
+                <h1 class="h2 fw-bold mb-2">All Support Tickets</h1>
+                <p class="mb-0">Search, filter, and maintain the full ticket inventory from the admin workspace.</p>
             </section>
             <section class="toolbar-card glass-card mb-4">
                 <div class="toolbar-grid">
                     <input id="adminSearch" class="form-control" placeholder="Search title or description">
                     <select id="adminStatus" class="form-select"><option value="">All status</option><option>OPEN</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>RESOLVED</option><option>CLOSED</option></select>
                     <select id="adminPriority" class="form-select"><option value="">All priority</option><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select>
-                    <select id="adminSortBy" class="form-select"><option value="updatedAt">Last Updated</option><option value="createdAt">Created</option><option value="scheduleDate">Schedule Date</option></select>
+                    <select id="adminSortBy" class="form-select"><option value="updatedAt">Last Updated</option><option value="createdAt">Created</option><option value="scheduleDate">Schedule Date</option><option value="serviceType">Service Type</option><option value="createdBy">Created By</option></select>
                     <select id="adminDirection" class="form-select"><option value="desc">Descending</option><option value="asc">Ascending</option></select>
                     <button id="adminApply" class="btn btn-dark">Apply</button>
                 </div>
             </section>
             <section class="table-card glass-card">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="section-title">All Support Tickets</div>
-<!--                    <pre id="report" class="mb-0 small"></pre>-->
+                    <div class="section-title">Ticket Inventory</div>
                 </div>
+                <div id="adminTicketError" class="alert alert-danger d-none" role="alert"></div>
                 <div class="table-responsive">
                     <table class="table align-middle">
                         <thead>
                         <tr>
-                            <th>S.No</th><th>Title</th><th>Description</th><th>Schedule Date</th><th>Status</th><th>Priority</th><th>Assigned Users</th><th class="text-end">Actions</th>
+                            <th>S.No</th><th>Title</th><th>Type</th><th>Created By</th><th>Description</th><th>Schedule Date</th><th>Status</th><th>Priority</th><th>Assigned Users</th><th class="text-end">Actions</th>
                         </tr>
                         </thead>
                         <tbody id="adminTicketTable"></tbody>
@@ -87,6 +87,17 @@ async function loadAdminTickets() {
     direction: document.getElementById('adminDirection').value
   });
   const res = await fetch('/api/tickets?' + params.toString());
+  const errorBox = document.getElementById('adminTicketError');
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    errorBox.textContent = payload.message || 'Failed to load tickets';
+    errorBox.classList.remove('d-none');
+    document.getElementById('adminTicketTable').innerHTML = '';
+    document.getElementById('adminPaginationSummary').textContent = '';
+    document.getElementById('adminPaginationList').innerHTML = '';
+    return;
+  }
+  errorBox.classList.add('d-none');
   const data = await res.json();
   const table = document.getElementById('adminTicketTable');
   table.innerHTML = '';
@@ -96,6 +107,8 @@ async function loadAdminTickets() {
       <tr>
         <td>${adminPage * adminPageSize + index + 1}</td>
         <td><a class="fw-semibold text-decoration-none" href="/tickets/view?id=${ticket.id}">${ticket.title}</a></td>
+        <td>${ticket.serviceTypeLabel || '-'}</td>
+        <td>${ticket.createdBy || '-'}</td>
         <td><div class="text-muted small">${ticket.description.slice(0, 100)}</div></td>
         <td>${ticket.scheduleDate || '-'}</td>
         <td><span class="status-pill ${ticket.status}">${ticket.status}</span></td>
@@ -110,6 +123,7 @@ async function loadAdminTickets() {
   });
   renderAdminPagination(data);
 }
+
 async function deleteTicket(ticketId) {
   const confirmed = window.confirm(`Delete ticket #${ticketId}?`);
   if (!confirmed) return;
@@ -121,10 +135,12 @@ async function deleteTicket(ticketId) {
   const payload = await res.json().catch(() => ({}));
   window.alert(payload.message || 'Failed to delete ticket');
 }
+
 document.getElementById('adminApply').addEventListener('click', () => {
   adminPage = 0;
   loadAdminTickets();
 });
+
 loadAdminTickets();
 </script>
 </body>

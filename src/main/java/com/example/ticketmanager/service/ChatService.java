@@ -4,6 +4,7 @@ import com.example.ticketmanager.dto.AuthDtos;
 import com.example.ticketmanager.entity.AppUser;
 import com.example.ticketmanager.entity.ChatConversation;
 import com.example.ticketmanager.entity.ChatMessage;
+import com.example.ticketmanager.entity.EmailNotificationAction;
 import com.example.ticketmanager.entity.NotificationType;
 import com.example.ticketmanager.entity.Ticket;
 import com.example.ticketmanager.exception.AppException;
@@ -57,7 +58,7 @@ public class ChatService {
                     messagingTemplate.convertAndSendToUser(sender.getUsername(), "/queue/chat-status",
                             new AuthDtos.ChatStatusResponse(conversation.getId(), saved.getId(), "DELIVERED", user.getUsername()));
                     notificationService.notify(user, NotificationType.CHAT_MESSAGE,
-                            "New chat message from " + sender.getUsername(), "CHAT", conversation.getId());
+                            "New chat message from " + sender.getUsername(), "CHAT", conversation.getId(), EmailNotificationAction.CHAT_MESSAGE);
                 });
         return response;
     }
@@ -80,9 +81,22 @@ public class ChatService {
     @Transactional(readOnly = true)
     public List<AuthDtos.ChatConversationResponse> conversations(String username, String query) {
         AppUser user = userService.getByUsername(username);
-        return new java.util.ArrayList<>(conversationRepository.findAll().stream()
-                .filter(conversation -> conversation.getParticipants().stream().anyMatch(participant -> participant.getId().equals(user.getId())))
-                .map(conversation -> toConversationSummary(conversation, user))
+        List<ChatConversation> conversations = conversationRepository.findAllByParticipantIdWithParticipants(user.getId());
+        List<Long> conversationIds = conversations.stream().map(ChatConversation::getId).toList();
+        java.util.Map<Long, ChatMessage> lastMessageByConversationId = new java.util.HashMap<>();
+        if (!conversationIds.isEmpty()) {
+            messageRepository.findByConversationIdInOrderByCreatedAtDesc(conversationIds).forEach(message ->
+                    lastMessageByConversationId.putIfAbsent(message.getConversation().getId(), message));
+        }
+        java.util.Map<Long, Long> unreadCounts = new java.util.HashMap<>();
+        if (!conversationIds.isEmpty()) {
+            messageRepository.countUnreadByConversationIds(conversationIds, user.getId())
+                    .forEach(row -> unreadCounts.put((Long) row[0], (Long) row[1]));
+        }
+        return new java.util.ArrayList<>(conversations.stream()
+                .map(conversation -> toConversationSummary(conversation, user,
+                        lastMessageByConversationId.get(conversation.getId()),
+                        unreadCounts.getOrDefault(conversation.getId(), 0L)))
                 .filter(conversation -> {
                     if (query == null || query.isBlank()) {
                         return true;
@@ -103,6 +117,7 @@ public class ChatService {
                 .values());
     }
 
+    @Transactional(readOnly = true)
     public void typing(String senderUsername, AuthDtos.ChatTypingEvent event) {
         AppUser sender = userService.getByUsername(senderUsername);
         if (event.conversationId() != null) {
@@ -121,7 +136,7 @@ public class ChatService {
             messagingTemplate.convertAndSendToUser(
                     recipient.getUsername(),
                     "/queue/chat-typing",
-                    new AuthDtos.ChatTypingEvent(null, sender.getId(), sender.getUsername(), event.typing())
+                    new AuthDtos.ChatTypingEvent(null, recipient.getId(), sender.getUsername(), event.typing())
             );
         }
     }
@@ -141,7 +156,7 @@ public class ChatService {
     }
 
     private ChatConversation getConversation(Long id, AppUser user) {
-        ChatConversation conversation = conversationRepository.findById(id)
+        ChatConversation conversation = conversationRepository.findByIdWithParticipants(id)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Conversation not found"));
         boolean member = conversation.getParticipants().stream().anyMatch(participant -> participant.getId().equals(user.getId()));
         if (!member) {
@@ -154,6 +169,7 @@ public class ChatService {
         return new AuthDtos.ChatMessageResponse(
                 message.getId(),
                 message.getConversation().getId(),
+                message.getSender().getId(),
                 message.getSender().getUsername(),
                 message.getContent(),
                 message.getRelatedTicket() == null ? null : message.getRelatedTicket().getId(),
@@ -163,13 +179,14 @@ public class ChatService {
     }
 
     private AuthDtos.ChatConversationResponse toConversationSummary(ChatConversation conversation, AppUser currentUser) {
+        return toConversationSummary(conversation, currentUser, null, 0L);
+    }
+
+    private AuthDtos.ChatConversationResponse toConversationSummary(ChatConversation conversation, AppUser currentUser, ChatMessage lastMessage, long unreadCount) {
         AppUser otherUser = conversation.getParticipants().stream()
                 .filter(participant -> !participant.getId().equals(currentUser.getId()))
                 .findFirst()
                 .orElse(currentUser);
-        List<ChatMessage> messages = messageRepository.findByConversationIdOrderByCreatedAtDesc(conversation.getId());
-        ChatMessage lastMessage = messages.isEmpty() ? null : messages.getFirst();
-        long unreadCount = messageRepository.countByConversationIdAndSenderIdNotAndReadAtIsNull(conversation.getId(), currentUser.getId());
         return new AuthDtos.ChatConversationResponse(
                 conversation.getId(),
                 otherUser.getId(),

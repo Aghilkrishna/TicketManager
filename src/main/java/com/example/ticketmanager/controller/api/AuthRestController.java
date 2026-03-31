@@ -27,9 +27,19 @@ public class AuthRestController {
         return authService.register(request);
     }
 
+    @PostMapping("/vendor/register")
+    public AuthDtos.AuthResponse registerVendor(@Valid @RequestBody AuthDtos.VendorRegisterRequest request) {
+        return authService.registerVendor(request);
+    }
+
     @PostMapping("/login")
     public AuthDtos.AuthResponse login(@Valid @RequestBody AuthDtos.LoginRequest request, HttpServletResponse response) {
         return authService.login(request, response);
+    }
+
+    @PostMapping("/vendor/login")
+    public AuthDtos.AuthResponse vendorLogin(@Valid @RequestBody AuthDtos.LoginRequest request, HttpServletResponse response) {
+        return authService.vendorLogin(request, response);
     }
 
     @PostMapping("/logout")

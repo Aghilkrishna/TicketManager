@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;color:#1f2937;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f7fb;padding:24px 0;">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="640" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border-radius:18px;overflow:hidden;">
+                <tr>
+                    <td style="background:linear-gradient(135deg,#0f766e,#0f6cbd);padding:28px 32px;color:#ffffff;">
+                        <div style="font-size:13px;letter-spacing:.12em;text-transform:uppercase;opacity:.9;">Ticket Manager</div>
+                        <h1 style="margin:10px 0 0;font-size:28px;" th:text="${headline}">Ticket update</h1>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:32px;">
+                        <p style="margin:0 0 16px;font-size:16px;">Hi <span th:text="${userDisplayName}">User</span>,</p>
+                        <p style="margin:0 0 24px;line-height:1.7;font-size:15px;" th:text="${intro}">A ticket was updated.</p>
+                        <p style="margin:0 0 28px;" th:if="${actionUrl != null}">
+                            <a th:href="${actionUrl}" style="display:inline-block;background:#0f6cbd;color:#ffffff;text-decoration:none;padding:14px 24px;border-radius:10px;font-weight:700;" th:text="${actionLabel}">Open Ticket</a>
+                        </p>
+                        <p style="margin:0;font-size:14px;color:#4b5563;">You are receiving this notification because this ticket is associated with your account.</p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

@@ -23,14 +23,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     public static final String AUTH_COOKIE = "TM_TOKEN";
 
     private final JwtService jwtService;
-    private final CustomUserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String token = resolveToken(request);
         if (token != null && jwtService.isValid(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
-            AppUserPrincipal principal = (AppUserPrincipal) userDetailsService.loadUserByUsername(jwtService.extractUsername(token));
+            AppUserPrincipal principal = jwtService.extractPrincipal(token);
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     principal, null, principal.getAuthorities()
             );

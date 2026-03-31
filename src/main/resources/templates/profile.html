@@ -11,10 +11,15 @@
         <main class="content-area">
             <section class="hero-banner glass-card mb-4">
                 <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-3">
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div>
+                            <img id="profileAvatarPreview" th:src="@{/api/users/avatar/{userId}(userId=${profile.id})}" alt="Profile picture" class="rounded-circle border" style="width: 88px; height: 88px; object-fit: cover;" loading="lazy" decoding="async">
+                        </div>
                     <div>
                         <div class="text-uppercase small opacity-75">Account Center</div>
-                        <h1 class="display-6 fw-bold mb-2" th:text="${profile.username}">Username</h1>
+                        <h1 class="display-6 fw-bold mb-2" th:text="${profile.firstName != null && !profile.firstName.isBlank() ? profile.firstName + (profile.lastName != null && !profile.lastName.isBlank() ? ' ' + profile.lastName : '') : profile.username}">Username</h1>
                         <p class="mb-0">Keep your account information accurate and your login credentials secure.</p>
+                    </div>
                     </div>
                     <div class="metric-trend"><i class="bi bi-shield-lock"></i> Secure profile settings</div>
                 </div>
@@ -25,6 +30,14 @@
                     <section class="form-card glass-card h-100">
                         <div class="section-title mb-4">Account Summary</div>
                         <div class="vstack gap-4">
+                            <div>
+                                <div class="small text-muted">First Name</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.firstName != null && !profile.firstName.isEmpty() ? profile.firstName : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted">Last Name</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.lastName != null && !profile.lastName.isEmpty() ? profile.lastName : 'Not provided'}"></div>
+                            </div>
                             <div>
                                 <div class="small text-muted">Username</div>
                                 <div class="fw-semibold mt-1" th:text="${profile.username}"></div>
@@ -38,8 +51,36 @@
                                 <div class="fw-semibold mt-1" th:text="${profile.phone != null && !profile.phone.isEmpty() ? profile.phone : 'Not provided'}"></div>
                             </div>
                             <div>
+                                <div class="small text-muted">Flat</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.flat != null && !profile.flat.isEmpty() ? profile.flat : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted">Building</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.building != null && !profile.building.isEmpty() ? profile.building : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted">Area</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.area != null && !profile.area.isEmpty() ? profile.area : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted">City</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.city != null && !profile.city.isEmpty() ? profile.city : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted">State</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.state != null && !profile.state.isEmpty() ? profile.state : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted">Country</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.country != null && !profile.country.isEmpty() ? profile.country : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted">Pincode</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.pincode != null && !profile.pincode.isEmpty() ? profile.pincode : 'Not provided'}"></div>
+                            </div>
+                            <div>
                                 <div class="small text-muted">Roles</div>
-                                <div class="fw-semibold mt-1" th:text="${profile.roles}"></div>
+                                <div class="fw-semibold mt-1" th:text="${profileRoleLabels}"></div>
                             </div>
                             <div>
                                 <div class="small text-muted">Verification</div>
@@ -52,8 +93,26 @@
                 <div class="col-xl-8">
                     <section class="form-card glass-card">
                         <div class="section-title mb-2">Update Personal Information</div>
-                        <p class="text-muted mb-4">Edit your profile details below. Leave the password field blank if you do not want to change it.</p>
+                        <p class="text-muted mb-4">Edit your profile details below without affecting your login password.</p>
+                        <form id="profileImageForm" class="row g-3 mb-4">
+                            <div class="col-md-8">
+                                <label class="form-label">Profile Picture</label>
+                                <input id="profileImageInput" class="form-control form-control-lg" type="file" accept="image/png,image/jpeg">
+                                <div class="form-text">PNG or JPEG up to 5MB. The image is center-cropped and resized to fit the avatar area.</div>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button class="btn btn-outline-primary btn-lg w-100" type="submit">Upload Picture</button>
+                            </div>
+                        </form>
                         <form id="profileForm" class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name</label>
+                                <input class="form-control form-control-lg" name="firstName" th:value="${profile.firstName}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name</label>
+                                <input class="form-control form-control-lg" name="lastName" th:value="${profile.lastName}">
+                            </div>
                             <div class="col-md-6">
                                 <label class="form-label">Username</label>
                                 <input class="form-control form-control-lg" name="username" th:value="${profile.username}" required>
@@ -67,12 +126,58 @@
                                 <input class="form-control form-control-lg" name="phone" th:value="${profile.phone}">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">New Password</label>
-                                <input class="form-control form-control-lg" type="password" name="password" placeholder="Enter a new password">
+                                <label class="form-label">Flat</label>
+                                <input class="form-control form-control-lg" name="flat" th:value="${profile.flat}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Building</label>
+                                <input class="form-control form-control-lg" name="building" th:value="${profile.building}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Area</label>
+                                <input class="form-control form-control-lg" name="area" th:value="${profile.area}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">City</label>
+                                <input class="form-control form-control-lg" name="city" th:value="${profile.city}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">State</label>
+                                <input class="form-control form-control-lg" name="state" th:value="${profile.state}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Country</label>
+                                <input class="form-control form-control-lg" name="country" th:value="${profile.country}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Pincode</label>
+                                <input class="form-control form-control-lg" name="pincode" th:value="${profile.pincode}">
                             </div>
                             <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-3">
-                                <div id="message" class="small"></div>
+                                <div id="profileMessage" class="small"></div>
                                 <button class="btn btn-primary btn-lg" type="submit">Save Profile Changes</button>
+                            </div>
+                        </form>
+                    </section>
+                    <section class="form-card glass-card mt-4">
+                        <div class="section-title mb-2">Change Password</div>
+                        <p class="text-muted mb-4">Enter your current password and choose a strong new password.</p>
+                        <form id="passwordForm" class="row g-4">
+                            <div class="col-md-4">
+                                <label class="form-label">Current Password</label>
+                                <input class="form-control form-control-lg" type="password" name="currentPassword" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">New Password</label>
+                                <input class="form-control form-control-lg" type="password" name="newPassword" placeholder="Minimum 8 characters" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Confirm New Password</label>
+                                <input class="form-control form-control-lg" type="password" name="confirmPassword" required>
+                            </div>
+                            <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                                <div id="passwordMessage" class="small"></div>
+                                <button class="btn btn-outline-primary btn-lg" type="submit">Update Password</button>
                             </div>
                         </form>
                     </section>
@@ -83,18 +188,98 @@
 </div>
 <script th:src="@{/js/app.js}"></script>
 <script>
+async function cropImageToSquare(file) {
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  const image = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+  const size = Math.min(image.width, image.height);
+  const sx = (image.width - size) / 2;
+  const sy = (image.height - size) / 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const context = canvas.getContext('2d');
+  context.drawImage(image, sx, sy, size, size, 0, 0, 256, 256);
+  return await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 0.92));
+}
+
+document.getElementById('profileImageForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = document.getElementById('profileImageInput');
+  const message = document.getElementById('profileMessage');
+  if (!input.files.length) {
+    showInlineAlert(message, 'Select an image to upload.', 'danger', 'Upload Failed');
+    return;
+  }
+  const button = e.target.querySelector('button[type="submit"]');
+  clearInlineAlert(message);
+  setButtonLoading(button, true, 'Uploading image...');
+  const croppedBlob = await cropImageToSquare(input.files[0]);
+  const formData = new FormData();
+  formData.append('file', croppedBlob, 'profile-picture.png');
+  const res = await fetch('/api/users/profile/picture', {method: 'POST', body: formData});
+  const data = await res.json().catch(() => ({}));
+  setButtonLoading(button, false);
+  showInlineAlert(message, res.ok ? 'Profile picture updated successfully.' : (data.message || 'Profile picture upload failed'), res.ok ? 'success' : 'danger', res.ok ? 'Upload Complete' : 'Upload Failed');
+  if (res.ok) {
+    const avatarUrl = `/api/users/avatar/[[${profile.id}]]?v=${Date.now()}`;
+    const existingImage = document.getElementById('profileAvatarPreview');
+    existingImage.src = avatarUrl;
+    const topbarImage = document.querySelector('.profile-button img');
+    const topbarFallback = document.querySelector('.profile-button span.rounded-circle');
+    if (topbarImage) {
+      topbarImage.src = avatarUrl;
+    } else if (topbarFallback) {
+      topbarFallback.outerHTML = `<img src="${avatarUrl}" alt="Profile" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">`;
+    }
+    input.value = '';
+  }
+});
+
 document.getElementById('profileForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const button = e.target.querySelector('button[type="submit"]');
   const payload = Object.fromEntries(new FormData(e.target).entries());
+  const message = document.getElementById('profileMessage');
+  clearInlineAlert(message);
+  setButtonLoading(button, true, 'Saving profile...');
   const res = await fetch('/api/users/profile', {
     method: 'PATCH',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(payload)
   });
   const data = await res.json().catch(() => ({}));
-  const message = document.getElementById('message');
-  message.className = 'small ' + (res.ok ? 'text-success' : 'text-danger');
-  message.textContent = res.ok ? 'Profile updated successfully.' : (data.message || 'Update failed');
+  setButtonLoading(button, false);
+  showInlineAlert(message, res.ok ? 'Profile updated successfully.' : (data.message || 'Update failed'), res.ok ? 'success' : 'danger', res.ok ? 'Profile Saved' : 'Update Failed');
+});
+
+document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const button = e.target.querySelector('button[type="submit"]');
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+  const message = document.getElementById('passwordMessage');
+  clearInlineAlert(message);
+  setButtonLoading(button, true, 'Updating password...');
+  const res = await fetch('/api/users/profile/password', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json().catch(() => ({}));
+  setButtonLoading(button, false);
+  showInlineAlert(message, res.ok ? 'Password updated successfully.' : (data.message || 'Password update failed'), res.ok ? 'success' : 'danger', res.ok ? 'Password Updated' : 'Update Failed');
+  if (res.ok) {
+    e.target.reset();
+  }
 });
 </script>
 </body>

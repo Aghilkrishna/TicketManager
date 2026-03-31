@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/layout :: head('Role Management')}"></th:block>
+</head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('admin', 'roles')}"></aside>
+    <div class="main-panel">
+        <header th:replace="~{fragments/layout :: topbar('Role Management', 'Create and maintain access roles')}"></header>
+        <main class="content-area">
+            <section class="hero-banner glass-card mb-4">
+                <h1 class="h2 fw-bold mb-2">Role Management</h1>
+                <p class="mb-0">Define role names, descriptions, and activation status for the platform.</p>
+            </section>
+            <section class="form-card glass-card mb-4">
+                <form id="roleForm" class="row g-3">
+                    <input type="hidden" id="roleId">
+                    <div class="col-md-4"><label class="form-label">Role Name</label><input id="roleName" class="form-control" placeholder="Support Lead" required></div>
+                    <div class="col-md-5"><label class="form-label">Description</label><input id="roleDescription" class="form-control" placeholder="Describe the purpose of this role"></div>
+                    <div class="col-md-2 d-flex align-items-end"><div class="form-check"><input id="roleActive" class="form-check-input" type="checkbox" checked><label class="form-check-label" for="roleActive">Active</label></div></div>
+                    <div class="col-md-1 d-flex align-items-end"><button class="btn btn-primary w-100" type="submit">Save</button></div>
+                </form>
+            </section>
+            <section class="table-card glass-card">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <colgroup>
+                            <col style="width: 6%;">
+                            <col style="width: 18%;">
+                            <col style="width: 20%;">
+                            <col style="width: 24%;">
+                            <col style="width: 8%;">
+                            <col style="width: 10%;">
+                            <col style="width: 14%;">
+                        </colgroup>
+                        <thead>
+                        <tr>
+                            <th>S.No</th><th>Role</th><th>Description</th><th>Features</th><th>Users</th><th>Status</th><th class="text-end">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody id="roleTable"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+<script th:src="@{/js/app.js}"></script>
+<script>
+let roles = [];
+let features = [];
+
+function renderFeatureBadges(role) {
+  if (!role.featureLabels || !role.featureLabels.length) {
+    return '<span class="text-muted">No features assigned</span>';
+  }
+  return role.featureLabels
+    .map(label => `<span class="badge rounded-pill text-bg-light border me-1 mb-1">${label}</span>`)
+    .join('');
+}
+
+function resetRoleForm() {
+  document.getElementById('roleId').value = '';
+  document.getElementById('roleName').value = '';
+  document.getElementById('roleDescription').value = '';
+  document.getElementById('roleActive').checked = true;
+}
+
+function renderRoles() {
+  const body = document.getElementById('roleTable');
+  body.innerHTML = '';
+  roles.forEach((role, index) => {
+    body.innerHTML += `
+      <tr>
+        <td>${index + 1}</td>
+        <td>
+          <div class="fw-semibold">${role.label}</div>
+          <div class="text-muted small">${role.name}</div>
+        </td>
+        <td>${role.description || '-'}</td>
+        <td><div style="max-width: 260px;">${renderFeatureBadges(role)}</div></td>
+        <td>${role.userCount}</td>
+        <td>${role.active ? '<span class="badge text-bg-success">Active</span>' : '<span class="badge text-bg-secondary">Inactive</span>'}</td>
+        <td class="text-end text-nowrap">
+          <button class="btn btn-sm btn-outline-primary" type="button" title="Edit role" onclick="editRole(${role.id})"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger" type="button" title="Delete role" onclick="deleteRole(${role.id})"><i class="bi bi-trash"></i></button>
+        </td>
+      </tr>`;
+  });
+}
+
+window.editRole = (roleId) => {
+  const role = roles.find(item => item.id === roleId);
+  if (!role) return;
+  document.getElementById('roleId').value = role.id;
+  document.getElementById('roleName').value = role.name;
+  document.getElementById('roleDescription').value = role.description || '';
+  document.getElementById('roleActive').checked = role.active;
+};
+
+window.deleteRole = async (roleId) => {
+  if (!window.confirm('Delete this role?')) return;
+  const res = await fetch(`/api/admin/roles/${roleId}`, {method: 'DELETE'});
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    window.alert(payload.message || 'Failed to delete role');
+    return;
+  }
+  await loadRoles();
+};
+
+async function loadRoles() {
+  const [rolesRes, featuresRes] = await Promise.all([fetch('/api/admin/roles'), fetch('/api/admin/features')]);
+  roles = await rolesRes.json();
+  features = await featuresRes.json();
+  renderRoles();
+}
+
+document.getElementById('roleForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const roleId = document.getElementById('roleId').value;
+  const method = roleId ? 'PUT' : 'POST';
+  const url = roleId ? `/api/admin/roles/${roleId}` : '/api/admin/roles';
+  const res = await fetch(url, {
+    method,
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      name: document.getElementById('roleName').value,
+      description: document.getElementById('roleDescription').value,
+      active: document.getElementById('roleActive').checked
+    })
+  });
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({}));
+    window.alert(payload.message || 'Failed to save role');
+    return;
+  }
+  resetRoleForm();
+  await loadRoles();
+});
+
+loadRoles();
+</script>
+</body>
+</html>

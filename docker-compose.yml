@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ticketmanager-db
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-ticketmanager}
+      POSTGRES_USER: ${DB_USERNAME:-neondb_owner}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-npg_Vwa6ESqm9GHl}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ticketmanager-app
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "9090:9090"
+    environment:
+      # Database configuration matching the 'db' service
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-ticketmanager}
+      DB_USERNAME: ${DB_USERNAME:-neondb_owner}
+      DB_PASSWORD: ${DB_PASSWORD:-npg_Vwa6ESqm9GHl}
+      DB_SSLMODE: disable
+      DB_CHANNEL_BINDING: disable
+      
+      # App specific environment variables
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:9090}
+      APP_MAIL_ENABLED: ${APP_MAIL_ENABLED:-false}
+      APP_UPLOAD_DIR: /app/uploads
+      
+      # Mail configuration
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-true}
+      
+      # Spring Boot Profile
+      SPRING_PROFILES_ACTIVE: prod
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

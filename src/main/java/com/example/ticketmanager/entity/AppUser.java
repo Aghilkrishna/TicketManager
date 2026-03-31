@@ -40,6 +40,42 @@ public class AppUser {
     @Column(unique = true, length = 30)
     private String phone;
 
+    @Column(length = 80)
+    private String firstName;
+
+    @Column(length = 80)
+    private String lastName;
+
+    @Column(length = 150)
+    private String companyName;
+
+    @Column(length = 120)
+    private String contactPerson;
+
+    @Column(length = 30)
+    private String gstNumber;
+
+    @Column(length = 120)
+    private String flat;
+
+    @Column(length = 120)
+    private String building;
+
+    @Column(length = 120)
+    private String area;
+
+    @Column(length = 80)
+    private String city;
+
+    @Column(length = 80)
+    private String state;
+
+    @Column(length = 80)
+    private String country;
+
+    @Column(length = 20)
+    private String pincode;
+
     @Column(nullable = false)
     private String password;
 
@@ -51,6 +87,12 @@ public class AppUser {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "profile_image", columnDefinition = "BYTEA")
+    private byte[] profileImage;
+
+    @Column(length = 100)
+    private String profileImageContentType;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "user_roles",
