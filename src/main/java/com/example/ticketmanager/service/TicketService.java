@@ -313,6 +313,8 @@ public class TicketService {
         boolean agentActor = userService.hasRole(actor, "ROLE_AGENT");
         if (agentActor && !isCreate) {
             applyAgentSiteVisitUpdate(ticket, request, actor);
+            ticket.setStatus(request.status() == null || request.status().isBlank()
+                    ? ticket.getStatus() : TicketStatus.valueOf(request.status()));
             return;
         }
         ticket.setTitle(request.title());
@@ -324,7 +326,7 @@ public class TicketService {
                 ? null : request.locationLink().trim());
         if (isCreate) {
             ticket.setSiteVisits(0);
-        } else if (agentActor && request.siteVisits() != null) {
+        } else if (request.siteVisits() != null) {
             if (request.siteVisits() < 0) {
                 throw new AppException(HttpStatus.BAD_REQUEST, "Site visits cannot be negative");
             }
@@ -384,6 +386,12 @@ public class TicketService {
 
     private void applyAgentSiteVisitUpdate(Ticket ticket, AuthDtos.TicketRequest request, AppUser actor) {
         ticket.setUpdatedBy(actor);
+        if (request.siteVisits() != null) {
+            if (request.siteVisits() < 0) {
+                throw new AppException(HttpStatus.BAD_REQUEST, "Site visits cannot be negative");
+            }
+            ticket.setSiteVisits(request.siteVisits());
+        }
     }
 
     private void storeFiles(Ticket ticket, MultipartFile[] files) {

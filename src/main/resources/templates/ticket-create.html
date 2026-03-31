@@ -227,20 +227,19 @@ function normalizeParentTicketQuery(value) {
   return (value || '').trim().replace(/^#+/, '').trim();
 }
 
+function truncate(str, n) {
+  return (str.length > n) ? str.slice(0, n - 1) + '&hellip;' : str;
+}
+
 function parentTicketSuggestionMarkup(ticket) {
+  const title = ticket.title || 'Untitled ticket';
   return `
-    <button type="button" class="autosuggest-item" data-id="${ticket.id}">
+    <button type="button" class="autosuggest-item" data-id="${ticket.id}" title="${escapeHtml(title)}">
       <div class="autosuggest-avatar ticket-avatar">#</div>
       <div class="autosuggest-body">
         <div class="autosuggest-title-row">
           <span class="autosuggest-title">#${ticket.id}</span>
-          ${ticket.serviceTypeLabel ? `<span class="autosuggest-badge">${escapeHtml(ticket.serviceTypeLabel)}</span>` : ''}
-          <span class="autosuggest-badge neutral">${escapeHtml(ticket.status || 'Open')}</span>
-        </div>
-        <div class="autosuggest-subtitle">${escapeHtml(ticket.title || 'Untitled ticket')}</div>
-        <div class="autosuggest-meta">
-          ${ticket.customerName ? `<span class="autosuggest-badge neutral"><i class="bi bi-person"></i>${escapeHtml(ticket.customerName)}</span>` : ''}
-          ${ticket.createdBy ? `<span class="autosuggest-badge neutral"><i class="bi bi-person-badge"></i>${escapeHtml(ticket.createdBy)}</span>` : ''}
+          <span class="autosuggest-subtitle ms-2">${truncate(escapeHtml(title), 40)}</span>
         </div>
       </div>
       <span class="autosuggest-action" aria-hidden="true"><i class="bi bi-diagram-3"></i></span>

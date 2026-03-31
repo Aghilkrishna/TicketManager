@@ -88,7 +88,7 @@
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Status</label>
-                                        <select class="form-select" name="status">
+                                        <select class="form-select" name="status" id="ticketStatus">
                                             <option value="OPEN" th:selected="${ticket.status == 'OPEN'}">Open</option>
                                             <option value="IN_PROGRESS" th:selected="${ticket.status == 'IN_PROGRESS'}">In Progress</option>
                                             <option value="ON_HOLD" th:selected="${ticket.status == 'ON_HOLD'}">On Hold</option>
@@ -260,6 +260,7 @@
 
                 <div class="col-12 d-flex gap-2 flex-wrap">
                     <button class="btn btn-primary btn-lg" type="submit" th:if="${!currentRoles.contains('ROLE_AGENT')}">Update Ticket</button>
+                    <button class="btn btn-primary btn-lg" type="submit" th:if="${currentRoles.contains('ROLE_AGENT')}" id="agentUpdateBtn">Update Status</button>
                     <a class="btn btn-outline-secondary btn-lg" th:href="${currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')} ? '/admin/support-tickets' : '/tickets'">Cancel</a>
                 </div>
                 <div id="message" class="col-12" hidden></div>
@@ -272,6 +273,7 @@
 const ticketId = /*[[${ticket.id}]]*/ 0;
 const canAssignUsers = /*[[${currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')}]]*/ false;
 const agentEditor = /*[[${currentRoles.contains('ROLE_AGENT')}]]*/ false;
+const originalTicket = /*[[${ticket}]]*/ {};
 
 function hasRole(user, roleName) {
   return Array.isArray(user.roles) && user.roles.includes(roleName);
@@ -306,20 +308,19 @@ function normalizeParentTicketQuery(value) {
   return (value || '').trim().replace(/^#+/, '').trim();
 }
 
+function truncate(str, n) {
+  return (str.length > n) ? str.slice(0, n - 1) + '&hellip;' : str;
+}
+
 function parentTicketSuggestionMarkup(ticket) {
+  const title = ticket.title || 'Untitled ticket';
   return `
-    <button type="button" class="autosuggest-item" data-id="${ticket.id}">
+    <button type="button" class="autosuggest-item" data-id="${ticket.id}" title="${escapeHtml(title)}">
       <div class="autosuggest-avatar ticket-avatar">#</div>
       <div class="autosuggest-body">
         <div class="autosuggest-title-row">
           <span class="autosuggest-title">#${ticket.id}</span>
-          ${ticket.serviceTypeLabel ? `<span class="autosuggest-badge">${escapeHtml(ticket.serviceTypeLabel)}</span>` : ''}
-          <span class="autosuggest-badge neutral">${escapeHtml(ticket.status || 'Open')}</span>
-        </div>
-        <div class="autosuggest-subtitle">${escapeHtml(ticket.title || 'Untitled ticket')}</div>
-        <div class="autosuggest-meta">
-          ${ticket.customerName ? `<span class="autosuggest-badge neutral"><i class="bi bi-person"></i>${escapeHtml(ticket.customerName)}</span>` : ''}
-          ${ticket.createdBy ? `<span class="autosuggest-badge neutral"><i class="bi bi-person-badge"></i>${escapeHtml(ticket.createdBy)}</span>` : ''}
+          <span class="autosuggest-subtitle ms-2">${truncate(escapeHtml(title), 40)}</span>
         </div>
       </div>
       <span class="autosuggest-action" aria-hidden="true"><i class="bi bi-diagram-3"></i></span>
@@ -375,7 +376,7 @@ async function searchParentTickets(query) {
     return;
   }
   showSuggestionState(target, '<div class="autosuggest-empty autosuggest-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Searching tickets...</span></div>');
-  const res = await fetch('/api/tickets/parent-search?query=' + encodeURIComponent(normalizedQuery) + '&excludeTicketId=' + encodeURIComponent(ticketId));
+  const res = await fetch(`/api/tickets/parent-search?query=${encodeURIComponent(normalizedQuery)}&excludeTicketId=${encodeURIComponent(ticketId)}`);
   const tickets = await res.json();
   showSuggestionState(target, tickets.map(parentTicketSuggestionMarkup).join('') || '<div class="autosuggest-empty">No matching tickets found.</div>', true);
   target.querySelectorAll('button[data-id]').forEach(button => button.addEventListener('click', () => {
@@ -504,6 +505,15 @@ if (agentEditor) {
     if (field.name === 'siteVisits' || field.closest('#siteVisitForm') || field.type === 'hidden') {
       return;
     }
+    if (field.id === 'ticketStatus') {
+      const allowed = ['IN_PROGRESS', 'ON_HOLD', 'RESOLVED'];
+      Array.from(field.options).forEach(opt => {
+        if (!allowed.includes(opt.value) && !opt.selected) {
+           opt.disabled = true;
+        }
+      });
+      return;
+    }
     field.readOnly = true;
     if (field.tagName === 'SELECT' || field.type === 'file' || field.type === 'checkbox' || field.type === 'radio') {
       field.disabled = true;
@@ -585,9 +595,19 @@ document.getElementById('ticketForm').addEventListener('submit', async event => 
   const message = document.getElementById('message');
   const button = event.target.querySelector('button[type="submit"]');
   clearInlineAlert(message);
-  setButtonLoading(button, true, 'Updating ticket...');
-  const data = new FormData(event.target);
-  const res = await fetch(`/api/tickets/${ticketId}`, {method: 'PATCH', body: data});
+  setButtonLoading(button, true, agentEditor ? 'Updating status...' : 'Updating ticket...');
+
+  const formData = new FormData(event.target);
+  if (agentEditor) {
+    // When agent update status, they are only allowed to change status.
+    // However, the backend DTO requires title and description which are read-only for agents.
+    // We append the original values to satisfy validation.
+    formData.set('title', originalTicket.title);
+    formData.set('description', originalTicket.description);
+    formData.set('status', document.getElementById('ticketStatus').value);
+  }
+
+  const res = await fetch(`/api/tickets/${ticketId}`, {method: 'PATCH', body: formData});
   const payload = await res.json().catch(() => ({}));
   setButtonLoading(button, false);
   if (res.ok) {
