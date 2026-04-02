@@ -1,3 +1,37 @@
+The backup folder will be automatically created here:
+**`/opt/ticket_manager_app/backups`** (one level above the `TicketManager` code folder)
+
+### Why is it created there?
+In the `deploy.sh` script, the configuration defines the backup path as:
+```bash
+# From deploy.sh
+BACKUP_DIR="../backups"
+```
+Because you run the scripts from within the `TicketManager` folder, the `../` refers to the parent folder (`/opt/ticket_manager_app`). This ensures that even if you delete the `TicketManager` folder to do a clean clone, your backups remain safe.
+
+### What you will see on your VPS:
+After you run your first deployment, your file structure will look like this:
+
+```text
+/opt/ticket_manager_app/
+├── backups/               <-- Your backups are SAFE here (outside git)
+│   ├── backup_20260402_1539/
+│   │   ├── db_dump.sql
+│   │   ├── uploads_backup.tar.gz
+│   │   └── git_commit.txt
+│   └── latest             <-- A shortcut to the most recent backup
+└── TicketManager/         <-- Your git codebase
+    ├── uploads/           <-- Your live uploaded files
+    ├── deploy.sh
+    ├── rollback.sh
+    └── ...
+```
+
+### Note on Safety:
+Storing backups outside the codebase is a best practice. Even if you run `rm -rf TicketManager` or a `git clean -fdx`, your data backups in `../backups` will not be touched.
+
+---
+
 # Deployment Guide for TicketManager
 
 This guide provides step-by-step instructions to deploy the TicketManager application on a VPS using Docker and Docker Compose.
@@ -129,7 +163,7 @@ The application should now be accessible at `http://your-vps-ip:9090`.
 ### Operational Commands
 
 - **Automated Deployment:** `./deploy.sh` (Includes backup, branch selection, and build)
-- **Emergency Rollback:** `./rollback.sh` (Restores previous backup and code)
+- **Emergency Rollback:** `./rollback.sh` (Restores previous backup and code with interactive confirmation)
 - **Start application:** `./start-app.sh`
 - **Stop application:** `./stop-app.sh`
 - **Restart application:** `./restart-app.sh`
@@ -157,36 +191,15 @@ tar -czvf backup_uploads_$(date +%Y%m%d_%H%M%S).tar.gz ./uploads
 
 ### 3. Image Versioning (Tagging)
 
-Instead of just using `latest`, it's a good practice to tag your working images. Before a new release:
+The `deploy.sh` script automatically tags each successful build with a unique timestamp (e.g., `ticketmanager-app:backup_20240402_1530`) for easy identification and rollback. 
+
+To manually tag an image as stable:
 1.  Check the current image ID: `sudo docker images`
-2.  Tag it as a stable version: `sudo docker tag ticketmanager-app:latest ticketmanager-app:stable_$(date +%Y%m%d)`
+2.  Tag it: `sudo docker tag ticketmanager-app:latest ticketmanager-app:stable_$(date +%Y%m%d)`
 
-### 4. How to Roll Back
+### 4. Automated Backup and Rollback
 
-If the new release has errors, follow these steps to restore the previous working state:
+The project includes built-in automation for managing deployments and safety nets:
 
-#### A. Revert Code Changes
-If using Git, revert to the last stable commit:
-```bash
-git checkout <last_stable_commit_hash>
-```
-
-#### B. Restore the Database (if needed)
-If the new release modified the database schema and caused issues, you might need to restore the backup:
-1.  Stop the application: `sudo docker compose stop app`
-2.  Restore the dump:
-    ```bash
-    cat backup_db_YYYYMMDD_HHMMSS.sql | sudo docker exec -i ticketmanager-db psql -U postgres ticketmanager
-    ```
-
-#### C. Restore Uploads (if needed)
-```bash
-rm -rf ./uploads
-tar -xzvf backup_uploads_YYYYMMDD_HHMMSS.tar.gz
-```
-
-#### D. Restart the Stable Application
-```bash
-sudo docker compose up -d --build
-```
-*Note: This will rebuild the image based on the reverted code. If you tagged a stable image earlier, you can also modify `docker compose.yml` to use `ticketmanager-app:stable_YYYYMMDD` temporarily.*
+- **Automatic Backups:** Every time you run `./deploy.sh`, it creates a full snapshot of your database, uploads, and current code in the `../backups/` directory (outside the git folder).
+- **Interactive Rollback:** The `./rollback.sh` script allows you to selectively restore any component (Code, Uploads, Docker Image, or Database) from the latest backup.

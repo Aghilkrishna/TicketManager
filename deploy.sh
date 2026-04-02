@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-BACKUP_DIR="./backups"
+BACKUP_DIR="../backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 CURRENT_BACKUP="$BACKUP_DIR/backup_$TIMESTAMP"
 
@@ -11,6 +11,14 @@ mkdir -p "$BACKUP_DIR"
 echo "----------------------------------------------------"
 echo "  🚀 Starting Deployment to Production"
 echo "----------------------------------------------------"
+
+# 0. Docker Status Check
+echo "Checking Docker container status..."
+if docker compose ps | grep -q "Up"; then
+    echo "ℹ️  Application is currently running. Proceeding with update..."
+else
+    echo "ℹ️  Application is currently stopped. Starting a fresh deployment..."
+fi
 
 # 1. Branch Selection
 echo "Fetching latest branches from remote..."
@@ -68,8 +76,18 @@ git pull origin "$SELECTED_BRANCH"
 
 # 4. Build and Start
 echo "🏗️ Building and starting containers..."
-# Using --build to ensure code changes are captured
-docker compose up -d --build
+# Using timestamp for easy identification/rollback
+IMAGE_TAG="backup_$TIMESTAMP"
+export APP_IMAGE_TAG="$IMAGE_TAG"
+
+# Build the image with the specific tag
+docker compose build app
+
+# Tag it as latest for general use
+docker tag ticketmanager-app:$IMAGE_TAG ticketmanager-app:latest
+
+# Start with the specific tag
+docker compose up -d
 
 if [ $? -eq 0 ]; then
     echo "----------------------------------------------------"
