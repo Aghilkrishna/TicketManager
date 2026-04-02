@@ -22,6 +22,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: ticketmanager-app
+    image: ${APP_IMAGE_NAME:-ticketmanager-app}:${APP_IMAGE_TAG:-latest}
     restart: always
     depends_on:
       - db
