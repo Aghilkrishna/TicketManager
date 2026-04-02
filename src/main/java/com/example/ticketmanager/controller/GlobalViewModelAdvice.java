@@ -67,7 +67,7 @@ public class GlobalViewModelAdvice {
         if (principal == null) {
             return Set.of();
         }
-        return userService.getFeatureAuthorities(userService.getByUsername(principal.getName()));
+        return userService.getFeatureAuthorities(userService.getByEmail(principal.getName()));
     }
 
     @ModelAttribute("indiaStates")

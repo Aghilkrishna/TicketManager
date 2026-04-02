@@ -52,6 +52,9 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
       MAIL_STARTTLS: ${MAIL_STARTTLS:-true}
+      MAIL_SSL_ENABLE: ${MAIL_SSL_ENABLE:-false}
+      APP_MAIL_FROM_ADDRESS: ${APP_MAIL_FROM_ADDRESS}
+      APP_MAIL_FROM_NAME: ${APP_MAIL_FROM_NAME}
       
       # Spring Boot Profile
       SPRING_PROFILES_ACTIVE: prod

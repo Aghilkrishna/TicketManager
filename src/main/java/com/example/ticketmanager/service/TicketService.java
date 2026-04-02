@@ -56,7 +56,7 @@ public class TicketService {
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_MANAGE')")
     @Transactional
     public AuthDtos.TicketSummary create(String creatorUsername, AuthDtos.TicketRequest request, MultipartFile[] files) {
-        AppUser creator = userService.getByUsername(creatorUsername);
+        AppUser creator = userService.getByEmail(creatorUsername);
         Ticket ticket = new Ticket();
         applyRequest(ticket, request, creator, creatorUsername, true);
         storeFiles(ticket, files);
@@ -70,7 +70,7 @@ public class TicketService {
     @Transactional
     public AuthDtos.TicketSummary update(Long ticketId, String actorUsername, AuthDtos.TicketRequest request, MultipartFile[] files) {
         Ticket ticket = getTicket(ticketId);
-        ensureCanUpdate(ticket, userService.getByUsername(actorUsername));
+        ensureCanUpdate(ticket, userService.getByEmail(actorUsername));
         applyRequest(ticket, request, ticket.getCreatedBy(), actorUsername, false);
         ticket.setUpdatedAt(LocalDateTime.now());
         storeFiles(ticket, files);
@@ -92,7 +92,7 @@ public class TicketService {
     public Page<AuthDtos.TicketSummary> list(String username, boolean adminScope, boolean assignedOnly, String status, String priority,
                                              Long assignedToId, String search, int page, int size,
                                              String sortBy, String direction) {
-        AppUser user = userService.getByUsername(username);
+        AppUser user = userService.getByEmail(username);
         Sort sort = Sort.by("desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC,
                 mapSortProperty(sortBy));
         Pageable pageable = PageRequest.of(page, size, sort);
@@ -114,7 +114,7 @@ public class TicketService {
     public Map<String, Long> metrics(String username, boolean adminScope) {
         Specification<Ticket> scope = Specification.where(null);
         if (!adminScope) {
-            AppUser user = userService.getByUsername(username);
+            AppUser user = userService.getByEmail(username);
             scope = scope.and(scopeForUser(user.getId(), false));
         }
         return Map.of(
@@ -143,7 +143,7 @@ public class TicketService {
         }
         TicketComment comment = new TicketComment();
         comment.setTicket(ticket);
-        comment.setAuthor(userService.getByUsername(username));
+        comment.setAuthor(userService.getByEmail(username));
         comment.setContent(request.content());
         if (request.parentId() != null) {
             TicketComment parent = commentRepository.findById(request.parentId())
@@ -195,7 +195,7 @@ public class TicketService {
     @Transactional
     public AuthDtos.TicketSiteVisitResponse addSiteVisit(Long ticketId, String username, AuthDtos.TicketSiteVisitRequest request) {
         Ticket ticket = getTicket(ticketId);
-        AppUser actor = userService.getByUsername(username);
+        AppUser actor = userService.getByEmail(username);
         if (!userService.hasRole(actor, "ROLE_AGENT")) {
             throw new AppException(HttpStatus.FORBIDDEN, "Only agent users can add site visit history");
         }
@@ -290,7 +290,7 @@ public class TicketService {
     }
 
     private boolean canManageAllTickets(String username) {
-        AppUser user = userService.getByUsername(username);
+        AppUser user = userService.getByEmail(username);
         return user.getRoles().stream().anyMatch(role -> role.isActive()
                 && ("ROLE_ADMIN".equals(role.getName()) || "ROLE_MANAGER".equals(role.getName())));
     }
@@ -308,7 +308,7 @@ public class TicketService {
     }
 
     private void applyRequest(Ticket ticket, AuthDtos.TicketRequest request, AppUser creator, String actorUsername, boolean isCreate) {
-        AppUser actor = userService.getByUsername(actorUsername);
+        AppUser actor = userService.getByEmail(actorUsername);
         boolean vendorActor = userService.hasRole(actor, "ROLE_VENDOR");
         boolean agentActor = userService.hasRole(actor, "ROLE_AGENT");
         if (agentActor && !isCreate) {
@@ -586,7 +586,7 @@ public class TicketService {
         String value = query == null ? "" : query.trim().toLowerCase();
         List<Ticket> tickets = canManageAllTickets(username)
                 ? ticketRepository.findAll()
-                : ticketRepository.findVisibleTicketsForUser(userService.getByUsername(username).getId());
+                : ticketRepository.findVisibleTicketsForUser(userService.getByEmail(username).getId());
         return tickets.stream()
                 .filter(ticket -> value.isBlank()
                         || String.valueOf(ticket.getId()).contains(value)
@@ -607,7 +607,7 @@ public class TicketService {
         Pageable limit = PageRequest.of(0, 8);
         List<Ticket> tickets = canManageAllTickets(username)
                 ? ticketRepository.searchAllParentTicketCandidates(value, excludeTicketId, limit)
-                : ticketRepository.searchVisibleParentTicketCandidates(userService.getByUsername(username).getId(), value, excludeTicketId, limit);
+                : ticketRepository.searchVisibleParentTicketCandidates(userService.getByEmail(username).getId(), value, excludeTicketId, limit);
         return tickets.stream()
                 .map(ticket -> toSummary(ticket, username))
                 .toList();
@@ -619,7 +619,7 @@ public class TicketService {
         }
         TicketComment comment = new TicketComment();
         comment.setTicket(ticket);
-        comment.setAuthor(userService.getByUsername(username));
+        comment.setAuthor(userService.getByEmail(username));
         comment.setContent(commentText.trim());
         commentRepository.save(comment);
     }
@@ -645,7 +645,7 @@ public class TicketService {
     }
 
     private boolean isVendorRestrictedView(Ticket ticket, String username) {
-        AppUser viewer = userService.getByUsername(username);
+        AppUser viewer = userService.getByEmail(username);
         return userService.hasRole(viewer, "ROLE_VENDOR") && ticket.getCreatedBy().getId().equals(viewer.getId());
     }
 

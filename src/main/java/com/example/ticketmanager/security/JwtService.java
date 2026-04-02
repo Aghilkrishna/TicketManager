@@ -54,6 +54,7 @@ public class JwtService {
                 : Set.of();
         return new AppUserPrincipal(
                 claims.get("uid", Long.class),
+                "",
                 claims.getSubject(),
                 "",
                 true,

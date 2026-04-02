@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 public record AppUserPrincipal(
         Long id,
         String username,
+        String email,
         String password,
         boolean enabled,
         Set<String> roleNames
@@ -22,6 +23,7 @@ public record AppUserPrincipal(
         this(
                 user.getId(),
                 user.getUsername(),
+                user.getEmail(),
                 user.getPassword(),
                 user.isEnabled(),
                 user.getRoles().stream()
@@ -48,7 +50,7 @@ public record AppUserPrincipal(
 
     @Override
     public String getUsername() {
-        return username;
+        return email;
     }
 
     @Override

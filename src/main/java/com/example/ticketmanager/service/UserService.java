@@ -48,8 +48,8 @@ public class UserService {
     private final com.example.ticketmanager.config.AppProperties appProperties;
     private final EmailNotificationSettingsService emailNotificationSettingsService;
 
-    public AppUser getByUsername(String username) {
-        return userRepository.findByUsername(username)
+    public AppUser getByEmail(String email) {
+        return userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
@@ -58,21 +58,17 @@ public class UserService {
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
-    public AuthDtos.ProfileResponse getProfile(String username) {
-        AppUser user = getByUsername(username);
+    public AuthDtos.ProfileResponse getProfile(String email) {
+        AppUser user = getByEmail(email);
         return toProfile(user);
     }
 
     @Transactional
-    public AuthDtos.ProfileResponse updateProfile(String username, AuthDtos.ProfileUpdateRequest request) {
-        AppUser user = getByUsername(username);
-        if (!user.getUsername().equals(request.username()) && userRepository.existsByUsername(request.username())) {
-            throw new AppException(HttpStatus.BAD_REQUEST, "Username already in use");
-        }
+    public AuthDtos.ProfileResponse updateProfile(String email, AuthDtos.ProfileUpdateRequest request) {
+        AppUser user = getByEmail(email);
         if (!user.getEmail().equals(request.email()) && userRepository.existsByEmail(request.email())) {
             throw new AppException(HttpStatus.BAD_REQUEST, "Email already in use");
         }
-        user.setUsername(request.username());
         user.setEmail(request.email());
         user.setPhone(request.phone());
         user.setFirstName(normalize(request.firstName()));
@@ -88,8 +84,8 @@ public class UserService {
     }
 
     @Transactional
-    public void changePassword(String username, AuthDtos.ProfilePasswordChangeRequest request) {
-        AppUser user = getByUsername(username);
+    public void changePassword(String email, AuthDtos.ProfilePasswordChangeRequest request) {
+        AppUser user = getByEmail(email);
         if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
             throw new AppException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
         }
@@ -104,8 +100,8 @@ public class UserService {
     }
 
     @Transactional
-    public AuthDtos.ProfileResponse updateProfileImage(String username, MultipartFile file) {
-        AppUser user = getByUsername(username);
+    public AuthDtos.ProfileResponse updateProfileImage(String email, MultipartFile file) {
+        AppUser user = getByEmail(email);
         if (file == null || file.isEmpty()) {
             throw new AppException(HttpStatus.BAD_REQUEST, "Profile picture is required");
         }
@@ -136,13 +132,13 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public byte[] getProfileImage(String username) {
-        return getByUsername(username).getProfileImage();
+    public byte[] getProfileImage(String email) {
+        return getByEmail(email).getProfileImage();
     }
 
     @Transactional(readOnly = true)
-    public String getProfileImageContentType(String username) {
-        return getByUsername(username).getProfileImageContentType();
+    public String getProfileImageContentType(String email) {
+        return getByEmail(email).getProfileImageContentType();
     }
 
     @Transactional(readOnly = true)
@@ -211,8 +207,8 @@ public class UserService {
         return user.getRoles().stream().anyMatch(role -> role.isActive() && roleName.equals(role.getName()));
     }
 
-    public boolean hasRole(String username, String roleName) {
-        return hasRole(getByUsername(username), roleName);
+    public boolean hasRole(String email, String roleName) {
+        return hasRole(getByEmail(email), roleName);
     }
 
     @Transactional(readOnly = true)
@@ -228,9 +224,9 @@ public class UserService {
     }
 
     @Transactional
-    public AdminDtos.UserSummary updateUser(Long userId, AdminDtos.UserUpdateRequest request, String actorUsername) {
+    public AdminDtos.UserSummary updateUser(Long userId, AdminDtos.UserUpdateRequest request, String actorEmail) {
         AppUser user = getById(userId);
-        AppUser actor = getByUsername(actorUsername);
+        AppUser actor = getByEmail(actorEmail);
         validateUniqueFields(user, request.username(), request.email());
         Set<Role> roles = resolveRoles(request.roleIds());
         preventUnsafeSelfUpdate(actor, user, request.enabled(), roles);

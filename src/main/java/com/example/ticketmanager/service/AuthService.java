@@ -44,11 +44,13 @@ public class AuthService {
 
     @Transactional
     public AuthDtos.AuthResponse register(AuthDtos.RegisterRequest request) {
-        validateUniqueCredentials(request.username(), request.email(), request.phone());
+        validateUniqueEmailAndPhone(request.email(), request.phone());
         Role defaultRole = roleRepository.findByName("ROLE_USER")
                 .orElseThrow(() -> new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "Default role missing"));
         AppUser user = new AppUser();
-        user.setUsername(request.username());
+        user.setUsername(request.firstName() + " " + request.lastName());
+        user.setFirstName(request.firstName());
+        user.setLastName(request.lastName());
         user.setEmail(request.email());
         user.setPhone(normalize(request.phone()));
         user.setPassword(passwordEncoder.encode(request.password()));
@@ -61,11 +63,13 @@ public class AuthService {
 
     @Transactional
     public AuthDtos.AuthResponse registerVendor(AuthDtos.VendorRegisterRequest request) {
-        validateUniqueCredentials(request.username(), request.email(), request.phone());
+        validateUniqueEmailAndPhone(request.email(), request.phone());
         Role vendorRole = roleRepository.findByName("ROLE_VENDOR")
                 .orElseThrow(() -> new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "Vendor role missing"));
         AppUser user = new AppUser();
-        user.setUsername(request.username());
+        user.setUsername(request.firstName() + " " + request.lastName());
+        user.setFirstName(request.firstName());
+        user.setLastName(request.lastName());
         user.setEmail(request.email());
         user.setPhone(normalize(request.phone()));
         user.setPassword(passwordEncoder.encode(request.password()));
@@ -95,8 +99,8 @@ public class AuthService {
     }
 
     private AuthDtos.AuthResponse login(AuthDtos.LoginRequest request, HttpServletResponse response, boolean vendorPortal) {
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.username(), request.password()));
-        AppUser user = userRepository.findByUsername(request.username())
+        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.email(), request.password()));
+        AppUser user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
         boolean vendorUser = user.getRoles().stream().filter(Role::isActive).anyMatch(role -> "ROLE_VENDOR".equals(role.getName()));
         if (vendorPortal && !vendorUser) {
@@ -154,10 +158,7 @@ public class AuthService {
         }
     }
 
-    private void validateUniqueCredentials(String username, String email, String phone) {
-        if (userRepository.existsByUsername(username)) {
-            throw new AppException(HttpStatus.BAD_REQUEST, "Username already exists");
-        }
+    private void validateUniqueEmailAndPhone(String email, String phone) {
         if (userRepository.existsByEmail(email)) {
             throw new AppException(HttpStatus.BAD_REQUEST, "Email already exists");
         }

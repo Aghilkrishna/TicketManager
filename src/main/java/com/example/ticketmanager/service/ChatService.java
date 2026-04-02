@@ -35,7 +35,7 @@ public class ChatService {
 
     @Transactional
     public AuthDtos.ChatMessageResponse send(String senderUsername, AuthDtos.ChatMessageRequest request) {
-        AppUser sender = userService.getByUsername(senderUsername);
+        AppUser sender = userService.getByEmail(senderUsername);
         ChatConversation conversation = request.conversationId() != null
                 ? getConversation(request.conversationId(), sender)
                 : createConversation(sender, userService.getById(request.recipientId()));
@@ -65,8 +65,8 @@ public class ChatService {
 
     @Transactional
     public List<AuthDtos.ChatMessageResponse> history(Long conversationId, String username) {
-        ChatConversation conversation = getConversation(conversationId, userService.getByUsername(username));
-        AppUser currentUser = userService.getByUsername(username);
+        ChatConversation conversation = getConversation(conversationId, userService.getByEmail(username));
+        AppUser currentUser = userService.getByEmail(username);
         List<ChatMessage> unread = messageRepository.findByConversationIdAndSenderIdNotAndReadAtIsNull(conversationId, currentUser.getId());
         unread.forEach(message -> {
             message.setReadAt(java.time.LocalDateTime.now());
@@ -80,7 +80,7 @@ public class ChatService {
 
     @Transactional(readOnly = true)
     public List<AuthDtos.ChatConversationResponse> conversations(String username, String query) {
-        AppUser user = userService.getByUsername(username);
+        AppUser user = userService.getByEmail(username);
         List<ChatConversation> conversations = conversationRepository.findAllByParticipantIdWithParticipants(user.getId());
         List<Long> conversationIds = conversations.stream().map(ChatConversation::getId).toList();
         java.util.Map<Long, ChatMessage> lastMessageByConversationId = new java.util.HashMap<>();
@@ -119,7 +119,7 @@ public class ChatService {
 
     @Transactional(readOnly = true)
     public void typing(String senderUsername, AuthDtos.ChatTypingEvent event) {
-        AppUser sender = userService.getByUsername(senderUsername);
+        AppUser sender = userService.getByEmail(senderUsername);
         if (event.conversationId() != null) {
             ChatConversation conversation = getConversation(event.conversationId(), sender);
             conversation.getParticipants().stream()
