@@ -34,3 +34,5 @@ app:
     from-address: ${APP_MAIL_FROM_ADDRESS:no-reply@ticketmanager.local}
     from-name: ${APP_MAIL_FROM_NAME:Ticket Manager}
   upload-dir: ${APP_UPLOAD_DIR:uploads}
+  masking:
+    enabled: ${APP_MASKING_ENABLED:true}

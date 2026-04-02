@@ -508,7 +508,7 @@ public class TicketService {
         String customerEmail = ticket.getCustomerEmail();
         String customerPhone = ticket.getCustomerPhone();
 
-        if (isAgent) {
+        if (isAgent && appProperties.masking().enabled()) {
             customerEmail = maskEmail(customerEmail);
             customerPhone = maskPhone(customerPhone);
         }

@@ -68,48 +68,47 @@ sudo docker compose logs -f app
 ```
 The application should now be accessible at `http://your-vps-ip:9090`.
 
-## Step 5: (Optional) Nginx Reverse Proxy & SSL
+### Step 5: Nginx & SSL for yubix.tech
 
-For better security and performance, use Nginx as a reverse proxy.
+1.  **Configure your Domain:**
+    Ensure `yubix.tech` and `www.yubix.tech` point to your VPS IP address in your DNS provider's settings.
 
-### Install Nginx
-```bash
-sudo apt install nginx
-```
+2.  **Start the infrastructure:**
+    ```bash
+    sudo docker compose up -d
+    ```
+    At this stage, `http://yubix.tech` should be working through the Nginx container.
 
-### Configure Nginx
-Create a new configuration file: `/etc/nginx/sites-available/ticketmanager`
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
+3.  **Obtain SSL Certificate using Certbot:**
+    We recommend using Certbot on the host to manage certificates easily:
+    ```bash
+    sudo apt update
+    sudo apt install certbot -y
+    sudo certbot certonly --webroot -w ./nginx/certbot -d yubix.tech -d www.yubix.tech
+    ```
+    *Note: If you already have Nginx installed on the host, you might need to stop it or use the webroot method pointing to the shared volume.*
 
-    location / {
-        proxy_pass http://localhost:9090;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # WebSocket support
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "Upgrade";
-    }
-}
-```
-Enable the site and restart Nginx:
-```bash
-sudo ln -s /etc/nginx/sites-available/ticketmanager /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-```
+4.  **Enable HTTPS in Nginx:**
+    Once certificates are obtained, edit `nginx/default.conf` to uncomment the HTTPS section:
+    ```bash
+    nano nginx/default.conf
+    ```
+    Uncomment the `server` block for port 443 and ensure the paths to `fullchain.pem` and `privkey.pem` are correct.
 
-### SSL with Certbot
-```bash
-sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d yourdomain.com
-```
+5.  **Restart Nginx container:**
+    ```bash
+    sudo docker compose restart nginx
+    ```
+
+### Step 6: Update Application URL
+6. Update the `APP_BASE_URL` in your `.env` file to use `https://`:
+    ```bash
+    APP_BASE_URL=https://yubix.tech
+    ```
+7. Restart the application:
+    ```bash
+    sudo docker compose up -d
+    ```
 
 ## Maintenance
 
