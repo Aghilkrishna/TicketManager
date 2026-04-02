@@ -29,3 +29,7 @@ spring:
           auth: ${MAIL_SMTP_AUTH:true}
           starttls:
             enable: ${MAIL_STARTTLS:true}
+
+app:
+  masking:
+    enabled: ${APP_MASKING_ENABLED:true}

@@ -7,11 +7,15 @@ public record AppProperties(
         Jwt jwt,
         String baseUrl,
         Mail mail,
-        String uploadDir
+        String uploadDir,
+        Masking masking
 ) {
     public record Jwt(String secret, long expiration) {
     }
 
     public record Mail(boolean enabled, String fromAddress, String fromName) {
+    }
+
+    public record Masking(boolean enabled) {
     }
 }
