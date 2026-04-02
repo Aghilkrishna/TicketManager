@@ -95,7 +95,13 @@ The application should now be accessible at `http://your-vps-ip:9090`.
     ```
     Uncomment the `server` block for port 443 and ensure the paths to `fullchain.pem` and `privkey.pem` are correct.
 
-5.  **Restart Nginx container:**
+5.  **Timezone Configuration:**
+    The project is configured to use the `Asia/Kolkata` (IST) timezone. Ensure your VPS has the correct timezone set so the Docker containers can sync with it via the mounted volumes:
+    ```bash
+    sudo timedatectl set-timezone Asia/Kolkata
+    ```
+
+6.  **Restart Nginx container:**
     ```bash
     sudo docker compose restart nginx
     ```
@@ -119,3 +125,58 @@ The application should now be accessible at `http://your-vps-ip:9090`.
   git pull
   sudo docker compose up -d --build
   ```
+
+## Backup and Rollback Strategy
+
+Before performing a new release, it's essential to back up your current state (database and uploaded files) to ensure you can roll back if something goes wrong.
+
+### 1. Back Up the Database
+
+Run this command to create a SQL dump of your PostgreSQL database:
+```bash
+sudo docker exec -t ticketmanager-db pg_dump -U postgres ticketmanager > backup_db_$(date +%Y%m%d_%H%M%S).sql
+```
+*Note: Replace `postgres` and `ticketmanager` with your actual `DB_USERNAME` and `DB_NAME` if you changed them in your `.env` file.*
+
+### 2. Back Up Uploaded Files
+
+To back up all customer-uploaded documents/images:
+```bash
+tar -czvf backup_uploads_$(date +%Y%m%d_%H%M%S).tar.gz ./uploads
+```
+
+### 3. Image Versioning (Tagging)
+
+Instead of just using `latest`, it's a good practice to tag your working images. Before a new release:
+1.  Check the current image ID: `sudo docker images`
+2.  Tag it as a stable version: `sudo docker tag ticketmanager-app:latest ticketmanager-app:stable_$(date +%Y%m%d)`
+
+### 4. How to Roll Back
+
+If the new release has errors, follow these steps to restore the previous working state:
+
+#### A. Revert Code Changes
+If using Git, revert to the last stable commit:
+```bash
+git checkout <last_stable_commit_hash>
+```
+
+#### B. Restore the Database (if needed)
+If the new release modified the database schema and caused issues, you might need to restore the backup:
+1.  Stop the application: `sudo docker compose stop app`
+2.  Restore the dump:
+    ```bash
+    cat backup_db_YYYYMMDD_HHMMSS.sql | sudo docker exec -i ticketmanager-db psql -U postgres ticketmanager
+    ```
+
+#### C. Restore Uploads (if needed)
+```bash
+rm -rf ./uploads
+tar -xzvf backup_uploads_YYYYMMDD_HHMMSS.tar.gz
+```
+
+#### D. Restart the Stable Application
+```bash
+sudo docker compose up -d --build
+```
+*Note: This will rebuild the image based on the reverted code. If you tagged a stable image earlier, you can also modify `docker-compose.yml` to use `ticketmanager-app:stable_YYYYMMDD` temporarily.*

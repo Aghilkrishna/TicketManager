@@ -24,6 +24,12 @@ public class NotificationService {
     private final EmailService emailService;
     private final com.example.ticketmanager.config.AppProperties appProperties;
     private final EmailNotificationSettingsService emailNotificationSettingsService;
+    private NotificationService self;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setSelf(@org.springframework.context.annotation.Lazy NotificationService self) {
+        this.self = self;
+    }
 
     public void notify(AppUser user, NotificationType type, String message, String referenceType, Long referenceId) {
         notify(user, type, message, referenceType, referenceId, resolveEmailAction(type));
@@ -38,11 +44,11 @@ public class NotificationService {
         notification.setReferenceId(referenceId);
         Notification saved = notificationRepository.save(notification);
         messagingTemplate.convertAndSendToUser(user.getUsername(), "/queue/notifications", toResponse(saved));
-        sendEmailNotification(user, type, message, referenceType, referenceId, emailAction);
+        self.sendEmailNotification(user, type, message, referenceType, referenceId, emailAction);
     }
 
     @Async
-    void sendEmailNotification(AppUser user, NotificationType type, String message, String referenceType, Long referenceId, EmailNotificationAction emailAction) {
+    public void sendEmailNotification(AppUser user, NotificationType type, String message, String referenceType, Long referenceId, EmailNotificationAction emailAction) {
         if (user.getEmail() == null || user.getEmail().isBlank()) {
             return;
         }
