@@ -39,6 +39,7 @@ services:
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:9090}
       APP_MAIL_ENABLED: ${APP_MAIL_ENABLED:-false}
       APP_UPLOAD_DIR: /app/uploads
+      APP_MASKING_ENABLED: ${APP_MASKING_ENABLED:-true}
       
       # Mail configuration
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
