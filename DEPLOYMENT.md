@@ -126,6 +126,16 @@ The application should now be accessible at `http://your-vps-ip:9090`.
   sudo docker compose up -d --build
   ```
 
+### Operational Commands
+
+- **Automated Deployment:** `./deploy.sh` (Includes backup, branch selection, and build)
+- **Emergency Rollback:** `./rollback.sh` (Restores previous backup and code)
+- **Start application:** `./start-app.sh`
+- **Stop application:** `./stop-app.sh`
+- **Restart application:** `./restart-app.sh`
+- **View logs:** `docker compose logs -f app`
+- **Check status:** `docker compose ps`
+
 ## Backup and Rollback Strategy
 
 Before performing a new release, it's essential to back up your current state (database and uploaded files) to ensure you can roll back if something goes wrong.
@@ -179,4 +189,4 @@ tar -xzvf backup_uploads_YYYYMMDD_HHMMSS.tar.gz
 ```bash
 sudo docker compose up -d --build
 ```
-*Note: This will rebuild the image based on the reverted code. If you tagged a stable image earlier, you can also modify `docker-compose.yml` to use `ticketmanager-app:stable_YYYYMMDD` temporarily.*
+*Note: This will rebuild the image based on the reverted code. If you tagged a stable image earlier, you can also modify `docker compose.yml` to use `ticketmanager-app:stable_YYYYMMDD` temporarily.*
