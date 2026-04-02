@@ -10,10 +10,13 @@ RUN mvn clean package -DskipTests
 
 # Stage 2: Runtime stage
 FROM eclipse-temurin:21-jre-alpine
+# Install tzdata for timezone configuration
+RUN apk add --no-cache tzdata
 WORKDIR /app
 # Set environment variables for Spring Boot
 ENV SPRING_PROFILES_ACTIVE=prod
 ENV APP_UPLOAD_DIR=/app/uploads
+ENV TZ=Asia/Kolkata
 
 # Create uploads directory and set permissions
 RUN mkdir -p /app/uploads && chmod 777 /app/uploads

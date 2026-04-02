@@ -9,8 +9,11 @@ services:
       POSTGRES_DB: ${DB_NAME:-ticketmanager}
       POSTGRES_USER: ${DB_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Kolkata
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     networks:
       - app-network
 
@@ -51,8 +54,11 @@ services:
       
       # Spring Boot Profile
       SPRING_PROFILES_ACTIVE: prod
+      TZ: Asia/Kolkata
     volumes:
       - ./uploads:/app/uploads
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     networks:
       - app-network
 
@@ -60,6 +66,8 @@ services:
     image: nginx:alpine
     container_name: ticketmanager-nginx
     restart: always
+    environment:
+      TZ: Asia/Kolkata
     ports:
       - "80:80"
       - "443:443"
@@ -67,6 +75,8 @@ services:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./nginx/certbot:/var/www/certbot
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     depends_on:
       - app
     networks:
