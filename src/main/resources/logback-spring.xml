@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <springProfile name="!prod">
+        <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+        <property name="LOG_FILE" value="${LOG_FILE:-${LOG_PATH:-${LOG_TEMP:-${java.io.tmpdir:-/tmp}}}/spring.log}"/>
+        <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+    </springProfile>
+
+    <!-- Appender for rolling files with daily rotation -->
+    <appender name="FILE-ROLLING" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/ticket-manager.log</file>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</Pattern>
+        </encoder>
+        
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- daily rollover -->
+            <fileNamePattern>logs/ticket-manager.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>100MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <!-- keep 30 days of history -->
+            <maxHistory>30</maxHistory>
+            <!-- total size limit -->
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <!-- Appender for error logs only -->
+    <appender name="ERROR-FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/ticket-manager-error.log</file>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</Pattern>
+        </encoder>
+        
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/ticket-manager-error.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>50MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        
+        <!-- Only log ERROR level and above -->
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!-- Application-specific loggers -->
+    <logger name="com.example.ticketmanager" level="INFO" additivity="false">
+        <appender-ref ref="FILE-ROLLING"/>
+        <appender-ref ref="ERROR-FILE"/>
+    </logger>
+
+    <!-- Specific service loggers with DEBUG level -->
+    <logger name="com.example.ticketmanager.service.AuthService" level="DEBUG" additivity="false">
+        <appender-ref ref="FILE-ROLLING"/>
+        <appender-ref ref="ERROR-FILE"/>
+    </logger>
+    
+    <logger name="com.example.ticketmanager.service.MobileVerificationService" level="DEBUG" additivity="false">
+        <appender-ref ref="FILE-ROLLING"/>
+        <appender-ref ref="ERROR-FILE"/>
+    </logger>
+    
+    <logger name="com.example.ticketmanager.service.SmsService" level="DEBUG" additivity="false">
+        <appender-ref ref="FILE-ROLLING"/>
+        <appender-ref ref="ERROR-FILE"/>
+    </logger>
+    
+    <logger name="com.example.ticketmanager.service.UserService" level="DEBUG" additivity="false">
+        <appender-ref ref="FILE-ROLLING"/>
+        <appender-ref ref="ERROR-FILE"/>
+    </logger>
+    
+    <logger name="com.example.ticketmanager.service.TicketService" level="DEBUG" additivity="false">
+        <appender-ref ref="FILE-ROLLING"/>
+        <appender-ref ref="ERROR-FILE"/>
+    </logger>
+
+    <!-- Security and authentication logging -->
+    <logger name="com.example.ticketmanager.security" level="DEBUG" additivity="false">
+        <appender-ref ref="FILE-ROLLING"/>
+        <appender-ref ref="ERROR-FILE"/>
+    </logger>
+
+    <!-- Repository layer logging -->
+    <logger name="com.example.ticketmanager.repository" level="DEBUG" additivity="false">
+        <appender-ref ref="FILE-ROLLING"/>
+        <appender-ref ref="ERROR-FILE"/>
+    </logger>
+
+    <!-- Controller layer logging -->
+    <logger name="com.example.ticketmanager.controller" level="DEBUG" additivity="false">
+        <appender-ref ref="FILE-ROLLING"/>
+        <appender-ref ref="ERROR-FILE"/>
+    </logger>
+
+    <!-- Third-party API logging -->
+    <logger name="org.springframework.web.client.RestTemplate" level="DEBUG" additivity="false">
+        <appender-ref ref="FILE-ROLLING"/>
+        <appender-ref ref="ERROR-FILE"/>
+    </logger>
+
+    <!-- Root logger -->
+    <root level="INFO">
+        <springProfile name="!prod">
+            <appender-ref ref="CONSOLE"/>
+        </springProfile>
+        <appender-ref ref="FILE-ROLLING"/>
+        <appender-ref ref="ERROR-FILE"/>
+    </root>
+</configuration>

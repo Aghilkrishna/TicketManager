@@ -299,6 +299,7 @@ public class UserService {
                 user.getCountry(),
                 user.getPincode(),
                 user.isEmailVerified(),
+                user.isPhoneVerified(),
                 getRoleNames(user),
                 user.getProfileImage() != null && user.getProfileImage().length > 0
         );

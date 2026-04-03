@@ -15,6 +15,7 @@ import com.example.ticketmanager.security.JwtService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 
 import static com.example.ticketmanager.security.JwtAuthenticationFilter.AUTH_COOKIE;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -44,6 +46,7 @@ public class AuthService {
 
     @Transactional
     public AuthDtos.AuthResponse register(AuthDtos.RegisterRequest request) {
+        log.info("Starting user registration for email: {}", request.email());
         validateUniqueEmailAndPhone(request.email(), request.phone());
         Role defaultRole = roleRepository.findByName("ROLE_USER")
                 .orElseThrow(() -> new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "Default role missing"));
@@ -56,6 +59,7 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.password()));
         user.getRoles().add(defaultRole);
         userRepository.save(user);
+        log.info("User registered successfully with ID: {} for email: {}", user.getId(), user.getEmail());
         sendVerificationEmail(user);
         return new AuthDtos.AuthResponse(user.getId(), user.getUsername(), user.getEmail(), Set.of("ROLE_USER"),
                 "Registration successful. Verify your email to activate your account.");
@@ -99,17 +103,21 @@ public class AuthService {
     }
 
     private AuthDtos.AuthResponse login(AuthDtos.LoginRequest request, HttpServletResponse response, boolean vendorPortal) {
+        log.info("Login attempt for email: {} from vendor portal: {}", request.email(), vendorPortal);
         authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.email(), request.password()));
         AppUser user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
         boolean vendorUser = user.getRoles().stream().filter(Role::isActive).anyMatch(role -> "ROLE_VENDOR".equals(role.getName()));
         if (vendorPortal && !vendorUser) {
+            log.warn("Non-vendor user {} attempted vendor portal login", user.getEmail());
             throw new AppException(HttpStatus.FORBIDDEN, "This account must use the regular login page.");
         }
         if (!vendorPortal && vendorUser) {
+            log.warn("Vendor user {} attempted regular login", user.getEmail());
             throw new AppException(HttpStatus.FORBIDDEN, "Vendor users must sign in from the vendor login page.");
         }
         if (!user.isEmailVerified()) {
+            log.warn("Login attempt for unverified email: {}", user.getEmail());
             throw new AppException(HttpStatus.FORBIDDEN, "Verify your email before logging in");
         }
         String token = jwtService.generateToken(new AppUserPrincipal(user));
@@ -118,6 +126,7 @@ public class AuthService {
         cookie.setPath("/");
         cookie.setMaxAge((int) (appProperties.jwt().expiration() / 1000));
         response.addCookie(cookie);
+        log.info("User {} logged in successfully", user.getEmail());
         return new AuthDtos.AuthResponse(
                 user.getId(),
                 user.getUsername(),

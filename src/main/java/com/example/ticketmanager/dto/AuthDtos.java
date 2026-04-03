@@ -73,6 +73,7 @@ public final class AuthDtos {
             String country,
             String pincode,
             boolean emailVerified,
+            boolean phoneVerified,
             Set<String> roles,
             boolean profileImageUploaded
     ) {
@@ -291,6 +292,22 @@ public final class AuthDtos {
             Long recipientId,
             String username,
             boolean typing
+    ) {
+    }
+
+    public record MobileVerificationRequest(
+            @NotBlank String phone
+    ) {
+    }
+
+    public record MobileOtpVerificationRequest(
+            @NotBlank String phone,
+            @NotBlank @Size(min = 6, max = 6) String otp
+    ) {
+    }
+
+    public record MobileVerificationResponse(
+            String message
     ) {
     }
 }

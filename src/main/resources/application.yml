@@ -36,3 +36,8 @@ app:
   upload-dir: ${APP_UPLOAD_DIR:uploads}
   masking:
     enabled: ${APP_MASKING_ENABLED:true}
+  sms:
+    enabled: ${APP_SMS_ENABLED:false}
+    api-key: ${APP_SMS_API_KEY:}
+    sender: ${APP_SMS_SENDER:VIEWIT}
+    api-url: ${APP_SMS_API_URL:https://www.smsalert.co.in/api/push.json}
