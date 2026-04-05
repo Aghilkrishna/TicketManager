@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 public final class AdminDtos {
@@ -76,6 +77,47 @@ public final class AdminDtos {
     public record EmailNotificationSettingUpdateItem(
             String action,
             boolean enabled
+    ) {
+    }
+
+    public record UserDetailsResponse(
+            Long id,
+            String username,
+            String email,
+            String phone,
+            String firstName,
+            String lastName,
+            String flat,
+            String building,
+            String area,
+            String city,
+            String state,
+            String country,
+            String pincode,
+            boolean emailVerified,
+            boolean phoneVerified,
+            Set<String> roles,
+            Set<String> roleLabels,
+            boolean profileImageUploaded,
+            String idProofType,
+            String idProofFileName,
+            boolean idProofUploaded,
+            boolean hasAadharCard,
+            boolean hasPanCard,
+            boolean hasMandatoryIdProofs,
+            boolean idProofVerified,
+            boolean hasPendingVerification
+    ) {
+    }
+
+    public record IdProofDocumentResponse(
+            Long id,
+            String idProofType,
+            String fileName,
+            LocalDateTime uploadDate,
+            String uploadStatus,
+            Boolean verified,
+            String verificationNotes
     ) {
     }
 }

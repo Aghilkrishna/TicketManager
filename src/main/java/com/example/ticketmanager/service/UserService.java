@@ -5,7 +5,8 @@ import com.example.ticketmanager.dto.AdminDtos;
 import com.example.ticketmanager.entity.AppFeature;
 import com.example.ticketmanager.entity.AppUser;
 import com.example.ticketmanager.entity.EmailNotificationAction;
-import com.example.ticketmanager.entity.PasswordResetToken;
+import com.example.ticketmanager.entity.UserIdProof;
+import com.example.ticketmanager.repository.UserIdProofRepository;
 import com.example.ticketmanager.entity.Role;
 import com.example.ticketmanager.exception.AppException;
 import com.example.ticketmanager.repository.PasswordResetTokenRepository;
@@ -245,6 +246,62 @@ public class UserService {
         if (!user.getEmail().equals(email) && userRepository.existsByEmail(email)) {
             throw new AppException(HttpStatus.BAD_REQUEST, "Email already in use");
         }
+    }
+
+    public AdminDtos.UserDetailsResponse getUserDetails(Long userId) {
+        AppUser user = getById(userId);
+        java.util.List<UserIdProof> userIdProofs = userIdProofRepository.findByUser(user);
+        boolean hasAadhar = userIdProofs.stream().anyMatch(id -> "Aadhar Card".equals(id.getIdProofType()));
+        boolean hasPan = userIdProofs.stream().anyMatch(id -> "PAN Card".equals(id.getIdProofType()));
+        boolean hasMandatoryIdProofs = hasAadhar && hasPan;
+        boolean idProofVerified = userIdProofs.stream().anyMatch(id -> Boolean.TRUE.equals(id.getVerified()));
+        boolean hasPendingVerification = userIdProofs.stream().anyMatch(id -> "PENDING_VERIFICATION".equals(id.getUploadStatus()));
+        
+        return new AdminDtos.UserDetailsResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getFlat(),
+                user.getBuilding(),
+                user.getArea(),
+                user.getCity(),
+                user.getState(),
+                user.getCountry(),
+                user.getPincode(),
+                user.isEmailVerified(),
+                user.isPhoneVerified(),
+                getRoleNames(user),
+                getRoleLabels(user),
+                user.getProfileImage() != null && user.getProfileImage().length > 0,
+                null,
+                null,
+                false,
+                hasAadhar,
+                hasPan,
+                hasMandatoryIdProofs,
+                idProofVerified,
+                hasPendingVerification
+        );
+    }
+
+    public List<AdminDtos.IdProofDocumentResponse> getUserIdProofs(Long userId) {
+        AppUser user = getById(userId);
+        java.util.List<UserIdProof> userIdProofs = userIdProofRepository.findByUser(user);
+        
+        return userIdProofs.stream()
+                .map(idProof -> new AdminDtos.IdProofDocumentResponse(
+                        idProof.getId(),
+                        idProof.getIdProofType(),
+                        idProof.getIdProofFileName(),
+                        idProof.getUploadDate(),
+                        idProof.getUploadStatus(),
+                        idProof.getVerified(),
+                        idProof.getVerificationNotes()
+                ))
+                .toList();
     }
 
     private Set<Role> resolveRoles(Set<Long> roleIds) {

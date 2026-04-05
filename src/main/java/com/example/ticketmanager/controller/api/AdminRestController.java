@@ -96,4 +96,14 @@ public class AdminRestController {
                                                     @RequestBody AdminDtos.RoleFeatureUpdateRequest request) {
         return adminService.updateRoleFeatures(roleId, request.features());
     }
+
+    @GetMapping("/users/{id}")
+    public AdminDtos.UserDetailsResponse getUserDetails(@PathVariable Long id) {
+        return userService.getUserDetails(id);
+    }
+
+    @GetMapping("/users/{id}/id-proofs")
+    public List<AdminDtos.IdProofDocumentResponse> getUserIdProofs(@PathVariable Long id) {
+        return userService.getUserIdProofs(id);
+    }
 }

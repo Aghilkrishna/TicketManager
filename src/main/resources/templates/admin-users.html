@@ -116,6 +116,9 @@ function renderUsers() {
         <td>${(user.roleLabels || []).join(', ') || '-'}</td>
         <td>${activeBadge}</td>
         <td class="text-end">
+          <button class="btn btn-sm btn-outline-info" href="/admin/users/${user.id}" title="View Details & Verification">
+            <i class="bi bi-person-badge"></i>
+          </button>
           <button class="btn btn-sm btn-outline-primary" type="button" title="Edit user" onclick="openUserModal(${user.id})">
             <i class="bi bi-pencil"></i>
           </button>

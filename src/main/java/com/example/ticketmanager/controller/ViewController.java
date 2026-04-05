@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.security.Principal;
@@ -47,6 +48,14 @@ public class ViewController {
     public String dashboard(Model model, Principal principal) {
         model.addAttribute("profile", userService.getProfile(principal.getName()));
         return "dashboard";
+    }
+
+    @GetMapping("/admin/users/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String adminUserDetails(@PathVariable Long id, Model model) {
+        model.addAttribute("userDetails", userService.getUserDetails(id));
+        model.addAttribute("idProofs", userService.getUserIdProofs(id));
+        return "admin-user-details";
     }
 
     @GetMapping("/profile")

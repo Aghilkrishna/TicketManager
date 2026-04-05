@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/layout :: head('Profile')}"></th:block>
+</head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('profile', '')}"></aside>
+    <div class="main-panel">
+        <header th:replace="~{fragments/layout :: topbar('User Profile', '')}"></header>
+        <main class="content-area">
+            <section class="hero-banner glass-card mb-4">
+                <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-3">
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div>
+                            <img id="profileAvatarPreview" th:src="@{/api/users/avatar/{userId}(userId=${profile.id})}" alt="Profile picture" class="rounded-circle border" style="width: 88px; height: 88px; object-fit: cover;" loading="lazy" decoding="async">
+                        </div>
+                    <div>
+                        <div class="text-uppercase small opacity-75">Account Center</div>
+                        <h1 class="display-6 fw-bold mb-2" th:text="${profile.firstName != null && !profile.firstName.isBlank() ? profile.firstName + (profile.lastName != null && !profile.lastName.isBlank() ? ' ' + profile.lastName : '') : profile.username}">Username</h1>
+                        <p class="mb-0">Keep your account information accurate and your login credentials secure.</p>
+                    </div>
+                    </div>
+                    <div class="metric-trend"><i class="bi bi-shield-lock"></i> Secure profile settings</div>
+                </div>
+            </section>
+
+            <div class="row g-4">
+                <div class="col-xl-4">
+                    <section class="form-card glass-card h-100">
+                        <div class="section-title mb-4" th:text="#{profile.account.summary}">Account Summary</div>
+                        <div class="vstack gap-4">
+                            <div>
+                                <div class="small text-muted" th:text="#{profile.first.name}">First Name</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.firstName != null && !profile.firstName.isEmpty() ? profile.firstName : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted" th:text="#{profile.last.name}">Last Name</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.lastName != null && !profile.lastName.isEmpty() ? profile.lastName : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted" th:text="#{profile.email}">Email</div>
+                                <div class="fw-semibold mt-1 d-flex align-items-center gap-2">
+                                    <span th:text="${profile.email}"></span>
+                                    <i th:if="${profile.emailVerified}" class="bi bi-patch-check-fill text-success" title="Email verified"></i>
+                                    <i th:unless="${profile.emailVerified}" class="bi bi-patch-exclamation text-warning" title="Email not verified"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="small text-muted" th:text="#{profile.phone}">Phone</div>
+                                <div class="fw-semibold mt-1 d-flex align-items-center gap-2">
+                                    <span th:text="${profile.phone != null && !profile.phone.isEmpty() ? profile.phone : 'Not provided'}"></span>
+                                    <i th:if="${profile.phone != null && !profile.phone.isEmpty() && profile.phoneVerified}" class="bi bi-patch-check-fill text-success" title="Phone verified"></i>
+                                    <i th:if="${profile.phone != null && !profile.phone.isEmpty() && !profile.phoneVerified}" class="bi bi-patch-exclamation text-warning" title="Phone not verified"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="small text-muted" th:text="#{profile.flat}">Flat</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.flat != null && !profile.flat.isEmpty() ? profile.flat : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted" th:text="#{profile.building}">Building</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.building != null && !profile.building.isEmpty() ? profile.building : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted" th:text="#{profile.area}">Area</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.area != null && !profile.area.isEmpty() ? profile.area : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted" th:text="#{profile.city}">City</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.city != null && !profile.city.isEmpty() ? profile.city : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted" th:text="#{profile.state}">State</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.state != null && !profile.state.isEmpty() ? profile.state : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted" th:text="#{profile.country}">Country</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.country != null && !profile.country.isEmpty() ? profile.country : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted" th:text="#{profile.pincode}">Pincode</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.pincode != null && !profile.pincode.isEmpty() ? profile.pincode : 'Not provided'}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted">Roles</div>
+                                <div class="fw-semibold mt-1" th:text="${profileRoleLabels}"></div>
+                            </div>
+                            <div>
+                                <div class="small text-muted">Verification</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.emailVerified ? 'Email verified' : 'Pending verification'}"></div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="col-xl-8">
+                    <section class="form-card glass-card">
+                        <div class="section-title mb-2">Update Personal Information</div>
+                        <p class="text-muted mb-4">Edit your profile details below without affecting your login password.</p>
+                        <form id="profileImageForm" class="row g-3 mb-4">
+                            <div class="col-md-8">
+                                <label class="form-label">Profile Picture</label>
+                                <input id="profileImageInput" class="form-control form-control-lg" type="file" accept="image/png,image/jpeg">
+                                <div class="form-text">PNG or JPEG up to 5MB. The image is center-cropped and resized to fit the avatar area.</div>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button class="btn btn-outline-primary btn-lg w-100" type="submit">Upload Picture</button>
+                            </div>
+                        </form>
+                        <form id="profileForm" class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name</label>
+                                <input class="form-control form-control-lg" name="firstName" th:value="${profile.firstName}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name</label>
+                                <input class="form-control form-control-lg" name="lastName" th:value="${profile.lastName}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input class="form-control form-control-lg" type="email" name="email" th:value="${profile.email}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Phone</label>
+                                <div class="input-group">
+                                    <input class="form-control form-control-lg" name="phone" th:value="${profile.phone}">
+                                    <button class="btn btn-outline-secondary" type="button" id="verifyPhoneBtn" th:if="${profile.phone != null && !profile.phone.isEmpty() && !profile.phoneVerified}" onclick="showPhoneVerification()">Verify</button>
+                                </div>
+                                <div class="form-text" th:if="${profile.phone != null && !profile.phone.isEmpty() && profile.phoneVerified}">Phone number verified</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Flat</label>
+                                <input class="form-control form-control-lg" name="flat" th:value="${profile.flat}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Building</label>
+                                <input class="form-control form-control-lg" name="building" th:value="${profile.building}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Area</label>
+                                <input class="form-control form-control-lg" name="area" th:value="${profile.area}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">City</label>
+                                <input class="form-control form-control-lg" name="city" th:value="${profile.city}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">State</label>
+                                <input class="form-control form-control-lg" name="state" th:value="${profile.state}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Country</label>
+                                <input class="form-control form-control-lg" name="country" th:value="${profile.country}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Pincode</label>
+                                <input class="form-control form-control-lg" name="pincode" th:value="${profile.pincode}">
+                            </div>
+                            <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                                <div id="profileMessage" class="small"></div>
+                                <button class="btn btn-primary btn-lg" type="submit">Save Profile Changes</button>
+                            </div>
+                        </form>
+                    </section>
+                    <section class="form-card glass-card mt-4">
+                        <div class="section-title mb-2">Change Password</div>
+                        <p class="text-muted mb-4">Enter your current password and choose a strong new password.</p>
+                        <form id="passwordForm" class="row g-4">
+                            <div class="col-md-4">
+                                <label class="form-label">Current Password</label>
+                                <input class="form-control form-control-lg" type="password" name="currentPassword" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">New Password</label>
+                                <input class="form-control form-control-lg" type="password" name="newPassword" placeholder="Minimum 8 characters" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Confirm New Password</label>
+                                <input class="form-control form-control-lg" type="password" name="confirmPassword" required>
+                            </div>
+                            <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                                <div id="passwordMessage" class="small"></div>
+                                <button class="btn btn-outline-primary btn-lg" type="submit">Update Password</button>
+                            </div>
+                        </form>
+                    </section>
+                    
+                    <!-- ID Proof Section for Vendor and Agent users -->
+                    <th:block th:if="${#lists.contains(profile.roles, 'ROLE_VENDOR') or #lists.contains(profile.roles, 'ROLE_AGENT')}">
+                        <section class="glass-card mt-4">
+                            <div style="padding: 1.25rem; border-bottom: 1px solid var(--border);">
+                                <h6 class="mb-0" style="font-weight: 600; display: flex; align-items: center; gap: 0.5rem; color: var(--text);"><i class="bi bi-shield-check"></i>ID Proof Documents</h6>
+                            </div>
+                            <div style="padding: 1.25rem;">
+                                <p class="text-muted small mb-4">Upload your mandatory identification documents (Aadhar Card and PAN Card) for verification. Both documents are required.</p>
+
+                                <!-- Verification Status Summary -->
+                                <div style="background: var(--primary-soft); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i th:class="${profile.hasAadharCard} ? 'bi bi-patch-check-fill text-success fs-5' : 'bi bi-circle-fill text-muted fs-5'" style="opacity: 0.7;"></i>
+                                                <div>
+                                                    <div class="small fw-semibold" style="color: var(--text);">Aadhar Card</div>
+                                                    <small class="text-muted" th:text="${profile.hasAadharCard} ? 'Uploaded - pending admin approval' : 'Not uploaded yet'"></small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i th:class="${profile.hasPanCard} ? 'bi bi-patch-check-fill text-success fs-5' : 'bi bi-circle-fill text-muted fs-5'" style="opacity: 0.7;"></i>
+                                                <div>
+                                                    <div class="small fw-semibold" style="color: var(--text);">PAN Card</div>
+                                                    <small class="text-muted" th:text="${profile.hasPanCard} ? 'Uploaded - pending admin approval' : 'Not uploaded yet'"></small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Aadhar Card Section -->
+                                <div class="mb-4">
+                                    <div class="d-flex align-items-center gap-2 mb-3">
+                                        <i class="bi bi-file-earmark-pdf" style="color: var(--primary); font-size: 1.1rem;"></i>
+                                        <div>
+                                            <div class="fw-semibold small" style="color: var(--text);">Aadhar Card <span class="text-danger">*</span></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Display uploaded Aadhar -->
+                                    <div th:if="${profile.hasAadharCard}" style="display: none;" id="aadharUploadedView">
+                                        <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 10px; padding: 0.75rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.75rem;">
+                                            <i class="bi bi-patch-check-fill text-success"></i>
+                                            <div class="flex-grow-1">
+                                                <small style="color: var(--text); font-weight: 500;">Upload successful</small>
+                                                <div class="small text-muted">Pending for admin approval</div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex gap-2 flex-wrap">
+                                            <button class="btn btn-sm btn-outline-primary" onclick="viewIdProof('Aadhar Card')"><i class="bi bi-eye me-1"></i>View</button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="showAadharUpload()"><i class="bi bi-pencil me-1"></i>Replace</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Aadhar Card Upload Form -->
+                                    <div id="aadharUploadSection" th:style="${profile.hasAadharCard} ? 'display: none;' : ''">
+                                        <form id="aadharForm" class="row g-2">
+                                            <input type="hidden" name="idProofType" value="Aadhar Card">
+                                            <div class="col-12">
+                                                <input id="aadharInput" class="form-control form-control-sm" type="file" accept=".pdf,.jpg,.jpeg,.png" required>
+                                                <small class="form-text text-muted">PDF, JPG, or PNG up to 5MB. Clear scan required.</small>
+                                            </div>
+                                            <div class="col-12">
+                                                <div id="aadharMessage" class="small mb-2"></div>
+                                                <button class="btn btn-success btn-sm" type="submit" style="padding: 0.4rem 0.9rem; font-size: 0.875rem;">Upload Aadhar</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <!-- PAN Card Section -->
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-3">
+                                        <i class="bi bi-file-earmark-pdf" style="color: var(--primary); font-size: 1.1rem;"></i>
+                                        <div>
+                                            <div class="fw-semibold small" style="color: var(--text);">PAN Card <span class="text-danger">*</span></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Display uploaded PAN -->
+                                    <div th:if="${profile.hasPanCard}" style="display: none;" id="panUploadedView">
+                                        <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 10px; padding: 0.75rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.75rem;">
+                                            <i class="bi bi-patch-check-fill text-success"></i>
+                                            <div class="flex-grow-1">
+                                                <small style="color: var(--text); font-weight: 500;">Upload successful</small>
+                                                <div class="small text-muted">Pending for admin approval</div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex gap-2 flex-wrap">
+                                            <button class="btn btn-sm btn-outline-primary" onclick="viewIdProof('PAN Card')"><i class="bi bi-eye me-1"></i>View</button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="showPanUpload()"><i class="bi bi-pencil me-1"></i>Replace</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- PAN Card Upload Form -->
+                                    <div id="panUploadSection" th:style="${profile.hasPanCard} ? 'display: none;' : ''">
+                                        <form id="panForm" class="row g-2">
+                                            <input type="hidden" name="idProofType" value="PAN Card">
+                                            <div class="col-12">
+                                                <input id="panInput" class="form-control form-control-sm" type="file" accept=".pdf,.jpg,.jpeg,.png" required>
+                                                <small class="form-text text-muted">PDF, JPG, or PNG up to 5MB. Clear scan required.</small>
+                                            </div>
+                                            <div class="col-12">
+                                                <div id="panMessage" class="small mb-2"></div>
+                                                <button class="btn btn-success btn-sm" type="submit" style="padding: 0.4rem 0.9rem; font-size: 0.875rem;">Upload PAN Card</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </th:block>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Phone Verification Modal -->
+<div class="modal fade" id="phoneVerificationModal" tabindex="-1" aria-labelledby="phoneVerificationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="phoneVerificationModalLabel">Verify Phone Number</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>We'll send a 6-digit verification code to <strong id="modalPhoneNumber"></strong>.</p>
+                <form id="phoneVerificationForm">
+                    <div class="mb-3">
+                        <label for="otpInput" class="form-label">Verification Code</label>
+                        <input type="text" class="form-control form-control-lg text-center" id="otpInput" maxlength="6" placeholder="Enter 6-digit code" required>
+                        <div class="form-text">Code expires in 10 minutes</div>
+                    </div>
+                    <div id="phoneVerificationMessage" class="small"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-outline-primary" id="resendOtpBtn">Resend Code</button>
+                <button type="button" class="btn btn-primary" id="verifyOtpBtn">Verify</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/js/app.js}"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+async function cropImageToSquare(file) {
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  const image = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+  const size = Math.min(image.width, image.height);
+  const sx = (image.width - size) / 2;
+  const sy = (image.height - size) / 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const context = canvas.getContext('2d');
+  context.drawImage(image, sx, sy, size, size, 0, 0, 256, 256);
+  return await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 0.92));
+}
+
+document.getElementById('profileImageForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = document.getElementById('profileImageInput');
+  const message = document.getElementById('profileMessage');
+  if (!input.files.length) {
+    showInlineAlert(message, 'Select an image to upload.', 'danger', 'Upload Failed');
+    return;
+  }
+  const button = e.target.querySelector('button[type="submit"]');
+  clearInlineAlert(message);
+  setButtonLoading(button, true, 'Uploading image...');
+  const croppedBlob = await cropImageToSquare(input.files[0]);
+  const formData = new FormData();
+  formData.append('file', croppedBlob, 'profile-picture.png');
+  const res = await fetch('/api/users/profile/picture', {method: 'POST', body: formData});
+  const data = await res.json().catch(() => ({}));
+  setButtonLoading(button, false);
+  showInlineAlert(message, res.ok ? 'Profile picture updated successfully.' : (data.message || 'Profile picture upload failed'), res.ok ? 'success' : 'danger', res.ok ? 'Upload Complete' : 'Upload Failed');
+  if (res.ok) {
+    const avatarUrl = `/api/users/avatar/[[${profile.id}]]?v=${Date.now()}`;
+    const existingImage = document.getElementById('profileAvatarPreview');
+    existingImage.src = avatarUrl;
+    const topbarImage = document.querySelector('.profile-button img');
+    const topbarFallback = document.querySelector('.profile-button span.rounded-circle');
+    if (topbarImage) {
+      topbarImage.src = avatarUrl;
+    } else if (topbarFallback) {
+      topbarFallback.outerHTML = `<img src="${avatarUrl}" alt="Profile" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">`;
+    }
+    input.value = '';
+  }
+});
+
+document.getElementById('profileForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const button = e.target.querySelector('button[type="submit"]');
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+  const message = document.getElementById('profileMessage');
+  clearInlineAlert(message);
+  setButtonLoading(button, true, 'Saving profile...');
+  const res = await fetch('/api/users/profile', {
+    method: 'PATCH',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json().catch(() => ({}));
+  setButtonLoading(button, false);
+  showInlineAlert(message, res.ok ? 'Profile updated successfully.' : (data.message || 'Update failed'), res.ok ? 'success' : 'danger', res.ok ? 'Profile Saved' : 'Update Failed');
+});
+
+document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const button = e.target.querySelector('button[type="submit"]');
+  const payload = Object.fromEntries(new FormData(e.target).entries());
+  const message = document.getElementById('passwordMessage');
+  clearInlineAlert(message);
+  setButtonLoading(button, true, 'Updating password...');
+  const res = await fetch('/api/users/profile/password', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json().catch(() => ({}));
+  setButtonLoading(button, false);
+  showInlineAlert(message, res.ok ? 'Password updated successfully.' : (data.message || 'Password update failed'), res.ok ? 'success' : 'danger', res.ok ? 'Password Updated' : 'Update Failed');
+  if (res.ok) {
+    e.target.reset();
+  }
+});
+
+let phoneVerificationModal;
+let currentPhoneNumber = '';
+
+function showPhoneVerification() {
+  const phoneInput = document.querySelector('input[name="phone"]');
+  currentPhoneNumber = phoneInput.value;
+  
+  if (!currentPhoneNumber) {
+    showInlineAlert(document.getElementById('profileMessage'), 'Please enter a phone number first.', 'danger', 'Phone Required');
+    return;
+  }
+  
+  document.getElementById('modalPhoneNumber').textContent = currentPhoneNumber;
+  document.getElementById('otpInput').value = '';
+  clearInlineAlert(document.getElementById('phoneVerificationMessage'));
+  
+  if (!phoneVerificationModal) {
+    phoneVerificationModal = new bootstrap.Modal(document.getElementById('phoneVerificationModal'));
+  }
+  
+  phoneVerificationModal.show();
+  sendOtp();
+}
+
+async function sendOtp() {
+  const message = document.getElementById('phoneVerificationMessage');
+  const resendBtn = document.getElementById('resendOtpBtn');
+  
+  clearInlineAlert(message);
+  setButtonLoading(resendBtn, true, 'Sending...');
+  
+  try {
+    const res = await fetch('/api/auth/mobile/send-otp', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({phone: currentPhoneNumber})
+    });
+    
+    const data = await res.json().catch(() => ({}));
+    setButtonLoading(resendBtn, false);
+    
+    if (res.ok) {
+      showInlineAlert(message, 'Verification code sent successfully!', 'success', 'Code Sent');
+    } else {
+      showInlineAlert(message, data.message || 'Failed to send verification code', 'danger', 'Send Failed');
+    }
+  } catch (error) {
+    setButtonLoading(resendBtn, false);
+    showInlineAlert(message, 'Failed to send verification code', 'danger', 'Send Failed');
+  }
+}
+
+async function verifyOtp() {
+  const otpInput = document.getElementById('otpInput');
+  const message = document.getElementById('phoneVerificationMessage');
+  const verifyBtn = document.getElementById('verifyOtpBtn');
+  
+  const otp = otpInput.value.trim();
+  if (otp.length !== 6) {
+    showInlineAlert(message, 'Please enter a 6-digit verification code', 'danger', 'Invalid Code');
+    return;
+  }
+  
+  clearInlineAlert(message);
+  setButtonLoading(verifyBtn, true, 'Verifying...');
+  
+  try {
+    const res = await fetch('/api/auth/mobile/verify-otp', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({phone: currentPhoneNumber, otp: otp})
+    });
+    
+    const data = await res.json().catch(() => ({}));
+    setButtonLoading(verifyBtn, false);
+    
+    if (res.ok) {
+      showInlineAlert(message, 'Phone number verified successfully!', 'success', 'Verification Complete');
+      setTimeout(() => {
+        phoneVerificationModal.hide();
+        location.reload(); // Reload to show updated verification status
+      }, 1500);
+    } else {
+      showInlineAlert(message, data.message || 'Invalid verification code', 'danger', 'Verification Failed');
+    }
+  } catch (error) {
+    setButtonLoading(verifyBtn, false);
+    showInlineAlert(message, 'Failed to verify code', 'danger', 'Verification Failed');
+  }
+}
+
+// ID Proof functions
+function viewIdProof(idProofType) {
+   if (idProofType) {
+     window.open('/api/users/profile/id-proof/' + encodeURIComponent(idProofType), '_blank');
+   } else {
+     window.open('/api/users/profile/id-proof', '_blank');
+   }
+}
+
+function showAadharUpload() {
+   document.getElementById('aadharUploadedView').style.display = 'none';
+   document.getElementById('aadharUploadSection').style.display = 'block';
+}
+
+function showPanUpload() {
+   document.getElementById('panUploadedView').style.display = 'none';
+   document.getElementById('panUploadSection').style.display = 'block';
+}
+
+// Show uploaded views if documents exist
+document.addEventListener('DOMContentLoaded', () => {
+   const aadharUploadedView = document.getElementById('aadharUploadedView');
+   const panUploadedView = document.getElementById('panUploadedView');
+
+   if (aadharUploadedView && aadharUploadedView.getAttribute('style')?.includes('display: none') === false) {
+       aadharUploadedView.style.display = 'flex';
+   }
+
+   if (panUploadedView && panUploadedView.getAttribute('style')?.includes('display: none') === false) {
+       panUploadedView.style.display = 'flex';
+   }
+});
+
+// Event listeners
+document.getElementById('resendOtpBtn').addEventListener('click', sendOtp);
+document.getElementById('verifyOtpBtn').addEventListener('click', verifyOtp);
+document.getElementById('otpInput').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    verifyOtp();
+  }
+});
+
+// Aadhar Card form submission
+document.getElementById('aadharForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const button = form.querySelector('button[type="submit"]');
+  const message = document.getElementById('aadharMessage');
+  const fileInput = document.getElementById('aadharInput');
+  const idProofType = 'Aadhar Card';
+  
+  clearInlineAlert(message);
+  setButtonLoading(button, true, 'Uploading Aadhar Card...');
+  
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  formData.append('idProofType', idProofType);
+  
+  try {
+    const res = await fetch('/api/users/profile/id-proof', {
+      method: 'POST',
+      body: formData
+    });
+    
+    const data = await res.json().catch(() => ({}));
+    setButtonLoading(button, false);
+    
+    if (res.ok) {
+      showInlineAlert(message, 'Aadhar Card uploaded successfully!', 'success', 'Upload Complete');
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      showInlineAlert(message, data.message || 'Failed to upload Aadhar Card', 'danger', 'Upload Failed');
+    }
+  } catch (error) {
+    setButtonLoading(button, false);
+    showInlineAlert(message, 'Failed to upload Aadhar Card', 'danger', 'Upload Failed');
+  }
+});
+
+// PAN Card form submission
+document.getElementById('panForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const button = form.querySelector('button[type="submit"]');
+  const message = document.getElementById('panMessage');
+  const fileInput = document.getElementById('panInput');
+  const idProofType = 'PAN Card';
+  
+  clearInlineAlert(message);
+  setButtonLoading(button, true, 'Uploading PAN Card...');
+  
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  formData.append('idProofType', idProofType);
+  
+  try {
+    const res = await fetch('/api/users/profile/id-proof', {
+      method: 'POST',
+      body: formData
+    });
+    
+    const data = await res.json().catch(() => ({}));
+    setButtonLoading(button, false);
+    
+    if (res.ok) {
+      showInlineAlert(message, 'PAN Card uploaded successfully!', 'success', 'Upload Complete');
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      showInlineAlert(message, data.message || 'Failed to upload PAN Card', 'danger', 'Upload Failed');
+    }
+  } catch (error) {
+    setButtonLoading(button, false);
+    showInlineAlert(message, 'Failed to upload PAN Card', 'danger', 'Upload Failed');
+  }
+});
+</script>
+</body>
+</html>
