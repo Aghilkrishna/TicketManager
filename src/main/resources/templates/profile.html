@@ -232,7 +232,7 @@
                                         <tr th:each="doc : ${userIdProofs}">
                                             <td th:text="${doc.idProofType}">-</td>
                                             <td th:text="${doc.fileName}">-</td>
-                                            <td th:text="${#temporals.format(doc.createdAt, 'dd-MMM-yyyy')}">-</td>
+                                            <td th:text="${#temporals.format(doc.uploadDate, 'dd-MMM-yyyy')}">-</td>
                                             <td>
                                                 <span th:if="${doc.uploadStatus == 'UPLOADED'}" class="badge bg-info">Uploaded</span>
                                                 <span th:if="${doc.uploadStatus == 'PENDING_VERIFICATION'}" class="badge bg-warning">Pending Verification</span>
