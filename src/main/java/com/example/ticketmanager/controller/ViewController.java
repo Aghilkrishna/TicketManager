@@ -64,6 +64,16 @@ public class ViewController {
         var profile = userService.getProfile(principal.getName());
         model.addAttribute("profile", profile);
         model.addAttribute("profileRoleLabels", profile.roles().stream().map(userService::toRoleLabel).toList());
+        
+        // Add ID proof documents for Vendor and Agent roles
+        boolean isVendorOrAgent = userService.hasRole(principal.getName(), "ROLE_VENDOR") || 
+                                 userService.hasRole(principal.getName(), "ROLE_AGENT");
+        if (isVendorOrAgent) {
+            var userIdProofs = userService.getUserIdProofs(profile.id());
+            model.addAttribute("userIdProofs", userIdProofs);
+        }
+        model.addAttribute("isVendorOrAgent", isVendorOrAgent);
+        
         return "profile";
     }
 

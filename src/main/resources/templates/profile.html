@@ -185,6 +185,92 @@
                             </div>
                         </form>
                     </section>
+                    
+                    <!-- ID Proof Documents Section (only for Vendor and Agent roles) -->
+                    <section class="form-card glass-card mt-4" th:if="${isVendorOrAgent}">
+                        <div class="section-title mb-2">ID Proof Documents</div>
+                        <p class="text-muted mb-4">Upload and manage your identity verification documents.</p>
+                        
+                        <div class="mb-4">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Document Type</label>
+                                    <select id="idProofType" class="form-select">
+                                        <option value="">Select document type</option>
+                                        <option value="Aadhar Card">Aadhar Card</option>
+                                        <option value="PAN Card">PAN Card</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Upload Document</label>
+                                    <input id="idProofFile" class="form-control" type="file" accept="image/jpeg,image/png,application/pdf">
+                                    <div class="form-text">JPEG, PNG or PDF up to 5MB</div>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button id="uploadIdProofBtn" class="btn btn-primary">Upload Document</button>
+                            </div>
+                            <div id="idProofMessage" class="small mt-2"></div>
+                        </div>
+                        
+                        <!-- Uploaded Documents List -->
+                        <div th:if="${userIdProofs != null and !userIdProofs.empty}" class="mt-4">
+                            <h6 class="mb-3">Uploaded Documents</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Document Type</th>
+                                            <th>File Name</th>
+                                            <th>Upload Date</th>
+                                            <th>Status</th>
+                                            <th>Verification</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="doc : ${userIdProofs}">
+                                            <td th:text="${doc.idProofType}">-</td>
+                                            <td th:text="${doc.fileName}">-</td>
+                                            <td th:text="${#temporals.format(doc.createdAt, 'dd-MMM-yyyy')}">-</td>
+                                            <td>
+                                                <span th:if="${doc.uploadStatus == 'UPLOADED'}" class="badge bg-info">Uploaded</span>
+                                                <span th:if="${doc.uploadStatus == 'PENDING_VERIFICATION'}" class="badge bg-warning">Pending Verification</span>
+                                                <span th:if="${doc.uploadStatus == 'REJECTED'}" class="badge bg-danger">Rejected</span>
+                                            </td>
+                                            <td>
+                                                <span th:if="${doc.verified}" class="badge bg-success">
+                                                    <i class="bi bi-check-circle"></i> Verified
+                                                </span>
+                                                <span th:unless="${doc.verified}" class="badge bg-secondary">
+                                                    <i class="bi bi-clock"></i> Not Verified
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <button th:if="${doc.verified == false and doc.uploadStatus == 'REJECTED'}" 
+                                                        class="btn btn-sm btn-outline-primary" 
+                                                        th:onclick="'reuploadDocument(' + ${doc.id} + ')'">
+                                                    <i class="bi bi-upload"></i> Re-upload
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-info" 
+                                                        th:onclick="'viewDocument(' + ${doc.id} + ')'">
+                                                    <i class="bi bi-eye"></i> View
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div th:if="${userIdProofs.^[verified == false and verificationNotes != null]}" class="mt-3">
+                                <h6>Verification Notes</h6>
+                                <div class="alert alert-warning" th:each="doc : ${userIdProofs}" 
+                                     th:if="${doc.verificationNotes != null and !doc.verificationNotes.empty}">
+                                    <strong th:text="${doc.idProofType} + ':'"></strong>
+                                    <span th:text="${doc.verificationNotes}"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </div>
         </main>
@@ -415,6 +501,99 @@ document.getElementById('otpInput').addEventListener('keypress', (e) => {
     verifyOtp();
   }
 });
+
+// ID Proof Document Functions
+document.getElementById('uploadIdProofBtn').addEventListener('click', async () => {
+  const typeSelect = document.getElementById('idProofType');
+  const fileInput = document.getElementById('idProofFile');
+  const message = document.getElementById('idProofMessage');
+  
+  if (!typeSelect.value) {
+    showInlineAlert(message, 'Please select a document type', 'danger', 'Type Required');
+    return;
+  }
+  
+  if (!fileInput.files.length) {
+    showInlineAlert(message, 'Please select a file to upload', 'danger', 'File Required');
+    return;
+  }
+  
+  const file = fileInput.files[0];
+  if (file.size > 5 * 1024 * 1024) {
+    showInlineAlert(message, 'File size must be less than 5MB', 'danger', 'File Too Large');
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('idProofType', typeSelect.value);
+  
+  const button = document.getElementById('uploadIdProofBtn');
+  clearInlineAlert(message);
+  setButtonLoading(button, true, 'Uploading...');
+  
+  try {
+    const res = await fetch('/api/users/id-proof', {
+      method: 'POST',
+      body: formData
+    });
+    
+    const data = await res.json().catch(() => ({}));
+    setButtonLoading(button, false);
+    
+    if (res.ok) {
+      showInlineAlert(message, 'Document uploaded successfully!', 'success', 'Upload Complete');
+      typeSelect.value = '';
+      fileInput.value = '';
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      showInlineAlert(message, data.message || 'Upload failed', 'danger', 'Upload Failed');
+    }
+  } catch (error) {
+    setButtonLoading(button, false);
+    showInlineAlert(message, 'Upload failed', 'danger', 'Upload Failed');
+  }
+});
+
+window.viewDocument = async (docId) => {
+  try {
+    const res = await fetch(`/api/users/id-proof/${docId}/view`);
+    if (res.ok) {
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `id-proof-${docId}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.message || 'Failed to view document');
+    }
+  } catch (error) {
+    alert('Failed to view document');
+  }
+};
+
+window.reuploadDocument = (docId) => {
+  const typeSelect = document.getElementById('idProofType');
+  const fileInput = document.getElementById('idProofFile');
+  
+  // Find the document type from the existing document
+  const rows = document.querySelectorAll('tbody tr');
+  rows.forEach(row => {
+    const viewBtn = row.querySelector(`[onclick*="${docId}"]`);
+    if (viewBtn && viewBtn.textContent.includes('View')) {
+      const docType = row.cells[0].textContent;
+      typeSelect.value = docType;
+    }
+  });
+  
+  fileInput.focus();
+  fileInput.scrollIntoView({ behavior: 'smooth' });
+};
 </script>
 </body>
 </html>

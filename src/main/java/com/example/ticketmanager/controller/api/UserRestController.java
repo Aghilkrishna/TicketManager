@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
 
 import java.security.Principal;
 import java.nio.charset.StandardCharsets;
@@ -102,5 +104,32 @@ public class UserRestController {
                         .sorted()
                         .toList()
         )).toList();
+    }
+
+    @PostMapping(path = "/id-proof", consumes = {"multipart/form-data"})
+    public Map<String, Object> uploadIdProof(Principal principal, 
+                                             @RequestParam("file") MultipartFile file,
+                                             @RequestParam("idProofType") String idProofType) {
+        try {
+            userService.uploadIdProof(principal.getName(), file, idProofType);
+            return Map.of("message", "ID proof uploaded successfully");
+        } catch (Exception e) {
+            return Map.of("message", e.getMessage());
+        }
+    }
+
+    @GetMapping("/id-proof/{docId}/view")
+    public ResponseEntity<ByteArrayResource> viewIdProof(@PathVariable Long docId, Principal principal) {
+        try {
+            var doc = userService.getIdProofDocumentData(docId, principal.getName());
+            ByteArrayResource resource = new ByteArrayResource(doc.getIdProofDocument());
+            
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + doc.getIdProofFileName() + "\"")
+                    .contentType(MediaType.parseMediaType(doc.getIdProofContentType()))
+                    .body(resource);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }
