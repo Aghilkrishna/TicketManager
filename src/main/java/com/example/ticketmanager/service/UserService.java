@@ -416,7 +416,7 @@ public class UserService {
             idProof.setIdProofContentType(contentType);
             idProof.setIdProofFileName(file.getOriginalFilename());
             idProof.setFileSize(file.getSize());
-            idProof.setUploadStatus("UPLOADED");
+            idProof.setUploadStatus("PENDING_VERIFICATION");
             idProof.setVerified(false);
             idProof.setVerificationNotes(null);
             

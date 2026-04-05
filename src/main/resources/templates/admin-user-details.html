@@ -84,7 +84,7 @@
             </nav>
 
             <div class="row g-4">
-                <div class="col-lg-7">
+                <div class="col-12">
                     <section class="glass-card">
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <h3 class="h4 mb-0 fw-bold">Profile Information</h3>
@@ -137,7 +137,10 @@
                         </div>
                     </section>
                 </div>
-                <div class="col-lg-5">
+            </div>
+
+            <div class="row g-4 mt-0">
+                <div class="col-12">
                     <section class="glass-card">
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <h3 class="h4 mb-0 fw-bold">ID Verification</h3>
@@ -145,7 +148,7 @@
                                 <button class="btn btn-sm btn-outline-secondary" onclick="refreshIdProofs()" title="Refresh documents">
                                     <i class="bi bi-arrow-clockwise"></i>
                                 </button>
-                                <span class="badge bg-primary px-3 py-2" th:text="${userDetails.idProofVerified ? 'Verified' : 'Pending'}"></span>
+<!--                                <span class="badge bg-primary px-3 py-2" th:text="${userDetails.idProofVerified ? 'Verified' : 'Pending'}"></span>-->
                             </div>
                         </div>
 
@@ -154,7 +157,7 @@
                             <p class="text-muted">Users can upload ID documents from their profile section.</p>
                         </div>
 
-                        <!-- JavaScript will populate this container with ID proof cards -->
+                        <!-- JavaScript will populate this container with ID proof table -->
                         <div id="idProofsContainer">
                             <!-- Initial content will be replaced by JavaScript -->
                         </div>
@@ -169,50 +172,23 @@
                                     Review the uploaded documents and verify the user's identity.
                                 </div>
                                 
-                                <!-- Aadhar Card Verification -->
-                                <div th:if="${#lists.contains(idProofs.![idProofType], 'Aadhar Card')}" class="mb-4 p-3 border rounded">
-                                    <h6 class="fw-bold mb-3">
-                                        <i class="bi bi-card-text me-2"></i>Aadhar Card Verification
-                                    </h6>
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <label class="form-label small fw-bold">Status</label>
-                                            <select class="form-select form-select-sm" id="aadharCardStatus">
-                                                <option value="">Select status...</option>
-                                                <option value="PENDING_VERIFICATION">Pending</option>
-                                                <option value="VERIFIED">Approved</option>
-                                                <option value="REJECTED">Rejected</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label small fw-bold">Admin Notes</label>
-                                            <textarea class="form-control form-control-sm" id="aadharCardNotes" rows="2" 
-                                                      placeholder="Add comments for Aadhar Card verification..."></textarea>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- PAN Card Verification -->
-                                <div th:if="${#lists.contains(idProofs.![idProofType], 'PAN Card')}" class="mb-4 p-3 border rounded">
-                                    <h6 class="fw-bold mb-3">
-                                        <i class="bi bi-badge me-2"></i>PAN Card Verification
-                                    </h6>
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <label class="form-label small fw-bold">Status</label>
-                                            <select class="form-select form-select-sm" id="panCardStatus">
-                                                <option value="">Select status...</option>
-                                                <option value="PENDING_VERIFICATION">Pending</option>
-                                                <option value="VERIFIED">Approved</option>
-                                                <option value="REJECTED">Rejected</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label small fw-bold">Admin Notes</label>
-                                            <textarea class="form-control form-control-sm" id="panCardNotes" rows="2" 
-                                                      placeholder="Add comments for PAN Card verification..."></textarea>
-                                        </div>
-                                    </div>
+                                <!-- ID Proof Verification Table -->
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-hover" id="idProofVerificationTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>ID Proof Type</th>
+                                                <th>Document Name</th>
+                                                <th>Status</th>
+                                                <th>Verification Action</th>
+                                                <th>Admin Comments</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="idProofTableBody">
+                                            <!-- JavaScript will populate this tbody -->
+                                        </tbody>
+                                    </table>
                                 </div>
                                 
                                 <button type="submit" class="btn btn-primary w-100" id="saveVerificationBtn">
@@ -238,34 +214,64 @@
     // Initialize verification form based on current status
     function initializeVerificationCheckboxes() {
         const idProofs = [[${idProofs}]];
+        const tableBody = document.getElementById('idProofTableBody');
+        if (!tableBody) return;
+        
+        tableBody.innerHTML = '';
+        
+        if (idProofs.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox me-2"></i>No ID proofs have been uploaded yet.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
         idProofs.forEach(idProof => {
-            if (idProof.idProofType === 'Aadhar Card') {
-                const statusSelect = document.getElementById('aadharCardStatus');
-                const notesTextarea = document.getElementById('aadharCardNotes');
-                if (statusSelect) {
-                    statusSelect.value = idProof.uploadStatus || 'PENDING_VERIFICATION';
-                    // Enable form fields for new uploads, disable for already verified
-                    statusSelect.disabled = idProof.verified;
-                }
-                if (notesTextarea) {
-                    notesTextarea.value = idProof.verificationNotes || '';
-                    // Enable notes for new uploads, disable for already verified
-                    notesTextarea.disabled = idProof.verified;
-                }
-            } else if (idProof.idProofType === 'PAN Card') {
-                const statusSelect = document.getElementById('panCardStatus');
-                const notesTextarea = document.getElementById('panCardNotes');
-                if (statusSelect) {
-                    statusSelect.value = idProof.uploadStatus || 'PENDING_VERIFICATION';
-                    // Enable form fields for new uploads, disable for already verified
-                    statusSelect.disabled = idProof.verified;
-                }
-                if (notesTextarea) {
-                    notesTextarea.value = idProof.verificationNotes || '';
-                    // Enable notes for new uploads, disable for already verified
-                    notesTextarea.disabled = idProof.verified;
-                }
-            }
+            const row = document.createElement('tr');
+            const statusClass = idProof.uploadStatus === 'PENDING_VERIFICATION' ? 'status-pending' : 
+                               (idProof.verified ? 'status-verified' : 'status-rejected');
+            const statusText = idProof.uploadStatus === 'PENDING_VERIFICATION' ? 'Pending' : 
+                              (idProof.verified ? 'Verified' : 'Rejected');
+            
+            row.innerHTML = `
+                <td class="fw-bold">${idProof.idProofType}</td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-file-earmark-text me-2 text-muted"></i>
+                        <span class="text-break">${idProof.fileName}</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm" id="status_${idProof.idProofType.replace(/\s+/g, '_')}" 
+                            ${idProof.verified ? 'disabled' : ''}>
+                        <option value="">Select status...</option>
+                        <option value="PENDING_VERIFICATION" ${idProof.uploadStatus === 'PENDING_VERIFICATION' ? 'selected' : ''}>Pending</option>
+                        <option value="VERIFIED" ${idProof.verified ? 'selected' : ''}>Approved</option>
+                        <option value="REJECTED" ${idProof.uploadStatus === 'REJECTED' ? 'selected' : ''}>Rejected</option>
+                    </select>
+                </td>
+                <td>
+                    <textarea class="form-control form-control-sm" id="notes_${idProof.idProofType.replace(/\s+/g, '_')}" 
+                              rows="2" placeholder="Add comments..." 
+                              ${idProof.verified ? 'disabled' : ''}>${idProof.verificationNotes || ''}</textarea>
+                </td>
+                <td>
+                    <div class="btn-group-vertical btn-group-sm" role="group">
+                        <a href="/api/admin/users/${userId}/id-proof/${encodeURIComponent(idProof.idProofType)}" 
+                           target="_blank" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-eye me-1"></i>View
+                        </a>
+                    </div>
+                </td>
+            `;
+            tableBody.appendChild(row);
         });
     }
     
@@ -275,8 +281,6 @@
         // Set initial document count
         const idProofs = [[${idProofs}]];
         lastKnownDocumentCount = idProofs.length;
-        // Initialize document cards
-        updateDocumentCards(idProofs);
         
         // Check if there are rejected documents - if so, refresh more frequently
         const hasRejectedDocuments = idProofs.some(doc => doc.uploadStatus === 'REJECTED');
@@ -303,9 +307,6 @@
             
             // Update verification form with latest data
             initializeVerificationCheckboxesWithNewData(idProofs);
-            
-            // Update document cards display
-            updateDocumentCards(idProofs);
         } catch (error) {
             console.error('Error refreshing ID proofs:', error);
         }
@@ -335,98 +336,64 @@
 
     // Initialize verification form with new data
     function initializeVerificationCheckboxesWithNewData(idProofs) {
-        idProofs.forEach(idProof => {
-            if (idProof.idProofType === 'Aadhar Card') {
-                const statusSelect = document.getElementById('aadharCardStatus');
-                const notesTextarea = document.getElementById('aadharCardNotes');
-                if (statusSelect) {
-                    statusSelect.value = idProof.uploadStatus || 'PENDING_VERIFICATION';
-                    // Enable the form field for new documents
-                    statusSelect.disabled = false;
-                }
-                if (notesTextarea) {
-                    notesTextarea.value = idProof.verificationNotes || '';
-                    // Enable notes field for new documents
-                    notesTextarea.disabled = false;
-                }
-            } else if (idProof.idProofType === 'PAN Card') {
-                const statusSelect = document.getElementById('panCardStatus');
-                const notesTextarea = document.getElementById('panCardNotes');
-                if (statusSelect) {
-                    statusSelect.value = idProof.uploadStatus || 'PENDING_VERIFICATION';
-                    // Enable the form field for new documents
-                    statusSelect.disabled = false;
-                }
-                if (notesTextarea) {
-                    notesTextarea.value = idProof.verificationNotes || '';
-                    // Enable notes field for new documents
-                    notesTextarea.disabled = false;
-                }
-            }
-        });
-    }
-
-    // Update document cards display
-    function updateDocumentCards(idProofs) {
-        const container = document.getElementById('idProofsContainer');
-        if (!container) return;
+        const tableBody = document.getElementById('idProofTableBody');
+        if (!tableBody) return;
         
-        // Clear existing cards
-        container.innerHTML = '';
+        tableBody.innerHTML = '';
         
         if (idProofs.length === 0) {
-            container.innerHTML = `
-                <div class="text-center py-5">
-                    <p class="text-muted mb-0">No ID proofs have been uploaded yet.</p>
-                    <p class="text-muted">Users can upload ID documents from their profile section.</p>
-                </div>
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox me-2"></i>No ID proofs have been uploaded yet.
+                    </td>
+                </tr>
             `;
             return;
         }
         
-        // Recreate cards with updated data
         idProofs.forEach(idProof => {
+            const row = document.createElement('tr');
             const statusClass = idProof.uploadStatus === 'PENDING_VERIFICATION' ? 'status-pending' : 
                                (idProof.verified ? 'status-verified' : 'status-rejected');
             const statusText = idProof.uploadStatus === 'PENDING_VERIFICATION' ? 'Pending' : 
                               (idProof.verified ? 'Verified' : 'Rejected');
             
-            const card = document.createElement('div');
-            card.className = 'id-proof-card';
-            card.innerHTML = `
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div>
-                        <h5 class="mb-1 fw-bold">${idProof.idProofType}</h5>
-                        <small class="text-muted">ID Proof Document</small>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="status-badge ${statusClass}">${statusText}</span>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <div class="d-flex align-items-center mb-2">
+            row.innerHTML = `
+                <td class="fw-bold">${idProof.idProofType}</td>
+                <td>
+                    <div class="d-flex align-items-center">
                         <i class="bi bi-file-earmark-text me-2 text-muted"></i>
                         <span class="text-break">${idProof.fileName}</span>
                     </div>
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-calendar3 me-2 text-muted"></i>
-                        <small>${new Date(idProof.uploadDate).toLocaleString('en-US', { 
-                            year: 'numeric', month: 'short', day: 'numeric', 
-                            hour: '2-digit', minute: '2-digit' 
-                        })}</small>
+                </td>
+                <td>
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm" id="status_${idProof.idProofType.replace(/\s+/g, '_')}" 
+                            ${idProof.verified ? 'disabled' : ''}>
+                        <option value="">Select status...</option>
+                        <option value="PENDING_VERIFICATION" ${idProof.uploadStatus === 'PENDING_VERIFICATION' ? 'selected' : ''}>Pending</option>
+                        <option value="VERIFIED" ${idProof.verified ? 'selected' : ''}>Approved</option>
+                        <option value="REJECTED" ${idProof.uploadStatus === 'REJECTED' ? 'selected' : ''}>Rejected</option>
+                    </select>
+                </td>
+                <td>
+                    <textarea class="form-control form-control-sm" id="notes_${idProof.idProofType.replace(/\s+/g, '_')}" 
+                              rows="2" placeholder="Add comments..." 
+                              ${idProof.verified ? 'disabled' : ''}>${idProof.verificationNotes || ''}</textarea>
+                </td>
+                <td>
+                    <div class="btn-group-vertical btn-group-sm" role="group">
+                        <a href="/api/admin/users/${userId}/id-proof/${encodeURIComponent(idProof.idProofType)}" 
+                           target="_blank" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-eye me-1"></i>View
+                        </a>
                     </div>
-                </div>
-                ${idProof.verificationNotes && idProof.verificationNotes.trim() !== '' ? 
-                    `<div class="alert alert-info py-2 small mb-3">
-                        <i class="bi bi-info-circle me-1"></i>
-                        <strong>Notes:</strong> <span>${idProof.verificationNotes}</span>
-                    </div>` : ''}
-                <a href="/api/admin/users/${userId}/id-proof/${encodeURIComponent(idProof.idProofType)}" 
-                   target="_blank" class="btn btn-sm btn-outline-primary w-100">
-                    <i class="bi bi-eye me-1"></i> View Document
-                </a>
+                </td>
             `;
-            container.appendChild(card);
+            tableBody.appendChild(row);
         });
     }
 
@@ -446,10 +413,10 @@
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
 
         const data = {
-            aadharCardStatus: document.getElementById('aadharCardStatus')?.value || '',
-            aadharCardNotes: document.getElementById('aadharCardNotes')?.value || '',
-            panCardStatus: document.getElementById('panCardStatus')?.value || '',
-            panCardNotes: document.getElementById('panCardNotes')?.value || ''
+            aadharCardStatus: document.getElementById('status_Aadhar_Card')?.value || '',
+            aadharCardNotes: document.getElementById('notes_Aadhar_Card')?.value || '',
+            panCardStatus: document.getElementById('status_PAN_Card')?.value || '',
+            panCardNotes: document.getElementById('notes_PAN_Card')?.value || ''
         };
 
         try {
@@ -471,6 +438,10 @@
             
             // Refresh the ID proofs data to show updated status
             await refreshIdProofs();
+            
+            // Re-enable button and restore original text
+            btn.disabled = false;
+            btn.innerHTML = originalText;
             
             // Clear success message after 3 seconds
             setTimeout(() => {
