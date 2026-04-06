@@ -31,7 +31,7 @@ public class AppUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = false, length = 50)
     private String username;
 
     @Column(nullable = false, unique = true, length = 120)
@@ -85,6 +85,9 @@ public class AppUser {
     @Column(nullable = false)
     private boolean emailVerified = false;
 
+    @Column(columnDefinition = "BOOLEAN DEFAULT false NOT NULL")
+    private Boolean phoneVerified = false;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -103,5 +106,18 @@ public class AppUser {
     @PrePersist
     void prePersist() {
         createdAt = LocalDateTime.now();
+        // Ensure phoneVerified is never null
+        if (phoneVerified == null) {
+            phoneVerified = false;
+        }
+    }
+
+    // Helper method for backward compatibility
+    public boolean isPhoneVerified() {
+        return phoneVerified != null && phoneVerified;
+    }
+
+    public void setPhoneVerified(boolean phoneVerified) {
+        this.phoneVerified = phoneVerified;
     }
 }

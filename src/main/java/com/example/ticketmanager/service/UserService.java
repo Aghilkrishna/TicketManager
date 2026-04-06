@@ -1,15 +1,12 @@
 package com.example.ticketmanager.service;
 
-import com.example.ticketmanager.dto.AuthDtos;
 import com.example.ticketmanager.dto.AdminDtos;
-import com.example.ticketmanager.entity.AppFeature;
-import com.example.ticketmanager.entity.AppUser;
-import com.example.ticketmanager.entity.EmailNotificationAction;
-import com.example.ticketmanager.entity.PasswordResetToken;
-import com.example.ticketmanager.entity.Role;
+import com.example.ticketmanager.dto.AuthDtos;
+import com.example.ticketmanager.entity.*;
 import com.example.ticketmanager.exception.AppException;
 import com.example.ticketmanager.repository.PasswordResetTokenRepository;
 import com.example.ticketmanager.repository.RoleRepository;
+import com.example.ticketmanager.repository.UserIdProofRepository;
 import com.example.ticketmanager.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,18 +20,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
+import java.util.*;
 import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -44,12 +37,13 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final UserIdProofRepository userIdProofRepository;
     private final EmailService emailService;
     private final com.example.ticketmanager.config.AppProperties appProperties;
     private final EmailNotificationSettingsService emailNotificationSettingsService;
 
-    public AppUser getByUsername(String username) {
-        return userRepository.findByUsername(username)
+    public AppUser getByEmail(String email) {
+        return userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
@@ -58,21 +52,17 @@ public class UserService {
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
-    public AuthDtos.ProfileResponse getProfile(String username) {
-        AppUser user = getByUsername(username);
+    public AuthDtos.ProfileResponse getProfile(String email) {
+        AppUser user = getByEmail(email);
         return toProfile(user);
     }
 
     @Transactional
-    public AuthDtos.ProfileResponse updateProfile(String username, AuthDtos.ProfileUpdateRequest request) {
-        AppUser user = getByUsername(username);
-        if (!user.getUsername().equals(request.username()) && userRepository.existsByUsername(request.username())) {
-            throw new AppException(HttpStatus.BAD_REQUEST, "Username already in use");
-        }
+    public AuthDtos.ProfileResponse updateProfile(String email, AuthDtos.ProfileUpdateRequest request) {
+        AppUser user = getByEmail(email);
         if (!user.getEmail().equals(request.email()) && userRepository.existsByEmail(request.email())) {
             throw new AppException(HttpStatus.BAD_REQUEST, "Email already in use");
         }
-        user.setUsername(request.username());
         user.setEmail(request.email());
         user.setPhone(request.phone());
         user.setFirstName(normalize(request.firstName()));
@@ -88,8 +78,8 @@ public class UserService {
     }
 
     @Transactional
-    public void changePassword(String username, AuthDtos.ProfilePasswordChangeRequest request) {
-        AppUser user = getByUsername(username);
+    public void changePassword(String email, AuthDtos.ProfilePasswordChangeRequest request) {
+        AppUser user = getByEmail(email);
         if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
             throw new AppException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
         }
@@ -104,8 +94,8 @@ public class UserService {
     }
 
     @Transactional
-    public AuthDtos.ProfileResponse updateProfileImage(String username, MultipartFile file) {
-        AppUser user = getByUsername(username);
+    public AuthDtos.ProfileResponse updateProfileImage(String email, MultipartFile file) {
+        AppUser user = getByEmail(email);
         if (file == null || file.isEmpty()) {
             throw new AppException(HttpStatus.BAD_REQUEST, "Profile picture is required");
         }
@@ -136,13 +126,13 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public byte[] getProfileImage(String username) {
-        return getByUsername(username).getProfileImage();
+    public byte[] getProfileImage(String email) {
+        return getByEmail(email).getProfileImage();
     }
 
     @Transactional(readOnly = true)
-    public String getProfileImageContentType(String username) {
-        return getByUsername(username).getProfileImageContentType();
+    public String getProfileImageContentType(String email) {
+        return getByEmail(email).getProfileImageContentType();
     }
 
     @Transactional(readOnly = true)
@@ -188,6 +178,14 @@ public class UserService {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
+    public Set<String> getRoleLabels(AppUser user) {
+        return user.getRoles().stream()
+                .filter(Role::isActive)
+                .map(Role::getName)
+                .map(this::toRoleLabel)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
     public Set<String> getFeatureAuthorities(AppUser user) {
         return user.getRoles().stream()
                 .filter(Role::isActive)
@@ -211,8 +209,8 @@ public class UserService {
         return user.getRoles().stream().anyMatch(role -> role.isActive() && roleName.equals(role.getName()));
     }
 
-    public boolean hasRole(String username, String roleName) {
-        return hasRole(getByUsername(username), roleName);
+    public boolean hasRole(String email, String roleName) {
+        return hasRole(getByEmail(email), roleName);
     }
 
     @Transactional(readOnly = true)
@@ -228,9 +226,9 @@ public class UserService {
     }
 
     @Transactional
-    public AdminDtos.UserSummary updateUser(Long userId, AdminDtos.UserUpdateRequest request, String actorUsername) {
+    public AdminDtos.UserSummary updateUser(Long userId, AdminDtos.UserUpdateRequest request, String actorEmail) {
         AppUser user = getById(userId);
-        AppUser actor = getByUsername(actorUsername);
+        AppUser actor = getByEmail(actorEmail);
         validateUniqueFields(user, request.username(), request.email());
         Set<Role> roles = resolveRoles(request.roleIds());
         preventUnsafeSelfUpdate(actor, user, request.enabled(), roles);
@@ -287,6 +285,62 @@ public class UserService {
         );
     }
 
+    public AdminDtos.UserDetailsResponse getUserDetails(Long userId) {
+        AppUser user = getById(userId);
+        java.util.List<UserIdProof> userIdProofs = userIdProofRepository.findByUser(user);
+        boolean hasAadhar = userIdProofs.stream().anyMatch(id -> "Aadhar Card".equals(id.getIdProofType()));
+        boolean hasPan = userIdProofs.stream().anyMatch(id -> "PAN Card".equals(id.getIdProofType()));
+        boolean hasMandatoryIdProofs = hasAadhar && hasPan;
+        boolean idProofVerified = userIdProofs.stream().anyMatch(id -> Boolean.TRUE.equals(id.getVerified()));
+        boolean hasPendingVerification = userIdProofs.stream().anyMatch(id -> "PENDING_VERIFICATION".equals(id.getUploadStatus()));
+        
+        return new AdminDtos.UserDetailsResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getFlat(),
+                user.getBuilding(),
+                user.getArea(),
+                user.getCity(),
+                user.getState(),
+                user.getCountry(),
+                user.getPincode(),
+                user.isEmailVerified(),
+                user.isPhoneVerified(),
+                getRoleNames(user),
+                getRoleLabels(user),
+                user.getProfileImage() != null && user.getProfileImage().length > 0,
+                null,
+                null,
+                false,
+                hasAadhar,
+                hasPan,
+                hasMandatoryIdProofs,
+                idProofVerified,
+                hasPendingVerification
+        );
+    }
+
+    public List<AdminDtos.IdProofDocumentResponse> getUserIdProofs(Long userId) {
+        AppUser user = getById(userId);
+        java.util.List<UserIdProof> userIdProofs = userIdProofRepository.findByUser(user);
+        
+        return userIdProofs.stream()
+                .map(idProof -> new AdminDtos.IdProofDocumentResponse(
+                        idProof.getId(),
+                        idProof.getIdProofType(),
+                        idProof.getIdProofFileName(),
+                        idProof.getCreatedAt(),
+                        idProof.getUploadStatus(),
+                        idProof.getVerified(),
+                        idProof.getVerificationNotes()
+                ))
+                .toList();
+    }
+
     public AuthDtos.ProfileResponse toProfile(AppUser user) {
         return new AuthDtos.ProfileResponse(
                 user.getId(),
@@ -303,6 +357,7 @@ public class UserService {
                 user.getCountry(),
                 user.getPincode(),
                 user.isEmailVerified(),
+                user.isPhoneVerified(),
                 getRoleNames(user),
                 user.getProfileImage() != null && user.getProfileImage().length > 0
         );
@@ -327,5 +382,130 @@ public class UserService {
         graphics.drawImage(source, 0, 0, width, height, null);
         graphics.dispose();
         return output;
+    }
+
+    @Transactional
+    public void uploadIdProof(String email, MultipartFile file, String idProofType) {
+        AppUser user = getByEmail(email);
+        
+        // Check if document type already exists and is verified
+        Optional<UserIdProof> existingDoc = userIdProofRepository.findByUserAndIdProofType(user, idProofType);
+        if (existingDoc.isPresent() && Boolean.TRUE.equals(existingDoc.get().getVerified())) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "This document type is already verified and cannot be re-uploaded");
+        }
+        
+        // Validate file
+        if (file.isEmpty()) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "File is empty");
+        }
+        
+        if (file.getSize() > 5 * 1024 * 1024) { // 5MB
+            throw new AppException(HttpStatus.BAD_REQUEST, "File size must be less than 5MB");
+        }
+        
+        String contentType = file.getContentType();
+        if (contentType == null || (!contentType.startsWith("image/") && !contentType.equals("application/pdf"))) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Only image files and PDF are allowed");
+        }
+        
+        try {
+            UserIdProof idProof = existingDoc.orElse(new UserIdProof());
+            idProof.setUser(user);
+            idProof.setIdProofType(idProofType);
+            idProof.setIdProofDocument(file.getBytes());
+            idProof.setIdProofContentType(contentType);
+            idProof.setIdProofFileName(file.getOriginalFilename());
+            idProof.setFileSize(file.getSize());
+            idProof.setUploadStatus("PENDING_VERIFICATION");
+            idProof.setVerified(false);
+            idProof.setVerificationNotes(null);
+            
+            userIdProofRepository.save(idProof);
+        } catch (IOException e) {
+            throw new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to process file: " + e.getMessage());
+        }
+    }
+
+    public AdminDtos.IdProofDocumentResponse getIdProofDocument(Long docId, String email) {
+        AppUser user = getByEmail(email);
+        UserIdProof idProof = userIdProofRepository.findById(docId)
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Document not found"));
+        
+        if (!idProof.getUser().getId().equals(user.getId())) {
+            throw new AppException(HttpStatus.FORBIDDEN, "Access denied");
+        }
+        
+        return new AdminDtos.IdProofDocumentResponse(
+                idProof.getId(),
+                idProof.getIdProofType(),
+                idProof.getIdProofFileName(),
+                idProof.getCreatedAt(),
+                idProof.getUploadStatus(),
+                idProof.getVerified(),
+                idProof.getVerificationNotes()
+        );
+    }
+
+    public UserIdProof getIdProofDocumentData(Long docId, String email) {
+        AppUser user = getByEmail(email);
+        UserIdProof idProof = userIdProofRepository.findById(docId)
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Document not found"));
+        
+        if (!idProof.getUser().getId().equals(user.getId())) {
+            throw new AppException(HttpStatus.FORBIDDEN, "Access denied");
+        }
+        
+        return idProof;
+    }
+
+    public UserIdProof getIdProofDocumentDataByType(Long userId, String idProofType) {
+        AppUser user = getById(userId);
+        return userIdProofRepository.findByUserAndIdProofType(user, idProofType)
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Document not found"));
+    }
+
+    @Transactional
+    public void verifyIdProofs(Long userId, Map<String, String> verificationData) {
+        AppUser user = getById(userId);
+        
+        // Process Aadhar Card verification
+        if (verificationData.containsKey("aadharCardStatus")) {
+            Optional<UserIdProof> aadharDoc = userIdProofRepository.findByUserAndIdProofType(user, "Aadhar Card");
+            if (aadharDoc.isPresent()) {
+                UserIdProof doc = aadharDoc.get();
+                doc.setUploadStatus(verificationData.get("aadharCardStatus"));
+                doc.setVerified("VERIFIED".equals(verificationData.get("aadharCardStatus")));
+                doc.setVerificationNotes(verificationData.get("aadharCardNotes"));
+                userIdProofRepository.save(doc);
+            }
+        }
+        
+        // Process PAN Card verification
+        if (verificationData.containsKey("panCardStatus")) {
+            Optional<UserIdProof> panDoc = userIdProofRepository.findByUserAndIdProofType(user, "PAN Card");
+            if (panDoc.isPresent()) {
+                UserIdProof doc = panDoc.get();
+                doc.setUploadStatus(verificationData.get("panCardStatus"));
+                doc.setVerified("VERIFIED".equals(verificationData.get("panCardStatus")));
+                doc.setVerificationNotes(verificationData.get("panCardNotes"));
+                userIdProofRepository.save(doc);
+            }
+        }
+    }
+
+    public AdminDtos.IdProofDocumentResponse getIdProofDocumentByType(Long userId, String idProofType) {
+        AppUser user = getById(userId);
+        UserIdProof idProof = userIdProofRepository.findByUserAndIdProofType(user, idProofType)
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Document not found"));
+        
+        return new AdminDtos.IdProofDocumentResponse(
+                idProof.getId(),
+                idProof.getIdProofType(),
+                idProof.getIdProofFileName(),
+                idProof.getCreatedAt(),
+                idProof.getUploadStatus(),
+                idProof.getVerified(),
+                idProof.getVerificationNotes()
+        );
     }
 }

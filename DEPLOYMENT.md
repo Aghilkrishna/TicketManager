@@ -141,9 +141,13 @@ The application should now be accessible at `http://your-vps-ip:9090`.
     ```
 
 ### Step 6: Update Application URL
-6. Update the `APP_BASE_URL` in your `.env` file to use `https://`:
+6. Update the `APP_BASE_URL` in your `.env` file to use `https://`. Also, ensure your Mail settings are correct if you are using SSL (Port 465):
     ```bash
     APP_BASE_URL=https://yubix.tech
+    MAIL_SSL_ENABLE=true
+    MAIL_STARTTLS=false
+    APP_MAIL_FROM_ADDRESS=noreplay@tickets.yubix.in
+    APP_MAIL_FROM_NAME=Ticket Manager
     ```
 7. Restart the application:
     ```bash

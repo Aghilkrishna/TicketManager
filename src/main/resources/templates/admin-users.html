@@ -116,6 +116,9 @@ function renderUsers() {
         <td>${(user.roleLabels || []).join(', ') || '-'}</td>
         <td>${activeBadge}</td>
         <td class="text-end">
+          <button class="btn btn-sm btn-outline-info" type="button" title="View Details & Verification" onclick="viewUserDetails(${user.id})">
+            <i class="bi bi-person-badge"></i>
+          </button>
           <button class="btn btn-sm btn-outline-primary" type="button" title="Edit user" onclick="openUserModal(${user.id})">
             <i class="bi bi-pencil"></i>
           </button>
@@ -175,6 +178,10 @@ window.toggleUserStatus = async (userId) => {
     return;
   }
   await loadUsers();
+};
+
+window.viewUserDetails = (userId) => {
+  window.location.href = `/admin/users/${userId}`;
 };
 
 async function loadUsers() {

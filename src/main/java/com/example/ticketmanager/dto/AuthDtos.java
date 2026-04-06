@@ -16,13 +16,14 @@ public final class AuthDtos {
     }
 
     public record LoginRequest(
-            @NotBlank String username,
+            @NotBlank String email,
             @NotBlank String password
     ) {
     }
 
     public record RegisterRequest(
-            @NotBlank @Size(min = 3, max = 50) String username,
+            @NotBlank @Size(max = 80) String firstName,
+            @NotBlank @Size(max = 80) String lastName,
             @NotBlank @Email String email,
             @NotBlank @Size(min = 8, max = 100) String password,
             @Pattern(regexp = "^$|^[0-9+\\-() ]{7,20}$", message = "Invalid phone number") String phone
@@ -30,7 +31,8 @@ public final class AuthDtos {
     }
 
     public record VendorRegisterRequest(
-            @NotBlank @Size(min = 3, max = 50) String username,
+            @NotBlank @Size(max = 80) String firstName,
+            @NotBlank @Size(max = 80) String lastName,
             @NotBlank @Email String email,
             @NotBlank @Size(min = 8, max = 100) String password,
             @NotBlank @Size(max = 150) String companyName,
@@ -71,13 +73,13 @@ public final class AuthDtos {
             String country,
             String pincode,
             boolean emailVerified,
+            boolean phoneVerified,
             Set<String> roles,
             boolean profileImageUploaded
     ) {
     }
 
     public record ProfileUpdateRequest(
-            @NotBlank @Size(min = 3, max = 50) String username,
             @NotBlank @Email String email,
             @Pattern(regexp = "^$|^[0-9+\\-() ]{7,20}$", message = "Invalid phone number") String phone,
             @Size(max = 80) String firstName,
@@ -290,6 +292,22 @@ public final class AuthDtos {
             Long recipientId,
             String username,
             boolean typing
+    ) {
+    }
+
+    public record MobileVerificationRequest(
+            @NotBlank String phone
+    ) {
+    }
+
+    public record MobileOtpVerificationRequest(
+            @NotBlank String phone,
+            @NotBlank @Size(min = 6, max = 6) String otp
+    ) {
+    }
+
+    public record MobileVerificationResponse(
+            String message
     ) {
     }
 }

@@ -25,3 +25,10 @@ spring:
           auth: ${MAIL_SMTP_AUTH:false}
           starttls:
             enable: ${MAIL_STARTTLS:false}
+          ssl:
+            enable: ${MAIL_SSL_ENABLE:false}
+
+app:
+  mail:
+    from-address: ${APP_MAIL_FROM_ADDRESS:no-reply@ticketmanager.local}
+    from-name: ${APP_MAIL_FROM_NAME:Ticket Manager}

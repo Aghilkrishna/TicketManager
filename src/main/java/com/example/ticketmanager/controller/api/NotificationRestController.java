@@ -18,11 +18,11 @@ public class NotificationRestController {
 
     @GetMapping
     public Object list(Principal principal) {
-        return notificationService.viewUnreadForUser(userService.getByUsername(principal.getName()).getId());
+        return notificationService.viewUnreadForUser(userService.getByEmail(principal.getName()).getId());
     }
 
     @GetMapping("/count")
     public Object count(Principal principal) {
-        return java.util.Map.of("count", notificationService.unreadCount(userService.getByUsername(principal.getName()).getId()));
+        return java.util.Map.of("count", notificationService.unreadCount(userService.getByEmail(principal.getName()).getId()));
     }
 }

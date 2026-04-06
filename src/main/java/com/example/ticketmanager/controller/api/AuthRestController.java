@@ -2,10 +2,12 @@ package com.example.ticketmanager.controller.api;
 
 import com.example.ticketmanager.dto.AuthDtos;
 import com.example.ticketmanager.service.AuthService;
+import com.example.ticketmanager.service.MobileVerificationService;
 import com.example.ticketmanager.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,12 +17,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthRestController {
     private final AuthService authService;
     private final UserService userService;
+    private final MobileVerificationService mobileVerificationService;
 
     @PostMapping("/register")
     public AuthDtos.AuthResponse register(@Valid @RequestBody AuthDtos.RegisterRequest request) {
@@ -68,5 +72,17 @@ public class AuthRestController {
     @GetMapping("/me")
     public AuthDtos.ProfileResponse me(Principal principal) {
         return userService.getProfile(principal.getName());
+    }
+
+    @PostMapping("/mobile/send-otp")
+    public AuthDtos.MobileVerificationResponse sendMobileOtp(@Valid @RequestBody AuthDtos.MobileVerificationRequest request, Principal principal) {
+        log.info("Mobile OTP send request received from user: {} for phone: {}", principal.getName(), request.phone());
+        return mobileVerificationService.sendOtp(principal.getName(), request.phone());
+    }
+
+    @PostMapping("/mobile/verify-otp")
+    public AuthDtos.MobileVerificationResponse verifyMobileOtp(@Valid @RequestBody AuthDtos.MobileOtpVerificationRequest request, Principal principal) {
+        log.info("Mobile OTP verification request received from user: {} for phone: {}", principal.getName(), request.phone());
+        return mobileVerificationService.verifyOtp(principal.getName(), request.phone(), request.otp());
     }
 }

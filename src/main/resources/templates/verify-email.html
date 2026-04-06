@@ -31,7 +31,7 @@ async function verifyToken() {
   if (btn) {
     setButtonLoading(btn, false);
   }
-  showInlineAlert(message, text, res.ok ? 'success' : 'danger', res.ok ? 'Email Verified' : 'Verification Failed');
+  showInlineAlert(message, text, res.ok ? 'success' : 'danger', res.ok ? null : 'Verification Failed');
 }
 if (btn && token) {
   btn.addEventListener('click', verifyToken);

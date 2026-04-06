@@ -8,7 +8,8 @@ public record AppProperties(
         String baseUrl,
         Mail mail,
         String uploadDir,
-        Masking masking
+        Masking masking,
+        Sms sms
 ) {
     public record Jwt(String secret, long expiration) {
     }
@@ -17,5 +18,8 @@ public record AppProperties(
     }
 
     public record Masking(boolean enabled) {
+    }
+
+    public record Sms(boolean enabled, String apiKey, String sender, String apiUrl) {
     }
 }
