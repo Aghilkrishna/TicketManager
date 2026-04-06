@@ -15,11 +15,11 @@
                         <div>
                             <img id="profileAvatarPreview" th:src="@{/api/users/avatar/{userId}(userId=${profile.id})}" alt="Profile picture" class="rounded-circle border" style="width: 88px; height: 88px; object-fit: cover;" loading="lazy" decoding="async">
                         </div>
-                    <div>
-                        <div class="text-uppercase small opacity-75">Account Center</div>
-                        <h1 class="display-6 fw-bold mb-2" th:text="${profile.firstName != null && !profile.firstName.isBlank() ? profile.firstName + (profile.lastName != null && !profile.lastName.isBlank() ? ' ' + profile.lastName : '') : profile.username}">Username</h1>
-                        <p class="mb-0">Keep your account information accurate and your login credentials secure.</p>
-                    </div>
+                        <div>
+                            <div class="text-uppercase small opacity-75">Account Center</div>
+                            <h1 class="display-6 fw-bold mb-2" th:text="${profile.firstName != null && !profile.firstName.isBlank() ? profile.firstName + (profile.lastName != null && !profile.lastName.isBlank() ? ' ' + profile.lastName : '') : profile.username}">Username</h1>
+                            <p class="mb-0">Keep your account information accurate and your login credentials secure.</p>
+                        </div>
                     </div>
                     <div class="metric-trend"><i class="bi bi-shield-lock"></i> Secure profile settings</div>
                 </div>
@@ -185,12 +185,12 @@
                             </div>
                         </form>
                     </section>
-                    
+
                     <!-- ID Proof Documents Section (only for Vendor and Agent roles) -->
-                    <section class="form-card glass-card mt-4" th:if="${isVendorOrAgent}">
+                    <section class="form-card glass-card mt-4" style="width: max-content;" th:if="${isVendorOrAgent}">
                         <div class="section-title mb-2">ID Proof Documents</div>
                         <p class="text-muted mb-4">Upload and manage your identity verification documents.</p>
-                        
+
                         <div class="mb-4">
                             <div class="row g-3">
                                 <div class="col-md-6">
@@ -212,58 +212,54 @@
                             </div>
                             <div id="idProofMessage" class="small mt-2"></div>
                         </div>
-                        
+
                         <!-- Uploaded Documents List -->
                         <div th:if="${userIdProofs != null and !userIdProofs.empty}" class="mt-4">
                             <h6 class="mb-3">Uploaded Documents</h6>
                             <div class="table-responsive">
                                 <table class="table table-sm">
                                     <thead>
-                                        <tr>
-                                            <th>Document Type</th>
-                                            <th>File Name</th>
-                                            <th>Upload Date</th>
-                                            <th>Status</th>
-                                            <th>Verification</th>
-                                            <th>Actions</th>
-                                        </tr>
+                                    <tr>
+                                        <th>Document Type</th>
+                                        <th>File Name</th>
+                                        <th>Upload Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
                                     </thead>
                                     <tbody>
-                                        <tr th:each="doc : ${userIdProofs}">
-                                            <td th:text="${doc.idProofType}">-</td>
-                                            <td th:text="${doc.fileName}">-</td>
-                                            <td th:text="${#temporals.format(doc.uploadDate, 'dd-MMM-yyyy')}">-</td>
-                                            <td>
-                                                <span th:if="${doc.uploadStatus == 'UPLOADED'}" class="badge bg-info">Uploaded</span>
-                                                <span th:if="${doc.uploadStatus == 'PENDING_VERIFICATION'}" class="badge bg-warning">Pending Verification</span>
-                                                <span th:if="${doc.uploadStatus == 'REJECTED'}" class="badge bg-danger">Rejected</span>
-                                            </td>
-                                            <td>
-                                                <span th:if="${doc.verified}" class="badge bg-success">
-                                                    <i class="bi bi-check-circle"></i> Verified
-                                                </span>
-                                                <span th:unless="${doc.verified}" class="badge bg-secondary">
-                                                    <i class="bi bi-clock"></i> Not Verified
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <button th:if="${doc.verified == false and doc.uploadStatus == 'REJECTED'}" 
-                                                        class="btn btn-sm btn-outline-primary" 
-                                                        th:onclick="'reuploadDocument(' + ${doc.id} + ')'">
-                                                    <i class="bi bi-upload"></i> Re-upload
-                                                </button>
-                                                <button class="btn btn-sm btn-outline-info" 
-                                                        th:onclick="'viewDocument(' + ${doc.id} + ')'">
-                                                    <i class="bi bi-eye"></i> View
-                                                </button>
-                                            </td>
-                                        </tr>
+                                    <tr th:each="doc : ${userIdProofs}">
+                                        <td th:text="${doc.idProofType}">-</td>
+                                        <td th:text="${doc.fileName}">-</td>
+                                        <td th:text="${#temporals.format(doc.uploadDate, 'dd-MMM-yyyy')}">-</td>
+                                        <td>
+                                            <span th:if="${doc.uploadStatus == 'REJECTED'}" class="badge bg-danger">Rejected</span>
+                                            <span th:if="${doc.uploadStatus == 'PENDING_VERIFICATION'}" class="badge bg-warning">Pending Verification</span>
+                                            <span th:if="${doc.verified}" class="badge bg-success">
+                                                <i class="bi bi-check-circle"></i> Verified
+                                            </span>
+                                            <span th:if="${doc.uploadStatus == 'UPLOADED' and !doc.verified}" class="badge bg-secondary">
+                                                <i class="bi bi-clock"></i> Not Verified
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <button th:if="${doc.verified == false and doc.uploadStatus == 'REJECTED'}"
+                                                    class="btn btn-sm btn-outline-primary"
+                                                    th:onclick="'reuploadDocument(' + ${doc.id} + ')'">
+                                                <i class="bi bi-upload"></i> Re-upload
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-info"
+                                                    th:onclick="'viewDocument(' + ${doc.id} + ')'">
+                                                <i class="bi bi-eye"></i> View
+                                            </button>
+                                        </td>
+                                    </tr>
                                     </tbody>
                                 </table>
                             </div>
                             <div th:if="${userIdProofs.^[verified == false and verificationNotes != null]}" class="mt-3">
                                 <h6>Verification Notes</h6>
-                                <div class="alert alert-warning" th:each="doc : ${userIdProofs}" 
+                                <div class="alert alert-warning" th:each="doc : ${userIdProofs}"
                                      th:if="${doc.verificationNotes != null and !doc.verificationNotes.empty}">
                                     <strong th:text="${doc.idProofType} + ':'"></strong>
                                     <span th:text="${doc.verificationNotes}"></span>
@@ -308,292 +304,292 @@
 <script th:src="@{/js/app.js}"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-async function cropImageToSquare(file) {
-  const dataUrl = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-  const image = await new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = dataUrl;
-  });
-  const size = Math.min(image.width, image.height);
-  const sx = (image.width - size) / 2;
-  const sy = (image.height - size) / 2;
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 256;
-  const context = canvas.getContext('2d');
-  context.drawImage(image, sx, sy, size, size, 0, 0, 256, 256);
-  return await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 0.92));
-}
-
-document.getElementById('profileImageForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const input = document.getElementById('profileImageInput');
-  const message = document.getElementById('profileMessage');
-  if (!input.files.length) {
-    showInlineAlert(message, 'Select an image to upload.', 'danger', 'Upload Failed');
-    return;
-  }
-  const button = e.target.querySelector('button[type="submit"]');
-  clearInlineAlert(message);
-  setButtonLoading(button, true, 'Uploading image...');
-  const croppedBlob = await cropImageToSquare(input.files[0]);
-  const formData = new FormData();
-  formData.append('file', croppedBlob, 'profile-picture.png');
-  const res = await fetch('/api/users/profile/picture', {method: 'POST', body: formData});
-  const data = await res.json().catch(() => ({}));
-  setButtonLoading(button, false);
-  showInlineAlert(message, res.ok ? 'Profile picture updated successfully.' : (data.message || 'Profile picture upload failed'), res.ok ? 'success' : 'danger', res.ok ? 'Upload Complete' : 'Upload Failed');
-  if (res.ok) {
-    const avatarUrl = `/api/users/avatar/[[${profile.id}]]?v=${Date.now()}`;
-    const existingImage = document.getElementById('profileAvatarPreview');
-    existingImage.src = avatarUrl;
-    const topbarImage = document.querySelector('.profile-button img');
-    const topbarFallback = document.querySelector('.profile-button span.rounded-circle');
-    if (topbarImage) {
-      topbarImage.src = avatarUrl;
-    } else if (topbarFallback) {
-      topbarFallback.outerHTML = `<img src="${avatarUrl}" alt="Profile" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">`;
+    async function cropImageToSquare(file) {
+        const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+        const image = await new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = dataUrl;
+        });
+        const size = Math.min(image.width, image.height);
+        const sx = (image.width - size) / 2;
+        const sy = (image.height - size) / 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext('2d');
+        context.drawImage(image, sx, sy, size, size, 0, 0, 256, 256);
+        return await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 0.92));
     }
-    input.value = '';
-  }
-});
 
-document.getElementById('profileForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const button = e.target.querySelector('button[type="submit"]');
-  const payload = Object.fromEntries(new FormData(e.target).entries());
-  const message = document.getElementById('profileMessage');
-  clearInlineAlert(message);
-  setButtonLoading(button, true, 'Saving profile...');
-  const res = await fetch('/api/users/profile', {
-    method: 'PATCH',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(payload)
-  });
-  const data = await res.json().catch(() => ({}));
-  setButtonLoading(button, false);
-  showInlineAlert(message, res.ok ? 'Profile updated successfully.' : (data.message || 'Update failed'), res.ok ? 'success' : 'danger', res.ok ? 'Profile Saved' : 'Update Failed');
-});
-
-document.getElementById('passwordForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const button = e.target.querySelector('button[type="submit"]');
-  const payload = Object.fromEntries(new FormData(e.target).entries());
-  const message = document.getElementById('passwordMessage');
-  clearInlineAlert(message);
-  setButtonLoading(button, true, 'Updating password...');
-  const res = await fetch('/api/users/profile/password', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(payload)
-  });
-  const data = await res.json().catch(() => ({}));
-  setButtonLoading(button, false);
-  showInlineAlert(message, res.ok ? 'Password updated successfully.' : (data.message || 'Password update failed'), res.ok ? 'success' : 'danger', res.ok ? 'Password Updated' : 'Update Failed');
-  if (res.ok) {
-    e.target.reset();
-  }
-});
-
-let phoneVerificationModal;
-let currentPhoneNumber = '';
-
-function showPhoneVerification() {
-  const phoneInput = document.querySelector('input[name="phone"]');
-  currentPhoneNumber = phoneInput.value;
-  
-  if (!currentPhoneNumber) {
-    showInlineAlert(document.getElementById('profileMessage'), 'Please enter a phone number first.', 'danger', 'Phone Required');
-    return;
-  }
-  
-  document.getElementById('modalPhoneNumber').textContent = currentPhoneNumber;
-  document.getElementById('otpInput').value = '';
-  clearInlineAlert(document.getElementById('phoneVerificationMessage'));
-  
-  if (!phoneVerificationModal) {
-    phoneVerificationModal = new bootstrap.Modal(document.getElementById('phoneVerificationModal'));
-  }
-  
-  phoneVerificationModal.show();
-  sendOtp();
-}
-
-async function sendOtp() {
-  const message = document.getElementById('phoneVerificationMessage');
-  const resendBtn = document.getElementById('resendOtpBtn');
-  
-  clearInlineAlert(message);
-  setButtonLoading(resendBtn, true, 'Sending...');
-  
-  try {
-    const res = await fetch('/api/auth/mobile/send-otp', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({phone: currentPhoneNumber})
+    document.getElementById('profileImageForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('profileImageInput');
+        const message = document.getElementById('profileMessage');
+        if (!input.files.length) {
+            showInlineAlert(message, 'Select an image to upload.', 'danger', 'Upload Failed');
+            return;
+        }
+        const button = e.target.querySelector('button[type="submit"]');
+        clearInlineAlert(message);
+        setButtonLoading(button, true, 'Uploading image...');
+        const croppedBlob = await cropImageToSquare(input.files[0]);
+        const formData = new FormData();
+        formData.append('file', croppedBlob, 'profile-picture.png');
+        const res = await fetch('/api/users/profile/picture', {method: 'POST', body: formData});
+        const data = await res.json().catch(() => ({}));
+        setButtonLoading(button, false);
+        showInlineAlert(message, res.ok ? 'Profile picture updated successfully.' : (data.message || 'Profile picture upload failed'), res.ok ? 'success' : 'danger', res.ok ? 'Upload Complete' : 'Upload Failed');
+        if (res.ok) {
+            const avatarUrl = `/api/users/avatar/[[${profile.id}]]?v=${Date.now()}`;
+            const existingImage = document.getElementById('profileAvatarPreview');
+            existingImage.src = avatarUrl;
+            const topbarImage = document.querySelector('.profile-button img');
+            const topbarFallback = document.querySelector('.profile-button span.rounded-circle');
+            if (topbarImage) {
+                topbarImage.src = avatarUrl;
+            } else if (topbarFallback) {
+                topbarFallback.outerHTML = `<img src="${avatarUrl}" alt="Profile" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">`;
+            }
+            input.value = '';
+        }
     });
-    
-    const data = await res.json().catch(() => ({}));
-    setButtonLoading(resendBtn, false);
-    
-    if (res.ok) {
-      showInlineAlert(message, 'Verification code sent successfully!', 'success', 'Code Sent');
-    } else {
-      showInlineAlert(message, data.message || 'Failed to send verification code', 'danger', 'Send Failed');
-    }
-  } catch (error) {
-    setButtonLoading(resendBtn, false);
-    showInlineAlert(message, 'Failed to send verification code', 'danger', 'Send Failed');
-  }
-}
 
-async function verifyOtp() {
-  const otpInput = document.getElementById('otpInput');
-  const message = document.getElementById('phoneVerificationMessage');
-  const verifyBtn = document.getElementById('verifyOtpBtn');
-  
-  const otp = otpInput.value.trim();
-  if (otp.length !== 6) {
-    showInlineAlert(message, 'Please enter a 6-digit verification code', 'danger', 'Invalid Code');
-    return;
-  }
-  
-  clearInlineAlert(message);
-  setButtonLoading(verifyBtn, true, 'Verifying...');
-  
-  try {
-    const res = await fetch('/api/auth/mobile/verify-otp', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({phone: currentPhoneNumber, otp: otp})
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const button = e.target.querySelector('button[type="submit"]');
+        const payload = Object.fromEntries(new FormData(e.target).entries());
+        const message = document.getElementById('profileMessage');
+        clearInlineAlert(message);
+        setButtonLoading(button, true, 'Saving profile...');
+        const res = await fetch('/api/users/profile', {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(() => ({}));
+        setButtonLoading(button, false);
+        showInlineAlert(message, res.ok ? 'Profile updated successfully.' : (data.message || 'Update failed'), res.ok ? 'success' : 'danger', res.ok ? 'Profile Saved' : 'Update Failed');
     });
-    
-    const data = await res.json().catch(() => ({}));
-    setButtonLoading(verifyBtn, false);
-    
-    if (res.ok) {
-      showInlineAlert(message, 'Phone number verified successfully!', 'success', 'Verification Complete');
-      setTimeout(() => {
-        phoneVerificationModal.hide();
-        location.reload(); // Reload to show updated verification status
-      }, 1500);
-    } else {
-      showInlineAlert(message, data.message || 'Invalid verification code', 'danger', 'Verification Failed');
-    }
-  } catch (error) {
-    setButtonLoading(verifyBtn, false);
-    showInlineAlert(message, 'Failed to verify code', 'danger', 'Verification Failed');
-  }
-}
 
-// Event listeners
-document.getElementById('resendOtpBtn').addEventListener('click', sendOtp);
-document.getElementById('verifyOtpBtn').addEventListener('click', verifyOtp);
-document.getElementById('otpInput').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    verifyOtp();
-  }
-});
-
-// ID Proof Document Functions
-document.getElementById('uploadIdProofBtn').addEventListener('click', async () => {
-  const typeSelect = document.getElementById('idProofType');
-  const fileInput = document.getElementById('idProofFile');
-  const message = document.getElementById('idProofMessage');
-  
-  if (!typeSelect.value) {
-    showInlineAlert(message, 'Please select a document type', 'danger', 'Type Required');
-    return;
-  }
-  
-  if (!fileInput.files.length) {
-    showInlineAlert(message, 'Please select a file to upload', 'danger', 'File Required');
-    return;
-  }
-  
-  const file = fileInput.files[0];
-  if (file.size > 5 * 1024 * 1024) {
-    showInlineAlert(message, 'File size must be less than 5MB', 'danger', 'File Too Large');
-    return;
-  }
-  
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('idProofType', typeSelect.value);
-  
-  const button = document.getElementById('uploadIdProofBtn');
-  clearInlineAlert(message);
-  setButtonLoading(button, true, 'Uploading...');
-  
-  try {
-    const res = await fetch('/api/users/id-proof', {
-      method: 'POST',
-      body: formData
+    document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const button = e.target.querySelector('button[type="submit"]');
+        const payload = Object.fromEntries(new FormData(e.target).entries());
+        const message = document.getElementById('passwordMessage');
+        clearInlineAlert(message);
+        setButtonLoading(button, true, 'Updating password...');
+        const res = await fetch('/api/users/profile/password', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(() => ({}));
+        setButtonLoading(button, false);
+        showInlineAlert(message, res.ok ? 'Password updated successfully.' : (data.message || 'Password update failed'), res.ok ? 'success' : 'danger', res.ok ? 'Password Updated' : 'Update Failed');
+        if (res.ok) {
+            e.target.reset();
+        }
     });
-    
-    const data = await res.json().catch(() => ({}));
-    setButtonLoading(button, false);
-    
-    if (res.ok) {
-      showInlineAlert(message, 'Document uploaded successfully!', 'success', 'Upload Complete');
-      typeSelect.value = '';
-      fileInput.value = '';
-      setTimeout(() => location.reload(), 1500);
-    } else {
-      showInlineAlert(message, data.message || 'Upload failed', 'danger', 'Upload Failed');
-    }
-  } catch (error) {
-    setButtonLoading(button, false);
-    showInlineAlert(message, 'Upload failed', 'danger', 'Upload Failed');
-  }
-});
 
-window.viewDocument = async (docId) => {
-  try {
-    const res = await fetch(`/api/users/id-proof/${docId}/view`);
-    if (res.ok) {
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `id-proof-${docId}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } else {
-      const data = await res.json().catch(() => ({}));
-      alert(data.message || 'Failed to view document');
-    }
-  } catch (error) {
-    alert('Failed to view document');
-  }
-};
+    let phoneVerificationModal;
+    let currentPhoneNumber = '';
 
-window.reuploadDocument = (docId) => {
-  const typeSelect = document.getElementById('idProofType');
-  const fileInput = document.getElementById('idProofFile');
-  
-  // Find the document type from the existing document
-  const rows = document.querySelectorAll('tbody tr');
-  rows.forEach(row => {
-    const viewBtn = row.querySelector(`[onclick*="${docId}"]`);
-    if (viewBtn && viewBtn.textContent.includes('View')) {
-      const docType = row.cells[0].textContent;
-      typeSelect.value = docType;
+    function showPhoneVerification() {
+        const phoneInput = document.querySelector('input[name="phone"]');
+        currentPhoneNumber = phoneInput.value;
+
+        if (!currentPhoneNumber) {
+            showInlineAlert(document.getElementById('profileMessage'), 'Please enter a phone number first.', 'danger', 'Phone Required');
+            return;
+        }
+
+        document.getElementById('modalPhoneNumber').textContent = currentPhoneNumber;
+        document.getElementById('otpInput').value = '';
+        clearInlineAlert(document.getElementById('phoneVerificationMessage'));
+
+        if (!phoneVerificationModal) {
+            phoneVerificationModal = new bootstrap.Modal(document.getElementById('phoneVerificationModal'));
+        }
+
+        phoneVerificationModal.show();
+        sendOtp();
     }
-  });
-  
-  fileInput.focus();
-  fileInput.scrollIntoView({ behavior: 'smooth' });
-};
+
+    async function sendOtp() {
+        const message = document.getElementById('phoneVerificationMessage');
+        const resendBtn = document.getElementById('resendOtpBtn');
+
+        clearInlineAlert(message);
+        setButtonLoading(resendBtn, true, 'Sending...');
+
+        try {
+            const res = await fetch('/api/auth/mobile/send-otp', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({phone: currentPhoneNumber})
+            });
+
+            const data = await res.json().catch(() => ({}));
+            setButtonLoading(resendBtn, false);
+
+            if (res.ok) {
+                showInlineAlert(message, 'Verification code sent successfully!', 'success', 'Code Sent');
+            } else {
+                showInlineAlert(message, data.message || 'Failed to send verification code', 'danger', 'Send Failed');
+            }
+        } catch (error) {
+            setButtonLoading(resendBtn, false);
+            showInlineAlert(message, 'Failed to send verification code', 'danger', 'Send Failed');
+        }
+    }
+
+    async function verifyOtp() {
+        const otpInput = document.getElementById('otpInput');
+        const message = document.getElementById('phoneVerificationMessage');
+        const verifyBtn = document.getElementById('verifyOtpBtn');
+
+        const otp = otpInput.value.trim();
+        if (otp.length !== 6) {
+            showInlineAlert(message, 'Please enter a 6-digit verification code', 'danger', 'Invalid Code');
+            return;
+        }
+
+        clearInlineAlert(message);
+        setButtonLoading(verifyBtn, true, 'Verifying...');
+
+        try {
+            const res = await fetch('/api/auth/mobile/verify-otp', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({phone: currentPhoneNumber, otp: otp})
+            });
+
+            const data = await res.json().catch(() => ({}));
+            setButtonLoading(verifyBtn, false);
+
+            if (res.ok) {
+                showInlineAlert(message, 'Phone number verified successfully!', 'success', 'Verification Complete');
+                setTimeout(() => {
+                    phoneVerificationModal.hide();
+                    location.reload(); // Reload to show updated verification status
+                }, 1500);
+            } else {
+                showInlineAlert(message, data.message || 'Invalid verification code', 'danger', 'Verification Failed');
+            }
+        } catch (error) {
+            setButtonLoading(verifyBtn, false);
+            showInlineAlert(message, 'Failed to verify code', 'danger', 'Verification Failed');
+        }
+    }
+
+    // Event listeners
+    document.getElementById('resendOtpBtn').addEventListener('click', sendOtp);
+    document.getElementById('verifyOtpBtn').addEventListener('click', verifyOtp);
+    document.getElementById('otpInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            verifyOtp();
+        }
+    });
+
+    // ID Proof Document Functions
+    document.getElementById('uploadIdProofBtn').addEventListener('click', async () => {
+        const typeSelect = document.getElementById('idProofType');
+        const fileInput = document.getElementById('idProofFile');
+        const message = document.getElementById('idProofMessage');
+
+        if (!typeSelect.value) {
+            showInlineAlert(message, 'Please select a document type', 'danger', 'Type Required');
+            return;
+        }
+
+        if (!fileInput.files.length) {
+            showInlineAlert(message, 'Please select a file to upload', 'danger', 'File Required');
+            return;
+        }
+
+        const file = fileInput.files[0];
+        if (file.size > 5 * 1024 * 1024) {
+            showInlineAlert(message, 'File size must be less than 5MB', 'danger', 'File Too Large');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('idProofType', typeSelect.value);
+
+        const button = document.getElementById('uploadIdProofBtn');
+        clearInlineAlert(message);
+        setButtonLoading(button, true, 'Uploading...');
+
+        try {
+            const res = await fetch('/api/users/id-proof', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json().catch(() => ({}));
+            setButtonLoading(button, false);
+
+            if (res.ok) {
+                showInlineAlert(message, 'Document uploaded successfully!', 'success', 'Upload Complete');
+                typeSelect.value = '';
+                fileInput.value = '';
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showInlineAlert(message, data.message || 'Upload failed', 'danger', 'Upload Failed');
+            }
+        } catch (error) {
+            setButtonLoading(button, false);
+            showInlineAlert(message, 'Upload failed', 'danger', 'Upload Failed');
+        }
+    });
+
+    window.viewDocument = async (docId) => {
+        try {
+            const res = await fetch(`/api/users/id-proof/${docId}/view`);
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `id-proof-${docId}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else {
+                const data = await res.json().catch(() => ({}));
+                alert(data.message || 'Failed to view document');
+            }
+        } catch (error) {
+            alert('Failed to view document');
+        }
+    };
+
+    window.reuploadDocument = (docId) => {
+        const typeSelect = document.getElementById('idProofType');
+        const fileInput = document.getElementById('idProofFile');
+
+        // Find the document type from the existing document
+        const rows = document.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const viewBtn = row.querySelector(`[onclick*="${docId}"]`);
+            if (viewBtn && viewBtn.textContent.includes('View')) {
+                const docType = row.cells[0].textContent;
+                typeSelect.value = docType;
+            }
+        });
+
+        fileInput.focus();
+        fileInput.scrollIntoView({ behavior: 'smooth' });
+    };
 </script>
 </body>
 </html>
