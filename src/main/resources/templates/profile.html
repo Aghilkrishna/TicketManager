@@ -541,7 +541,7 @@
                 showInlineAlert(message, 'Document uploaded successfully!', 'success', 'Upload Complete');
                 typeSelect.value = '';
                 fileInput.value = '';
-                setTimeout(() => location.reload(), 1500);
+                setTimeout(() => updateIdProofList(), 1000);
             } else {
                 showInlineAlert(message, data.message || 'Upload failed', 'danger', 'Upload Failed');
             }
@@ -550,6 +550,132 @@
             showInlineAlert(message, 'Upload failed', 'danger', 'Upload Failed');
         }
     });
+
+    async function updateIdProofList() {
+        try {
+            const res = await fetch('/api/users/id-proof/list');
+            if (res.ok) {
+                const documents = await res.json();
+                updateDocumentTable(documents);
+            }
+        } catch (error) {
+            console.error('Failed to update document list:', error);
+        }
+    }
+
+    function updateDocumentTable(documents) {
+        const tableContainer = document.querySelector('.table-responsive');
+        if (!tableContainer) return;
+
+        if (!documents || documents.length === 0) {
+            // Hide the table if no documents
+            const uploadedSection = tableContainer.closest('.mt-4');
+            if (uploadedSection) {
+                uploadedSection.style.display = 'none';
+            }
+            return;
+        }
+
+        const tableBody = tableContainer.querySelector('tbody');
+        if (!tableBody) return;
+
+        // Clear existing rows
+        tableBody.innerHTML = '';
+
+        // Add new rows
+        documents.forEach(doc => {
+            const row = document.createElement('tr');
+            
+            // Format upload date
+            const uploadDate = new Date(doc.uploadDate).toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+
+            // Determine status badge
+            let statusBadge = '';
+            if (doc.uploadStatus === 'REJECTED') {
+                statusBadge = '<span class="badge bg-danger">Rejected</span>';
+            } else if (doc.uploadStatus === 'PENDING_VERIFICATION') {
+                statusBadge = '<span class="badge bg-warning">Pending Verification</span>';
+            } else if (doc.verified) {
+                statusBadge = '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Verified</span>';
+            } else if (doc.uploadStatus === 'UPLOADED' && !doc.verified) {
+                statusBadge = '<span class="badge bg-secondary"><i class="bi bi-clock"></i> Not Verified</span>';
+            }
+
+            // Determine action buttons
+            let actionButtons = '';
+            if (!doc.verified && doc.uploadStatus === 'REJECTED') {
+                actionButtons = `<button class="btn btn-sm btn-outline-primary" onclick="reuploadDocument(${doc.id})">
+                    <i class="bi bi-upload"></i> Re-upload
+                </button>`;
+            }
+            actionButtons += `<button class="btn btn-sm btn-outline-info" onclick="viewDocument(${doc.id})">
+                <i class="bi bi-eye"></i> View
+            </button>`;
+
+            row.innerHTML = `
+                <td>${doc.idProofType}</td>
+                <td>${doc.fileName}</td>
+                <td>${uploadDate}</td>
+                <td>${statusBadge}</td>
+                <td>${actionButtons}</td>
+            `;
+            
+            tableBody.appendChild(row);
+        });
+
+        // Show the section if it was hidden
+        const uploadedSection = tableContainer.closest('.mt-4');
+        if (uploadedSection) {
+            uploadedSection.style.display = 'block';
+        }
+    }
+
+    // Start periodic polling for status updates
+    let statusUpdateInterval;
+    function startStatusPolling() {
+        // Check for pending documents every 30 seconds
+        statusUpdateInterval = setInterval(async () => {
+            try {
+                const res = await fetch('/api/users/id-proof/list');
+                if (res.ok) {
+                    const documents = await res.json();
+                    const hasPendingDocuments = documents.some(doc => 
+                        doc.uploadStatus === 'PENDING_VERIFICATION' || 
+                        (doc.uploadStatus === 'UPLOADED' && !doc.verified)
+                    );
+                    
+                    if (hasPendingDocuments) {
+                        updateDocumentTable(documents);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to poll for status updates:', error);
+            }
+        }, 30000); // 30 seconds
+    }
+
+    // Stop polling when page is hidden or unloaded
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            clearInterval(statusUpdateInterval);
+        } else {
+            startStatusPolling();
+        }
+    });
+
+    window.addEventListener('beforeunload', () => {
+        clearInterval(statusUpdateInterval);
+    });
+
+    // Initialize polling on page load if there are ID proofs
+    const initialDocuments = /*[[${userIdProofs != null ? userIdProofs : '[]'}]]*/ [];
+    if (initialDocuments && initialDocuments.length > 0) {
+        startStatusPolling();
+    }
 
     window.viewDocument = async (docId) => {
         try {

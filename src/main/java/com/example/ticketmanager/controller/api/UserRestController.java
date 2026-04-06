@@ -1,30 +1,24 @@
 package com.example.ticketmanager.controller.api;
 
+import com.example.ticketmanager.dto.AdminDtos;
 import com.example.ticketmanager.dto.AuthDtos;
 import com.example.ticketmanager.repository.UserRepository;
 import com.example.ticketmanager.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpHeaders;
 
-import java.security.Principal;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.TimeUnit;
+import java.security.Principal;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/api/users")
@@ -131,5 +125,12 @@ public class UserRestController {
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @GetMapping("/id-proof/list")
+    public List<AdminDtos.IdProofDocumentResponse> getIdProofList(Principal principal) {
+        var user = userRepository.findByUsername(principal.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return userService.getUserIdProofs(user.getId());
     }
 }
