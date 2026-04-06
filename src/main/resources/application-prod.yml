@@ -31,10 +31,6 @@ spring:
             enable: ${MAIL_STARTTLS:true}
           ssl:
             enable: ${MAIL_SSL_ENABLE:false}
-          socketFactory:
-            port: ${MAIL_PORT}
-            class: ${MAIL_SSL_CLASS:javax.net.ssl.SSLSocketFactory}
-            fallback: false
 
 app:
   masking:

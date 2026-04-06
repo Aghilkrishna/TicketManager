@@ -55,6 +55,12 @@ services:
       MAIL_SSL_ENABLE: ${MAIL_SSL_ENABLE:-false}
       APP_MAIL_FROM_ADDRESS: ${APP_MAIL_FROM_ADDRESS}
       APP_MAIL_FROM_NAME: ${APP_MAIL_FROM_NAME}
+
+      # SMS configuration
+      APP_SMS_ENABLED: ${APP_SMS_ENABLED:-false}
+      APP_SMS_API_KEY: ${APP_SMS_API_KEY}
+      APP_SMS_SENDER: ${APP_SMS_SENDER}
+      APP_SMS_API_URL: ${APP_SMS_API_URL}
       
       # Spring Boot Profile
       SPRING_PROFILES_ACTIVE: prod
@@ -81,6 +87,7 @@ services:
       - ./nginx/certbot:/var/www/certbot
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
+      - /opt/nginx/maintenance:/usr/share/nginx/html/maintenance
     depends_on:
       - app
     networks:
