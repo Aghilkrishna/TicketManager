@@ -88,8 +88,8 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
       - /opt/nginx/maintenance:/usr/share/nginx/html/maintenance
-    depends_on:
-      - app
+#    depends_on:
+#      - app
     networks:
       - app-network
 
