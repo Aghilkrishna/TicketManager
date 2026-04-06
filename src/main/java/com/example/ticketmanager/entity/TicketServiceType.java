@@ -2,6 +2,9 @@ package com.example.ticketmanager.entity;
 
 public enum TicketServiceType {
     INSTALLATION("Installation"),
+    SERVICE("Service"),
+    AMC("AMC"),
+    SITE_VISIT("Site Visit"),
     REPAIR("Repair"),
     MAINTENANCE("Maintenance");
 

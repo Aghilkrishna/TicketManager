@@ -1,28 +1,24 @@
 package com.example.ticketmanager.controller.api;
 
+import com.example.ticketmanager.dto.AdminDtos;
 import com.example.ticketmanager.dto.AuthDtos;
 import com.example.ticketmanager.repository.UserRepository;
 import com.example.ticketmanager.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.security.Principal;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.TimeUnit;
+import java.security.Principal;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/api/users")
@@ -102,5 +98,38 @@ public class UserRestController {
                         .sorted()
                         .toList()
         )).toList();
+    }
+
+    @PostMapping(path = "/id-proof", consumes = {"multipart/form-data"})
+    public Map<String, Object> uploadIdProof(Principal principal, 
+                                             @RequestParam("file") MultipartFile file,
+                                             @RequestParam("idProofType") String idProofType) {
+        try {
+            userService.uploadIdProof(principal.getName(), file, idProofType);
+            return Map.of("message", "ID proof uploaded successfully");
+        } catch (Exception e) {
+            return Map.of("message", e.getMessage());
+        }
+    }
+
+    @GetMapping("/id-proof/{docId}/view")
+    public ResponseEntity<ByteArrayResource> viewIdProof(@PathVariable Long docId, Principal principal) {
+        try {
+            var doc = userService.getIdProofDocumentData(docId, principal.getName());
+            ByteArrayResource resource = new ByteArrayResource(doc.getIdProofDocument());
+            
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + doc.getIdProofFileName() + "\"")
+                    .contentType(MediaType.parseMediaType(doc.getIdProofContentType()))
+                    .body(resource);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/id-proof/list")
+    public List<AdminDtos.IdProofDocumentResponse> getIdProofList(Principal principal) {
+        var user = userService.getByEmail(principal.getName());
+        return userService.getUserIdProofs(user.getId());
     }
 }

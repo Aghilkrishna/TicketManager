@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #fff;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 500px;
+        }
+
+        .logo {
+            width: 190px;
+            margin-bottom: 20px;
+        }
+
+        .circle-logo {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover; /* Ensures image fits nicely */
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #ddd;
+            margin-bottom: 30px;
+        }
+
+        /* Spinner */
+        .spinner {
+            margin: 20px auto;
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255,255,255,0.2);
+            border-top: 5px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .highlight {
+            color: #00d4ff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <!-- 🔹 Replace with your logo -->
+        <img src="./yubix-logo.jpeg" class="circle-logo">
+
+        <h1>🚧 We’re Under Maintenance</h1>
+
+        <p>
+            Our site is currently being upgraded to serve you better.<br>
+            Please check back in a little while.
+        </p>
+
+        <div class="spinner"></div>
+
+        <p class="highlight">We’ll be back shortly ⚡</p>
+
+        <div class="footer">
+            © 2026 Yubix
+        </div>
+
+    </div>
+</body>
+</html>
