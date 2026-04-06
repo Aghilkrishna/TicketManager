@@ -129,8 +129,7 @@ public class UserRestController {
 
     @GetMapping("/id-proof/list")
     public List<AdminDtos.IdProofDocumentResponse> getIdProofList(Principal principal) {
-        var user = userRepository.findByUsername(principal.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        var user = userService.getByEmail(principal.getName());
         return userService.getUserIdProofs(user.getId());
     }
 }
