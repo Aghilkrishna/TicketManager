@@ -66,7 +66,7 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       TZ: Asia/Kolkata
     volumes:
-      - ./uploads:/app/uploads
+      - ./uploads:/opt/ticket_manager_app/TicketManager/uploads/
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     networks:
