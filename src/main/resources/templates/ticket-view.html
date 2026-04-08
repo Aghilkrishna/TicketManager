@@ -225,7 +225,7 @@
                         </div>
                         <div class="mt-4 d-flex gap-2 flex-wrap">
                             <a class="btn btn-outline-secondary" th:href="${currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')} ? '/admin/support-tickets' : '/tickets'">Back</a>
-                            <a class="btn btn-primary" th:if="${currentFeatures.contains('FEATURE_TICKETS_MANAGE') or currentFeatures.contains('FEATURE_SITE_VISIT_EDIT')}" th:href="@{/tickets/edit(id=${ticket.id})}">Edit Ticket</a>
+                            <a class="btn btn-primary" th:if="${(currentFeatures.contains('FEATURE_TICKETS_MANAGE') or currentFeatures.contains('FEATURE_SITE_VISIT_EDIT')) and (ticket.status != 'CLOSED' or (currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')))}" th:href="@{/tickets/edit(id=${ticket.id})}">Edit Ticket</a>
                         </div>
                     </section>
                 </div>

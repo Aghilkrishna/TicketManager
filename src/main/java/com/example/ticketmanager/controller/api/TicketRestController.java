@@ -41,6 +41,15 @@ public class TicketRestController {
                                          @PathVariable Long ticketId,
                                          @Valid @ModelAttribute AuthDtos.TicketRequest request,
                                          @RequestParam(required = false) MultipartFile[] files) {
+        // Get current ticket to check status
+        boolean adminScope = ticketService.canManageAllTickets(principal.getName());
+        var currentTicket = ticketService.get(ticketId, principal.getName(), adminScope);
+        
+        // Prevent agent and vendor users from updating closed tickets
+        if (!adminScope && "CLOSED".equals(currentTicket.status())) {
+            throw new org.springframework.security.access.AccessDeniedException("Agent and vendor users cannot update closed tickets");
+        }
+        
         return ticketService.update(ticketId, principal.getName(), request, files);
     }
 

@@ -101,9 +101,18 @@ public class TicketService {
         String searchFilter = search == null || search.isBlank() ? null : search;
 
         if (!adminScope) {
-            Page<Ticket> result = assignedOnly
-                    ? ticketRepository.findAssignedTicketsForUser(user.getId(), statusFilter, priorityFilter, assignedToId, searchFilter, pageable)
-                    : ticketRepository.findVisibleTicketsForUser(user.getId(), statusFilter, priorityFilter, assignedToId, searchFilter, pageable);
+            Page<Ticket> result;
+            boolean isAgent = userService.hasRole(user, "ROLE_AGENT");
+            
+            if (isAgent) {
+                // Agent users can only see tickets assigned to them
+                result = ticketRepository.findAssignedTicketsForAgent(user.getId(), statusFilter, priorityFilter, assignedToId, searchFilter, pageable);
+            } else {
+                // Other users (vendors, etc.) use the existing logic
+                result = assignedOnly
+                        ? ticketRepository.findAssignedTicketsForUser(user.getId(), statusFilter, priorityFilter, assignedToId, searchFilter, pageable)
+                        : ticketRepository.findVisibleTicketsForUser(user.getId(), statusFilter, priorityFilter, assignedToId, searchFilter, pageable);
+            }
             return result.map(ticket -> toListSummary(ticket, username));
         }
         return ticketRepository.findAllTicketsForAdmin(statusFilter, priorityFilter, assignedToId, searchFilter, pageable)
@@ -169,7 +178,7 @@ public class TicketService {
         List<TicketComment> comments = commentRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
         if (isVendorRestrictedView(ticket, username)) {
             comments = comments.stream()
-                    .filter(comment -> comment.getAuthor().getUsername().equals(username))
+                    .filter(comment -> comment.getAuthor().getEmail().equals(username))
                     .toList();
         }
         Map<Long, List<TicketComment>> repliesByParentId = comments.stream()
@@ -221,7 +230,7 @@ public class TicketService {
     @Transactional
     public AuthDtos.TicketCommentResponse updateComment(Long ticketId, Long commentId, String username, AuthDtos.TicketCommentUpdateRequest request) {
         TicketComment comment = getComment(ticketId, commentId);
-        if (!comment.getAuthor().getUsername().equals(username)) {
+        if (!comment.getAuthor().getEmail().equals(username)) {
             throw new AppException(HttpStatus.FORBIDDEN, "You can edit only your own comments");
         }
         comment.setContent(request.content());
@@ -233,7 +242,7 @@ public class TicketService {
     @Transactional
     public void deleteComment(Long ticketId, Long commentId, String username) {
         TicketComment comment = getComment(ticketId, commentId);
-        if (!comment.getAuthor().getUsername().equals(username)) {
+        if (!comment.getAuthor().getEmail().equals(username)) {
             throw new AppException(HttpStatus.FORBIDDEN, "You can delete only your own comments");
         }
         Ticket ticket = comment.getTicket();
@@ -283,13 +292,21 @@ public class TicketService {
     }
 
     private boolean canAccess(Ticket ticket, String username) {
+        AppUser user = userService.getByEmail(username);
+        boolean isAgent = userService.hasRole(user, "ROLE_AGENT");
+        
+        if (isAgent) {
+            // Agent users can only access tickets assigned to them
+            return ticket.getAssignedTo() != null && ticket.getAssignedTo().getEmail().equals(username);
+        }
+        
         return canManageAllTickets(username)
-                || ticket.getCreatedBy().getUsername().equals(username)
-                || (ticket.getAssignedTo() != null && ticket.getAssignedTo().getUsername().equals(username))
-                || ticket.getServiceUsers().stream().anyMatch(user -> user.getUsername().equals(username));
+                || ticket.getCreatedBy().getEmail().equals(username)
+                || (ticket.getAssignedTo() != null && ticket.getAssignedTo().getEmail().equals(username))
+                || ticket.getServiceUsers().stream().anyMatch(serviceUser -> serviceUser.getEmail().equals(username));
     }
 
-    private boolean canManageAllTickets(String username) {
+    public boolean canManageAllTickets(String username) {
         AppUser user = userService.getByEmail(username);
         return user.getRoles().stream().anyMatch(role -> role.isActive()
                 && ("ROLE_ADMIN".equals(role.getName()) || "ROLE_MANAGER".equals(role.getName())));
@@ -313,8 +330,14 @@ public class TicketService {
         boolean agentActor = userService.hasRole(actor, "ROLE_AGENT");
         if (agentActor && !isCreate) {
             applyAgentSiteVisitUpdate(ticket, request, actor);
-            ticket.setStatus(request.status() == null || request.status().isBlank()
-                    ? ticket.getStatus() : TicketStatus.valueOf(request.status()));
+            if (request.status() != null && !request.status().isBlank()) {
+                TicketStatus newStatus = TicketStatus.valueOf(request.status());
+                // Agent users cannot set ticket status to CLOSED
+                if (newStatus == TicketStatus.CLOSED) {
+                    throw new AppException(HttpStatus.FORBIDDEN, "Agent users cannot close tickets");
+                }
+                ticket.setStatus(newStatus);
+            }
             return;
         }
         ticket.setTitle(request.title());
@@ -584,9 +607,23 @@ public class TicketService {
 
     public List<AuthDtos.TicketSummary> searchVisibleTickets(String username, String query) {
         String value = query == null ? "" : query.trim().toLowerCase();
-        List<Ticket> tickets = canManageAllTickets(username)
-                ? ticketRepository.findAll()
-                : ticketRepository.findVisibleTicketsForUser(userService.getByEmail(username).getId());
+        List<Ticket> tickets;
+        
+        if (canManageAllTickets(username)) {
+            tickets = ticketRepository.findAll();
+        } else {
+            AppUser user = userService.getByEmail(username);
+            boolean isAgent = userService.hasRole(user, "ROLE_AGENT");
+            
+            if (isAgent) {
+                // Agent users can only see tickets assigned to them
+                tickets = ticketRepository.findAssignedTicketsForUser(user.getId());
+            } else {
+                // Other users use the existing logic
+                tickets = ticketRepository.findVisibleTicketsForUser(user.getId());
+            }
+        }
+        
         return tickets.stream()
                 .filter(ticket -> value.isBlank()
                         || String.valueOf(ticket.getId()).contains(value)
@@ -605,9 +642,26 @@ public class TicketService {
             return List.of();
         }
         Pageable limit = PageRequest.of(0, 8);
-        List<Ticket> tickets = canManageAllTickets(username)
-                ? ticketRepository.searchAllParentTicketCandidates(value, excludeTicketId, limit)
-                : ticketRepository.searchVisibleParentTicketCandidates(userService.getByEmail(username).getId(), value, excludeTicketId, limit);
+        List<Ticket> tickets;
+        
+        if (canManageAllTickets(username)) {
+            tickets = ticketRepository.searchAllParentTicketCandidates(value, excludeTicketId, limit);
+        } else {
+            AppUser user = userService.getByEmail(username);
+            boolean isAgent = userService.hasRole(user, "ROLE_AGENT");
+            
+            if (isAgent) {
+                // Agent users can only see tickets assigned to them
+                tickets = ticketRepository.searchVisibleParentTicketCandidates(user.getId(), value, excludeTicketId, limit)
+                        .stream()
+                        .filter(ticket -> ticket.getAssignedTo() != null && ticket.getAssignedTo().getId().equals(user.getId()))
+                        .toList();
+            } else {
+                // Other users use the existing logic
+                tickets = ticketRepository.searchVisibleParentTicketCandidates(user.getId(), value, excludeTicketId, limit);
+            }
+        }
+        
         return tickets.stream()
                 .map(ticket -> toSummary(ticket, username))
                 .toList();
@@ -662,7 +716,7 @@ public class TicketService {
                 comment.getAuthor().getId(),
                 comment.getAuthor().getUsername(),
                 comment.getContent(),
-                comment.getAuthor().getUsername().equals(username),
+                comment.getAuthor().getEmail().equals(username),
                 comment.getCreatedAt(),
                 comment.getUpdatedAt(),
                 replies
