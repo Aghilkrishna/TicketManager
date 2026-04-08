@@ -117,6 +117,41 @@ public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecif
     @Query(
             value = """
                     select distinct t from Ticket t
+                    left join t.assignedTo assignedUser
+                    where assignedUser.id = :userId
+                      and (:status is null or t.status = :status)
+                      and (:priority is null or t.priority = :priority)
+                      and (:assignedToId is null or assignedUser.id = :assignedToId)
+                      and (:search is null or lower(str(t.id)) like concat('%', lower(cast(:search as string)), '%')
+                           or lower(t.title) like concat('%', lower(cast(:search as string)), '%')
+                           or lower(t.description) like concat('%', lower(cast(:search as string)), '%'))
+                    """,
+            countQuery = """
+                    select count(distinct t.id) from Ticket t
+                    left join t.assignedTo assignedUser
+                    where assignedUser.id = :userId
+                      and (:status is null or t.status = :status)
+                      and (:priority is null or t.priority = :priority)
+                      and (:assignedToId is null or assignedUser.id = :assignedToId)
+                      and (:search is null or lower(str(t.id)) like concat('%', lower(cast(:search as string)), '%')
+                           or lower(t.title) like concat('%', lower(cast(:search as string)), '%')
+                           or lower(assignedUser.username) like concat('%', lower(cast(:search as string)), '%')
+                           or lower(t.description) like concat('%', lower(cast(:search as string)), '%'))
+                    """
+    )
+    @EntityGraph(attributePaths = {"createdBy", "assignedTo", "serviceUsers"})
+    Page<Ticket> findAssignedTicketsForAgent(
+            @Param("userId") Long userId,
+            @Param("status") TicketStatus status,
+            @Param("priority") TicketPriority priority,
+            @Param("assignedToId") Long assignedToId,
+            @Param("search") String search,
+            Pageable pageable
+    );
+
+    @Query(
+            value = """
+                    select distinct t from Ticket t
                     left join t.createdBy createdUser
                     left join t.assignedTo assignedUser
                     left join t.serviceUsers su
