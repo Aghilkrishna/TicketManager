@@ -75,6 +75,8 @@
 const forcedStatus = /*[[${forcedStatus}]]*/ 'OPEN';
 const canEditTickets = /*[[${currentFeatures.contains('FEATURE_TICKETS_MANAGE')}]]*/ false;
 const assignedOnly = /*[[${assignedOnly}]]*/ true;
+const currentRoles = /*[[${currentRoles}]]*/ [];
+const isAdmin = currentRoles.includes('ROLE_ADMIN') || currentRoles.includes('ROLE_MANAGER');
 let currentPage = 0;
 let pageSize = 10;
 
@@ -134,7 +136,7 @@ async function loadTickets() {
         <td>${assignedUsers || 'Unassigned'}</td>
         <td class="text-end">
           <a class="btn btn-sm btn-outline-secondary" href="/tickets/view?id=${ticket.id}" title="View"><i class="bi bi-eye"></i></a>
-          ${canEditTickets ? `<a class="btn btn-sm btn-outline-primary" href="/tickets/edit?id=${ticket.id}" title="Edit"><i class="bi bi-pencil"></i></a>` : ''}
+          ${canEditTickets && (ticket.status !== 'CLOSED' || isAdmin) ? `<a class="btn btn-sm btn-outline-primary" href="/tickets/edit?id=${ticket.id}" title="Edit"><i class="bi bi-pencil"></i></a>` : ''}
         </td>
       </tr>`;
   });

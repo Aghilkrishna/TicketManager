@@ -306,7 +306,7 @@ public class TicketService {
                 || ticket.getServiceUsers().stream().anyMatch(serviceUser -> serviceUser.getEmail().equals(username));
     }
 
-    private boolean canManageAllTickets(String username) {
+    public boolean canManageAllTickets(String username) {
         AppUser user = userService.getByEmail(username);
         return user.getRoles().stream().anyMatch(role -> role.isActive()
                 && ("ROLE_ADMIN".equals(role.getName()) || "ROLE_MANAGER".equals(role.getName())));

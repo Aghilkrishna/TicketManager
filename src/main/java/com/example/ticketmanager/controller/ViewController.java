@@ -119,7 +119,15 @@ public class ViewController {
     @GetMapping("/tickets/edit")
     public String editTicket(@RequestParam Long id, Model model, Principal principal) {
         boolean adminScope = userService.hasRole(principal.getName(), "ROLE_ADMIN") || userService.hasRole(principal.getName(), "ROLE_MANAGER");
-        model.addAttribute("ticket", ticketService.get(id, principal.getName(), adminScope));
+        var ticket = ticketService.get(id, principal.getName(), adminScope);
+        
+        // Prevent agent and vendor users from editing closed tickets
+        if (!adminScope && "CLOSED".equals(ticket.status()) && 
+            (userService.hasRole(principal.getName(), "ROLE_AGENT") || userService.hasRole(principal.getName(), "ROLE_VENDOR"))) {
+            throw new org.springframework.security.access.AccessDeniedException("Agent and vendor users cannot edit closed tickets");
+        }
+        
+        model.addAttribute("ticket", ticket);
         return "ticket-edit";
     }
 
