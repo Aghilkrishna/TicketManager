@@ -861,6 +861,7 @@ textarea.form-control[readonly]::placeholder {
 .status-pill.OPEN, .status-pill.IN_PROGRESS { background: #dbeafe; color: #1d4ed8; }
 .status-pill.ON_HOLD { background: #fef3c7; color: #b45309; }
 .status-pill.RESOLVED, .status-pill.CLOSED { background: #dcfce7; color: #15803d; }
+.status-pill.CANCELLED { background: #f3f4f6; color: #6b7280; }
 
 .priority-pill.LOW { background: #e0f2fe; color: #0369a1; }
 .priority-pill.MEDIUM { background: #e9d5ff; color: #7e22ce; }

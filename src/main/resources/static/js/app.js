@@ -49,6 +49,43 @@ function showAppAlert(message, variant = 'danger', title = null) {
   window.setTimeout(close, 4200);
 }
 
+// Device detection function
+function isMobileDevice() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+         (window.innerWidth <= 768 && 'ontouchstart' in window);
+}
+
+// Build appropriate map URL based on device
+function buildMapUrl(latitude, longitude) {
+  const coords = latitude + ',' + longitude;
+  const encodedCoords = encodeURIComponent(coords);
+  
+  if (isMobileDevice()) {
+    // For mobile devices, use Google Maps app URL scheme
+    return `https://maps.google.com/maps?q=${encodedCoords}`;
+  } else {
+    // For desktop, use web Google Maps
+    return `https://www.google.com/maps?q=${encodedCoords}`;
+  }
+}
+
+// Handle external map links with device detection
+function handleMapLink(url) {
+  if (isMobileDevice()) {
+    // For mobile devices, try to open in Google Maps app
+    // Convert web URL to app URL if needed
+    if (url.includes('maps.google.com')) {
+      // Already a Google Maps URL, use as-is
+      return url;
+    } else if (url.includes('google.com/maps')) {
+      // Convert to mobile app URL
+      return url.replace('www.google.com/maps', 'maps.google.com/maps');
+    }
+  }
+  // For desktop or if URL is already properly formatted, use as-is
+  return url;
+}
+
 function showInlineAlert(target, message, variant = 'danger', title = null) {
   if (!target) return;
   const meta = alertMeta(variant, title);

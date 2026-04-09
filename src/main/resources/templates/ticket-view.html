@@ -319,9 +319,6 @@ function renderSiteVisits(visits) {
   `).join('') : '<div class="empty-state">No site visits recorded yet.</div>';
 }
 
-function buildMapUrl(latitude, longitude) {
-  return `https://www.google.com/maps?q=${encodeURIComponent(latitude + ',' + longitude)}`;
-}
 
 function formatVisitDateTime(value) {
   return new Date(value).toLocaleString([], {
@@ -389,7 +386,8 @@ document.getElementById('commentForm').addEventListener('submit', async event =>
 });
 
 document.querySelectorAll('.external-map-link').forEach(link => {
-  link.href = normalizeExternalUrl(link.dataset.url);
+  const originalUrl = normalizeExternalUrl(link.dataset.url);
+  link.href = handleMapLink(originalUrl);
 });
 
 if (typeof SockJS !== 'undefined' && typeof Stomp !== 'undefined') {

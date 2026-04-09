@@ -95,6 +95,7 @@
                                             <option value="ON_HOLD" th:selected="${ticket.status == 'ON_HOLD'}">On Hold</option>
                                             <option value="RESOLVED" th:selected="${ticket.status == 'RESOLVED'}">Resolved</option>
                                             <option value="CLOSED" th:selected="${ticket.status == 'CLOSED'}">Closed</option>
+                                            <option value="CANCELLED" th:selected="${ticket.status == 'CANCELLED'}">Cancelled</option>
                                         </select>
                                     </div>
                                     <div class="col-md-4">
@@ -434,9 +435,6 @@ function renderSiteVisits(visits) {
   `).join('') : '<div class="empty-state">No site visits recorded yet.</div>';
 }
 
-function buildMapUrl(latitude, longitude) {
-  return `https://www.google.com/maps?q=${encodeURIComponent(latitude + ',' + longitude)}`;
-}
 
 function formatVisitDateTime(value) {
   return new Date(value).toLocaleString([], {

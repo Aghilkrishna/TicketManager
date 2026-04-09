@@ -7,10 +7,13 @@ public enum AppFeature {
     TICKETS_MANAGE("Ticket Management", "Create and edit tickets."),
     SITE_VISIT_EDIT("Site Visit Edit", "Update site visit counters and log visit history."),
     CHAT_ACCESS("Chat Access", "Use the internal chat workspace."),
+    NOTIFICATION_ACCESS("Notification Access", "View and manage system notifications."),
     ADMIN_SUPPORT_TICKETS("Admin Support Tickets", "Review all support tickets from the admin area."),
     ADMIN_USER_MANAGEMENT("Admin User Management", "Manage registered users and account status."),
     ADMIN_ROLE_MANAGEMENT("Admin Role Management", "Create, edit, and delete roles."),
-    ADMIN_ROLE_FEATURE_ASSIGNMENT("Admin Role Feature Assignment", "Assign features and permissions to roles.");
+    ADMIN_ROLE_FEATURE_ASSIGNMENT("Admin Role Feature Assignment", "Assign features and permissions to roles."),
+    ADMIN_EMAIL_NOTIFICATION_MANAGEMENT("Admin Email Notification Management", "Configure email notification settings and templates."),
+    ADMIN_REPORT_ACCESS("Admin Report Access", "View system reports and analytics.");
 
     private final String label;
     private final String description;
