@@ -41,6 +41,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.Comparator;
+import java.util.Arrays;
+import java.util.EnumSet;
 
 @Service
 @RequiredArgsConstructor
@@ -53,7 +55,7 @@ public class TicketService {
     private final com.example.ticketmanager.config.AppProperties appProperties;
     private final SimpMessagingTemplate messagingTemplate;
 
-    @PreAuthorize("hasAuthority('FEATURE_TICKETS_MANAGE')")
+    @PreAuthorize("hasAnyAuthority('FEATURE_TICKETS_MANAGE','FEATURE_TICKETS_CREATE_STANDARD','FEATURE_TICKETS_CREATE_VENDOR')")
     @Transactional
     public AuthDtos.TicketSummary create(String creatorUsername, AuthDtos.TicketRequest request, MultipartFile[] files) {
         AppUser creator = userService.getByEmail(creatorUsername);
@@ -62,6 +64,7 @@ public class TicketService {
         storeFiles(ticket, files);
         Ticket saved = ticketRepository.save(ticket);
         addInitialComment(saved, creatorUsername, request.initialComment());
+        publishTicketListRefreshEvent("CREATED", saved);
         notifyStakeholders(saved, "Ticket created: " + saved.getTitle(), NotificationType.TICKET_UPDATED, EmailNotificationAction.TICKET_CREATED);
         return toSummary(saved);
     }
@@ -75,6 +78,7 @@ public class TicketService {
         ticket.setUpdatedAt(LocalDateTime.now());
         storeFiles(ticket, files);
         Ticket saved = ticketRepository.save(ticket);
+        publishTicketListRefreshEvent("UPDATED", saved);
         notifyStakeholders(saved, "Ticket updated: " + saved.getTitle(), NotificationType.TICKET_UPDATED, EmailNotificationAction.TICKET_UPDATED);
         return toSummary(saved);
     }
@@ -85,6 +89,7 @@ public class TicketService {
         if (!canManageAllTickets(username) && !canAccess(ticket, username)) {
             throw new AppException(HttpStatus.FORBIDDEN, "Not allowed to delete this ticket");
         }
+        publishTicketListRefreshEvent("DELETED", ticket);
         ticketRepository.delete(ticket);
     }
 
@@ -93,36 +98,29 @@ public class TicketService {
                                              Long assignedToId, String search, int page, int size,
                                              String sortBy, String direction) {
         AppUser user = userService.getByEmail(username);
+        boolean effectiveAdminScope = adminScope && canManageAllTickets(username);
         Sort sort = Sort.by("desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC,
                 mapSortProperty(sortBy));
         Pageable pageable = PageRequest.of(page, size, sort);
-        TicketStatus statusFilter = status == null || status.isBlank() ? null : TicketStatus.valueOf(status);
+        Set<TicketStatus> statusFilter = parseStatusFilter(status);
         TicketPriority priorityFilter = priority == null || priority.isBlank() ? null : TicketPriority.valueOf(priority);
         String searchFilter = search == null || search.isBlank() ? null : search;
 
-        if (!adminScope) {
-            Page<Ticket> result;
-            boolean isAgent = userService.hasRole(user, "ROLE_AGENT");
-            
-            if (isAgent) {
-                // Agent users can only see tickets assigned to them
-                result = ticketRepository.findAssignedTicketsForAgent(user.getId(), statusFilter, priorityFilter, assignedToId, searchFilter, pageable);
-            } else {
-                // Other users (vendors, etc.) use the existing logic
-                result = assignedOnly
-                        ? ticketRepository.findAssignedTicketsForUser(user.getId(), statusFilter, priorityFilter, assignedToId, searchFilter, pageable)
-                        : ticketRepository.findVisibleTicketsForUser(user.getId(), statusFilter, priorityFilter, assignedToId, searchFilter, pageable);
-            }
-            return result.map(ticket -> toListSummary(ticket, username));
-        }
-        return ticketRepository.findAllTicketsForAdmin(statusFilter, priorityFilter, assignedToId, searchFilter, pageable)
+        Specification<Ticket> spec = Specification.where(buildScopeSpecification(user, effectiveAdminScope, assignedOnly))
+                .and(statusesSpecification(statusFilter))
+                .and(prioritySpecification(priorityFilter))
+                .and(assignedToSpecification(assignedToId))
+                .and(searchSpecification(searchFilter));
+
+        return ticketRepository.findAll(spec, pageable)
                 .map(ticket -> toListSummary(ticket, username));
     }
 
     @Transactional(readOnly = true)
     public Map<String, Long> metrics(String username, boolean adminScope) {
+        boolean effectiveAdminScope = adminScope && canManageAllTickets(username);
         Specification<Ticket> scope = Specification.where(null);
-        if (!adminScope) {
+        if (!effectiveAdminScope) {
             AppUser user = userService.getByEmail(username);
             scope = scope.and(scopeForUser(user.getId(), false));
         }
@@ -137,8 +135,9 @@ public class TicketService {
 
     @Transactional(readOnly = true)
     public AuthDtos.TicketSummary get(Long ticketId, String username, boolean adminScope) {
+        boolean effectiveAdminScope = adminScope && canManageAllTickets(username);
         Ticket ticket = getTicket(ticketId);
-        if (!adminScope && !canManageAllTickets(username) && !canAccess(ticket, username)) {
+        if (!effectiveAdminScope && !canManageAllTickets(username) && !canAccess(ticket, username)) {
             throw new AppException(HttpStatus.FORBIDDEN, "Not allowed to view this ticket");
         }
         return toSummary(ticket, username);
@@ -171,8 +170,9 @@ public class TicketService {
 
     @Transactional(readOnly = true)
     public List<AuthDtos.TicketCommentResponse> listComments(Long ticketId, String username, boolean adminScope) {
+        boolean effectiveAdminScope = adminScope && canManageAllTickets(username);
         Ticket ticket = getTicket(ticketId);
-        if (!adminScope && !canAccess(ticket, username)) {
+        if (!effectiveAdminScope && !canAccess(ticket, username)) {
             throw new AppException(HttpStatus.FORBIDDEN, "Not allowed to view comments");
         }
         List<TicketComment> comments = commentRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
@@ -192,8 +192,9 @@ public class TicketService {
 
     @Transactional(readOnly = true)
     public List<AuthDtos.TicketSiteVisitResponse> listSiteVisits(Long ticketId, String username, boolean adminScope) {
+        boolean effectiveAdminScope = adminScope && canManageAllTickets(username);
         Ticket ticket = getTicket(ticketId);
-        if (!adminScope && !canAccess(ticket, username)) {
+        if (!effectiveAdminScope && !canAccess(ticket, username)) {
             throw new AppException(HttpStatus.FORBIDDEN, "Not allowed to view site visit history");
         }
         return ticketSiteVisitRepository.findByTicketIdOrderByVisitedAtDesc(ticketId).stream()
@@ -259,6 +260,73 @@ public class TicketService {
         return ticketRepository.count(scope.and((root, query, cb) -> cb.equal(root.get("status"), status)));
     }
 
+    private Set<TicketStatus> parseStatusFilter(String status) {
+        if (status == null || status.isBlank()) {
+            return Set.of();
+        }
+        return Arrays.stream(status.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .map(TicketStatus::valueOf)
+                .collect(java.util.stream.Collectors.toCollection(() -> EnumSet.noneOf(TicketStatus.class)));
+    }
+
+    private Specification<Ticket> buildScopeSpecification(AppUser user, boolean effectiveAdminScope, boolean assignedOnly) {
+        if (effectiveAdminScope) {
+            return Specification.where(null);
+        }
+        if (userService.hasRole(user, "ROLE_AGENT")) {
+            return assignedToUserSpecification(user.getId());
+        }
+        return scopeForUser(user.getId(), assignedOnly);
+    }
+
+    private Specification<Ticket> assignedToUserSpecification(Long userId) {
+        return (root, query, cb) -> cb.equal(root.get("assignedTo").get("id"), userId);
+    }
+
+    private Specification<Ticket> statusesSpecification(Set<TicketStatus> statuses) {
+        if (statuses == null || statuses.isEmpty()) {
+            return Specification.where(null);
+        }
+        return (root, query, cb) -> root.get("status").in(statuses);
+    }
+
+    private Specification<Ticket> prioritySpecification(TicketPriority priority) {
+        if (priority == null) {
+            return Specification.where(null);
+        }
+        return (root, query, cb) -> cb.equal(root.get("priority"), priority);
+    }
+
+    private Specification<Ticket> assignedToSpecification(Long assignedToId) {
+        if (assignedToId == null) {
+            return Specification.where(null);
+        }
+        return (root, query, cb) -> cb.equal(root.get("assignedTo").get("id"), assignedToId);
+    }
+
+    private Specification<Ticket> searchSpecification(String search) {
+        if (search == null || search.isBlank()) {
+            return Specification.where(null);
+        }
+        return (root, query, cb) -> {
+            query.distinct(true);
+            String likeValue = "%" + search.toLowerCase() + "%";
+            var createdBy = root.join("createdBy", JoinType.LEFT);
+            var assignedTo = root.join("assignedTo", JoinType.LEFT);
+            var serviceUsers = root.join("serviceUsers", JoinType.LEFT);
+            return cb.or(
+                    cb.like(cb.lower(root.get("id").as(String.class)), likeValue),
+                    cb.like(cb.lower(root.get("title")), likeValue),
+                    cb.like(cb.lower(root.get("description")), likeValue),
+                    cb.like(cb.lower(createdBy.get("username")), likeValue),
+                    cb.like(cb.lower(assignedTo.get("username")), likeValue),
+                    cb.like(cb.lower(serviceUsers.get("username")), likeValue)
+            );
+        };
+    }
+
     private Specification<Ticket> scopeForUser(Long userId, boolean assignedOnly) {
         return (root, query, cb) -> {
             query.distinct(true);
@@ -308,8 +376,7 @@ public class TicketService {
 
     public boolean canManageAllTickets(String username) {
         AppUser user = userService.getByEmail(username);
-        return user.getRoles().stream().anyMatch(role -> role.isActive()
-                && ("ROLE_ADMIN".equals(role.getName()) || "ROLE_MANAGER".equals(role.getName())));
+        return userService.hasAuthority(user, "FEATURE_TICKETS_ALL_VIEW");
     }
 
     private String mapSortProperty(String sortBy) {
@@ -470,6 +537,15 @@ public class TicketService {
         recipients.stream()
                 .filter(user -> user != null && user.getUsername() != null)
                 .forEach(user -> messagingTemplate.convertAndSendToUser(user.getUsername(), "/queue/ticket-comments", event));
+    }
+
+    private void publishTicketListRefreshEvent(String action, Ticket ticket) {
+        messagingTemplate.convertAndSend("/topic/tickets-refresh", Map.of(
+                "action", action,
+                "ticketId", ticket.getId(),
+                "status", ticket.getStatus().name(),
+                "updatedAt", LocalDateTime.now().toString()
+        ));
     }
 
     public AuthDtos.TicketSummary toSummary(Ticket ticket) {

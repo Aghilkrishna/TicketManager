@@ -14,6 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +42,7 @@ public class UserService {
     private final EmailService emailService;
     private final com.example.ticketmanager.config.AppProperties appProperties;
     private final EmailNotificationSettingsService emailNotificationSettingsService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public AppUser getByEmail(String email) {
         return userRepository.findByEmail(email)
@@ -213,6 +215,14 @@ public class UserService {
         return hasRole(getByEmail(email), roleName);
     }
 
+    public boolean hasAuthority(AppUser user, String authority) {
+        return getFeatureAuthorities(user).contains(authority);
+    }
+
+    public boolean hasAuthority(String email, String authority) {
+        return hasAuthority(getByEmail(email), authority);
+    }
+
     @Transactional(readOnly = true)
     public Page<AdminDtos.UserSummary> listUsers(String query, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "username"));
@@ -229,6 +239,8 @@ public class UserService {
     public AdminDtos.UserSummary updateUser(Long userId, AdminDtos.UserUpdateRequest request, String actorEmail) {
         AppUser user = getById(userId);
         AppUser actor = getByEmail(actorEmail);
+        boolean previousEnabled = user.isEnabled();
+        Set<String> previousRoles = user.getRoles().stream().map(Role::getName).collect(Collectors.toSet());
         validateUniqueFields(user, request.username(), request.email());
         Set<Role> roles = resolveRoles(request.roleIds());
         preventUnsafeSelfUpdate(actor, user, request.enabled(), roles);
@@ -237,7 +249,21 @@ public class UserService {
         user.setPhone(request.phone());
         user.setEnabled(request.enabled());
         user.setRoles(roles);
-        return toUserSummary(userRepository.save(user));
+        AppUser saved = userRepository.save(user);
+
+        Set<String> updatedRoles = saved.getRoles().stream().map(Role::getName).collect(Collectors.toSet());
+        boolean statusChanged = previousEnabled != saved.isEnabled();
+        boolean rolesChanged = !previousRoles.equals(updatedRoles);
+        if (statusChanged || rolesChanged) {
+            messagingTemplate.convertAndSend("/topic/admin-users-refresh", Map.of(
+                    "userId", saved.getId(),
+                    "statusChanged", statusChanged,
+                    "rolesChanged", rolesChanged,
+                    "updatedAt", LocalDateTime.now().toString()
+            ));
+        }
+
+        return toUserSummary(saved);
     }
 
     private void validateUniqueFields(AppUser user, String username, String email) {

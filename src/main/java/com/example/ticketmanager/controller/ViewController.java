@@ -51,7 +51,7 @@ public class ViewController {
     }
 
     @GetMapping("/admin/users/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_USER_MANAGEMENT')")
     public String adminUserDetails(@PathVariable Long id, Model model) {
         model.addAttribute("userDetails", userService.getUserDetails(id));
         model.addAttribute("idProofs", userService.getUserIdProofs(id));
@@ -79,37 +79,67 @@ public class ViewController {
 
     @GetMapping("/tickets")
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
-    public String tickets(Model model, Principal principal) {
-        boolean vendor = userService.hasRole(principal.getName(), "ROLE_VENDOR");
-        model.addAttribute("ticketTab", "open");
-        model.addAttribute("ticketPageTitle", vendor ? "My Tickets" : "My Open Tickets");
-        model.addAttribute("ticketSubtitle", vendor ? "Tickets created by you and available for updates" : "Open tickets currently assigned to you");
-        model.addAttribute("forcedStatus", "OPEN");
-        model.addAttribute("assignedOnly", !vendor);
+    public String tickets() {
+        return "redirect:/tickets/pending";
+    }
+
+    @GetMapping("/tickets/pending")
+    @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
+    public String pendingTickets(Model model) {
+        model.addAttribute("ticketTab", "pending");
+        model.addAttribute("ticketPageTitle", "My Pending Tickets");
+        model.addAttribute("ticketSubtitle", "Open, in-progress, and on-hold tickets assigned to you");
+        model.addAttribute("forcedStatuses", java.util.List.of("OPEN", "IN_PROGRESS", "ON_HOLD"));
+        model.addAttribute("assignedOnly", true);
+        model.addAttribute("adminScope", false);
         return "tickets";
     }
 
-    @GetMapping("/tickets/closed")
+    @GetMapping("/tickets/resolved")
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
-    public String closedTickets(Model model, Principal principal) {
-        boolean vendor = userService.hasRole(principal.getName(), "ROLE_VENDOR");
-        model.addAttribute("ticketTab", "closed");
-        model.addAttribute("ticketPageTitle", vendor ? "My Closed Tickets" : "Closed Tickets");
-        model.addAttribute("ticketSubtitle", vendor ? "Closed tickets created by you" : "Closed tickets assigned to you");
-        model.addAttribute("forcedStatus", "CLOSED");
-        model.addAttribute("assignedOnly", !vendor);
+    public String resolvedTickets(Model model) {
+        model.addAttribute("ticketTab", "resolved");
+        model.addAttribute("ticketPageTitle", "My Resolved Tickets");
+        model.addAttribute("ticketSubtitle", "Resolved, closed, and cancelled tickets assigned to you");
+        model.addAttribute("forcedStatuses", java.util.List.of("RESOLVED", "CLOSED", "CANCELLED"));
+        model.addAttribute("assignedOnly", true);
+        model.addAttribute("adminScope", false);
+        return "tickets";
+    }
+
+    @GetMapping("/tickets/review")
+    @PreAuthorize("hasAuthority('FEATURE_TICKETS_REVIEW')")
+    public String reviewTickets(Model model) {
+        model.addAttribute("ticketTab", "review");
+        model.addAttribute("ticketPageTitle", "My Review Tickets");
+        model.addAttribute("ticketSubtitle", "Resolved tickets ready for review and closure decisions");
+        model.addAttribute("forcedStatuses", java.util.List.of("RESOLVED"));
+        model.addAttribute("assignedOnly", false);
+        model.addAttribute("adminScope", true);
+        return "tickets";
+    }
+
+    @GetMapping("/tickets/all")
+    @PreAuthorize("hasAuthority('FEATURE_TICKETS_ALL_VIEW')")
+    public String allTickets(Model model) {
+        model.addAttribute("ticketTab", "all");
+        model.addAttribute("ticketPageTitle", "All Tickets");
+        model.addAttribute("ticketSubtitle", "All tickets across the workspace");
+        model.addAttribute("forcedStatuses", java.util.List.of());
+        model.addAttribute("assignedOnly", false);
+        model.addAttribute("adminScope", true);
         return "tickets";
     }
 
     @GetMapping("/tickets/view")
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
     public String viewTicket(@RequestParam Long id, Model model, Principal principal) {
-        boolean adminScope = userService.hasRole(principal.getName(), "ROLE_ADMIN") || userService.hasRole(principal.getName(), "ROLE_MANAGER");
+        boolean adminScope = ticketService.canManageAllTickets(principal.getName());
         model.addAttribute("ticket", ticketService.get(id, principal.getName(), adminScope));
         return "ticket-view";
     }
 
-    @PreAuthorize("hasAuthority('FEATURE_TICKETS_MANAGE')")
+    @PreAuthorize("hasAnyAuthority('FEATURE_TICKETS_MANAGE','FEATURE_TICKETS_CREATE_STANDARD','FEATURE_TICKETS_CREATE_VENDOR')")
     @GetMapping("/tickets/create")
     public String createTicket() {
         return "ticket-create";
@@ -118,7 +148,7 @@ public class ViewController {
     @PreAuthorize("hasAnyAuthority('FEATURE_TICKETS_MANAGE','FEATURE_SITE_VISIT_EDIT')")
     @GetMapping("/tickets/edit")
     public String editTicket(@RequestParam Long id, Model model, Principal principal) {
-        boolean adminScope = userService.hasRole(principal.getName(), "ROLE_ADMIN") || userService.hasRole(principal.getName(), "ROLE_MANAGER");
+        boolean adminScope = ticketService.canManageAllTickets(principal.getName());
         var ticket = ticketService.get(id, principal.getName(), adminScope);
         
         // Prevent agent and vendor users from editing closed tickets
@@ -131,7 +161,7 @@ public class ViewController {
         return "ticket-edit";
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('FEATURE_ADMIN_ACCESS','FEATURE_ADMIN_SUPPORT_TICKETS','FEATURE_ADMIN_USER_MANAGEMENT','FEATURE_ADMIN_ROLE_MANAGEMENT','FEATURE_ADMIN_ROLE_FEATURE_ASSIGNMENT','FEATURE_ADMIN_EMAIL_NOTIFICATION_MANAGEMENT')")
     @GetMapping("/admin")
     public String admin() {
         return "redirect:/admin/support-tickets";
@@ -142,31 +172,31 @@ public class ViewController {
         return "error/403";
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_SUPPORT_TICKETS')")
     @GetMapping("/admin/support-tickets")
     public String adminSupportTickets() {
         return "admin-support-tickets";
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_USER_MANAGEMENT')")
     @GetMapping("/admin/users")
     public String adminUsers() {
         return "admin-users";
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_ROLE_MANAGEMENT')")
     @GetMapping("/admin/roles")
     public String adminRoles() {
         return "admin-roles";
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_ROLE_FEATURE_ASSIGNMENT')")
     @GetMapping("/admin/role-features")
     public String adminRoleFeatures() {
         return "admin-role-features";
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_EMAIL_NOTIFICATION_MANAGEMENT')")
     @GetMapping("/admin/email-notifications")
     public String adminEmailNotifications() {
         return "admin-email-notifications";

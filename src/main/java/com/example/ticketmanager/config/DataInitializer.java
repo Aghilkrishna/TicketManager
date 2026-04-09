@@ -34,17 +34,26 @@ public class DataInitializer {
                     AppFeature.PROFILE_ACCESS,
                     AppFeature.TICKETS_VIEW,
                     AppFeature.TICKETS_MANAGE,
+                    AppFeature.TICKETS_CREATE_STANDARD,
+                    AppFeature.TICKETS_REVIEW,
+                    AppFeature.TICKETS_ALL_VIEW,
                     AppFeature.CHAT_ACCESS,
+                    AppFeature.ADMIN_ACCESS,
                     AppFeature.ADMIN_SUPPORT_TICKETS,
                     AppFeature.ADMIN_USER_MANAGEMENT,
                     AppFeature.ADMIN_ROLE_MANAGEMENT,
-                    AppFeature.ADMIN_ROLE_FEATURE_ASSIGNMENT
+                    AppFeature.ADMIN_ROLE_FEATURE_ASSIGNMENT,
+                    AppFeature.ADMIN_EMAIL_NOTIFICATION_MANAGEMENT,
+                    AppFeature.ADMIN_REPORT_ACCESS
             ));
             seedRole("ROLE_MANAGER", "Manage ticket operations", Set.of(
                     AppFeature.DASHBOARD_ACCESS,
                     AppFeature.PROFILE_ACCESS,
                     AppFeature.TICKETS_VIEW,
                     AppFeature.TICKETS_MANAGE,
+                    AppFeature.TICKETS_CREATE_STANDARD,
+                    AppFeature.TICKETS_REVIEW,
+                    AppFeature.TICKETS_ALL_VIEW,
                     AppFeature.CHAT_ACCESS
             ));
             seedRole("ROLE_AGENT", "Work assigned tickets and chat", Set.of(
@@ -58,7 +67,8 @@ public class DataInitializer {
                     AppFeature.DASHBOARD_ACCESS,
                     AppFeature.PROFILE_ACCESS,
                     AppFeature.TICKETS_VIEW,
-                    AppFeature.TICKETS_MANAGE
+                    AppFeature.TICKETS_MANAGE,
+                    AppFeature.TICKETS_CREATE_VENDOR
             ));
             seedRole("ROLE_USER", "Standard end user access", Set.of(
                     AppFeature.DASHBOARD_ACCESS,
