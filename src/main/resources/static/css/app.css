@@ -152,6 +152,25 @@ textarea.form-control[readonly]::placeholder {
     color: #fff;
 }
 
+.nav-toggle {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+}
+
+.subnav-chevron {
+    margin-left: auto;
+    font-size: 0.82rem;
+    opacity: 0.9;
+    transition: transform 0.2s ease;
+}
+
+.nav-toggle[aria-expanded='true'] .subnav-chevron {
+    transform: rotate(180deg);
+}
+
 .sidebar-card,
 .glass-card,
 .chart-card,
@@ -353,9 +372,13 @@ textarea.form-control[readonly]::placeholder {
 }
 
 .sidebar-subnav {
-    display: grid;
+    display: none;
     gap: 0.35rem;
     margin: -0.15rem 0 0.35rem 2.2rem;
+}
+
+.sidebar-subnav.is-open {
+    display: grid;
 }
 
 .subnav-item {

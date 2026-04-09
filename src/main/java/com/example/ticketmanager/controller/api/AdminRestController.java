@@ -119,12 +119,8 @@ public class AdminRestController {
     @PreAuthorize("hasAuthority('FEATURE_ADMIN_USER_MANAGEMENT')")
     public Map<String, Object> verifyIdProofs(@PathVariable Long userId,
                                               @RequestBody Map<String, String> verificationData) {
-        try {
-            userService.verifyIdProofs(userId, verificationData);
-            return Map.of("message", "ID proof verification updated successfully");
-        } catch (Exception e) {
-            return Map.of("message", e.getMessage());
-        }
+        userService.verifyIdProofs(userId, verificationData);
+        return Map.of("message", "ID proof verification updated successfully");
     }
 
     @GetMapping("/users/{userId}/id-proof/{idProofType}")

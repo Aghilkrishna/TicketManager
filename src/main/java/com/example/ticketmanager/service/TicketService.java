@@ -535,8 +535,8 @@ public class TicketService {
             recipients.add(ticket.getVendorUser());
         }
         recipients.stream()
-                .filter(user -> user != null && user.getUsername() != null)
-                .forEach(user -> messagingTemplate.convertAndSendToUser(user.getUsername(), "/queue/ticket-comments", event));
+                .filter(user -> user != null && user.getEmail() != null)
+                .forEach(user -> messagingTemplate.convertAndSendToUser(user.getEmail(), "/queue/ticket-comments", event));
     }
 
     private void publishTicketListRefreshEvent(String action, Ticket ticket) {

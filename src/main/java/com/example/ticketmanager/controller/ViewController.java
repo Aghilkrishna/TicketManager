@@ -133,9 +133,14 @@ public class ViewController {
 
     @GetMapping("/tickets/view")
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
-    public String viewTicket(@RequestParam Long id, Model model, Principal principal) {
+    public String viewTicket(@RequestParam Long id,
+                             @RequestParam(required = false) String tab,
+                             Model model,
+                             Principal principal) {
         boolean adminScope = ticketService.canManageAllTickets(principal.getName());
-        model.addAttribute("ticket", ticketService.get(id, principal.getName(), adminScope));
+        var ticket = ticketService.get(id, principal.getName(), adminScope);
+        model.addAttribute("ticket", ticket);
+        model.addAttribute("ticketNavTab", resolveTicketNavTab(tab, ticket.status(), principal.getName()));
         return "ticket-view";
     }
 
@@ -147,7 +152,10 @@ public class ViewController {
 
     @PreAuthorize("hasAnyAuthority('FEATURE_TICKETS_MANAGE','FEATURE_SITE_VISIT_EDIT')")
     @GetMapping("/tickets/edit")
-    public String editTicket(@RequestParam Long id, Model model, Principal principal) {
+    public String editTicket(@RequestParam Long id,
+                             @RequestParam(required = false) String tab,
+                             Model model,
+                             Principal principal) {
         boolean adminScope = ticketService.canManageAllTickets(principal.getName());
         var ticket = ticketService.get(id, principal.getName(), adminScope);
         
@@ -158,13 +166,14 @@ public class ViewController {
         }
         
         model.addAttribute("ticket", ticket);
+        model.addAttribute("ticketNavTab", resolveTicketNavTab(tab, ticket.status(), principal.getName()));
         return "ticket-edit";
     }
 
     @PreAuthorize("hasAnyAuthority('FEATURE_ADMIN_ACCESS','FEATURE_ADMIN_SUPPORT_TICKETS','FEATURE_ADMIN_USER_MANAGEMENT','FEATURE_ADMIN_ROLE_MANAGEMENT','FEATURE_ADMIN_ROLE_FEATURE_ASSIGNMENT','FEATURE_ADMIN_EMAIL_NOTIFICATION_MANAGEMENT')")
     @GetMapping("/admin")
     public String admin() {
-        return "redirect:/admin/support-tickets";
+        return "redirect:/admin/users";
     }
 
     @GetMapping("/access-denied")
@@ -175,7 +184,7 @@ public class ViewController {
     @PreAuthorize("hasAuthority('FEATURE_ADMIN_SUPPORT_TICKETS')")
     @GetMapping("/admin/support-tickets")
     public String adminSupportTickets() {
-        return "admin-support-tickets";
+        return "redirect:/tickets/all";
     }
 
     @PreAuthorize("hasAuthority('FEATURE_ADMIN_USER_MANAGEMENT')")
@@ -218,5 +227,18 @@ public class ViewController {
     public String resetPassword(@RequestParam(required = false) String token, Model model) {
         model.addAttribute("token", token);
         return "reset-password";
+    }
+
+    private String resolveTicketNavTab(String requestedTab, String ticketStatus, String username) {
+        if (requestedTab != null && java.util.Set.of("pending", "resolved", "review", "all").contains(requestedTab)) {
+            return requestedTab;
+        }
+        if (userService.hasAuthority(username, "FEATURE_TICKETS_ALL_VIEW")) {
+            return "all";
+        }
+        if ("RESOLVED".equals(ticketStatus) && userService.hasAuthority(username, "FEATURE_TICKETS_REVIEW")) {
+            return "review";
+        }
+        return java.util.Set.of("RESOLVED", "CLOSED", "CANCELLED").contains(ticketStatus) ? "resolved" : "pending";
     }
 }

@@ -178,9 +178,10 @@ window.toggleUserStatus = async (userId) => {
   });
   if (!res.ok) {
     const payload = await res.json().catch(() => ({}));
-    window.alert(payload.message || 'Failed to update account status');
+    showAppAlert(payload.message || 'Failed to update account status.', 'danger', 'Update Failed');
     return;
   }
+  showAppAlert(`User ${nextEnabled ? 'reactivated' : 'deactivated'} successfully.`, 'success', 'Updated');
   await loadUsers();
 };
 
@@ -241,10 +242,11 @@ document.getElementById('userForm').addEventListener('submit', async event => {
   });
   if (!res.ok) {
     const payload = await res.json().catch(() => ({}));
-    window.alert(payload.message || 'Failed to update user');
+    showAppAlert(payload.message || 'Failed to update user.', 'danger', 'Update Failed');
     return;
   }
   userModal.hide();
+  showAppAlert('User details updated successfully.', 'success', 'Saved');
   await loadUsers();
 });
 

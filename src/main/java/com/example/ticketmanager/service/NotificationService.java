@@ -43,7 +43,7 @@ public class NotificationService {
         notification.setReferenceType(referenceType);
         notification.setReferenceId(referenceId);
         Notification saved = notificationRepository.save(notification);
-        messagingTemplate.convertAndSendToUser(user.getUsername(), "/queue/notifications", toResponse(saved));
+        messagingTemplate.convertAndSendToUser(user.getEmail(), "/queue/notifications", toResponse(saved));
         self.sendEmailNotification(user, type, message, referenceType, referenceId, emailAction);
     }
 

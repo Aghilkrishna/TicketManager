@@ -133,11 +133,12 @@ async function deleteTicket(ticketId) {
   if (!confirmed) return;
   const res = await fetch(`/api/tickets/${ticketId}`, {method: 'DELETE'});
   if (res.ok) {
+    showAppAlert('Ticket deleted successfully.', 'success', 'Deleted');
     await loadAdminTickets();
     return;
   }
   const payload = await res.json().catch(() => ({}));
-  window.alert(payload.message || 'Failed to delete ticket');
+  showAppAlert(payload.message || 'Failed to delete ticket.', 'danger', 'Delete Failed');
 }
 
 document.getElementById('adminApply').addEventListener('click', () => {

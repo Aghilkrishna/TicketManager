@@ -513,7 +513,7 @@ if (agentEditor) {
       return;
     }
     if (field.id === 'ticketStatus') {
-      const allowed = ['IN_PROGRESS', 'ON_HOLD', 'RESOLVED'];
+      const allowed = ['IN_PROGRESS', 'ON_HOLD', 'RESOLVED', 'CANCELLED'];
       Array.from(field.options).forEach(opt => {
         if (!allowed.includes(opt.value) && !opt.selected) {
            opt.disabled = true;

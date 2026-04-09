@@ -182,6 +182,63 @@ function initAppShell() {
     sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('is-open'));
   }
 
+  if (sidebar) {
+    const subnavToggles = Array.from(sidebar.querySelectorAll('[data-subnav-toggle]'));
+
+    const closeSubnav = toggle => {
+      const subnavId = toggle.getAttribute('data-subnav-toggle');
+      const subnav = subnavId ? document.getElementById(subnavId) : null;
+      toggle.setAttribute('aria-expanded', 'false');
+      if (subnav) {
+        subnav.classList.remove('is-open');
+      }
+    };
+
+    const openSubnav = toggle => {
+      const subnavId = toggle.getAttribute('data-subnav-toggle');
+      const subnav = subnavId ? document.getElementById(subnavId) : null;
+      toggle.setAttribute('aria-expanded', 'true');
+      if (subnav) {
+        subnav.classList.add('is-open');
+      }
+    };
+
+    const closeOtherSubnavs = currentToggle => {
+      subnavToggles.forEach(toggle => {
+        if (toggle !== currentToggle) {
+          closeSubnav(toggle);
+        }
+      });
+    };
+
+    subnavToggles.forEach(toggle => {
+      const subnavId = toggle.getAttribute('data-subnav-toggle');
+      const subnav = subnavId ? document.getElementById(subnavId) : null;
+      if (!subnav) return;
+
+      // Keep initial state aligned between ARIA and CSS class.
+      const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+      subnav.classList.toggle('is-open', isExpanded);
+
+      toggle.addEventListener('click', event => {
+        event.preventDefault();
+        const expanded = toggle.getAttribute('aria-expanded') === 'true';
+        if (expanded) {
+          closeSubnav(toggle);
+          return;
+        }
+        closeOtherSubnavs(toggle);
+        openSubnav(toggle);
+      });
+    });
+
+    // If multiple sections are marked open by markup, keep only the first as open.
+    const initiallyExpanded = subnavToggles.filter(toggle => toggle.getAttribute('aria-expanded') === 'true');
+    if (initiallyExpanded.length > 1) {
+      initiallyExpanded.slice(1).forEach(closeSubnav);
+    }
+  }
+
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
       await fetch('/api/auth/logout', {method: 'POST'});
