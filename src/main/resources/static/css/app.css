@@ -1585,6 +1585,24 @@ textarea.form-control[readonly]::placeholder {
         grid-template-columns: 1fr;
     }
 
+    .auth-wrap-login {
+        min-height: 100dvh;
+    }
+
+    .auth-wrap-login .auth-banner {
+        display: none;
+    }
+
+    .auth-wrap-login > section:last-child {
+        display: block !important;
+        padding: max(0.75rem, env(safe-area-inset-top)) 1rem 1rem;
+    }
+
+    .auth-wrap-login .auth-panel {
+        margin: 0 auto;
+        width: min(460px, 100%);
+    }
+
     .chat-sidebar-card,
     .chat-card {
         height: auto;
@@ -1616,5 +1634,13 @@ textarea.form-control[readonly]::placeholder {
 
     .composer-send {
         grid-column: span 2;
+    }
+
+    .auth-wrap-login > section:last-child {
+        padding: max(0.5rem, env(safe-area-inset-top)) 0.75rem 0.75rem;
+    }
+
+    .auth-wrap-login .auth-panel {
+        padding: 1.25rem;
     }
 }
