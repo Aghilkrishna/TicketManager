@@ -2,11 +2,15 @@ package com.example.ticketmanager.entity;
 
 public enum AppFeature {
     DASHBOARD_ACCESS("Dashboard Access", "Open the dashboard overview."),
+    DASHBOARD_MY_TICKET_STATUS("My Ticket Status Chart", "View personal ticket status distribution chart on dashboard."),
+    DASHBOARD_ALL_TICKET_STATUS("All Ticket Status Chart", "View all-tickets status distribution chart on dashboard."),
+    DASHBOARD_USER_COUNT("User Count Chart", "View user count by role chart on dashboard."),
     PROFILE_ACCESS("Profile Access", "View and update the user profile."),
     TICKETS_VIEW("Ticket Access", "View tickets assigned or visible to the user."),
     TICKETS_MANAGE("Ticket Management", "Create and edit tickets."),
     TICKETS_CREATE_STANDARD("Create Ticket", "Create standard tickets for internal support operations."),
     TICKETS_CREATE_VENDOR("Create Vendor Ticket", "Create vendor-owned tickets from vendor workspace."),
+    TICKETS_CREATED_VIEW("My Created Tickets", "View tickets created by the current user."),
     TICKETS_REVIEW("Ticket Review", "Review resolved tickets and move them to closed or cancelled."),
     TICKETS_ALL_VIEW("All Tickets View", "View all tickets across the workspace."),
     SITE_VISIT_EDIT("Site Visit Edit", "Update site visit counters and log visit history."),

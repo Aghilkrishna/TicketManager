@@ -40,10 +40,26 @@
              id="tickets-subnav"
              th:if="${currentFeatures.contains('FEATURE_TICKETS_VIEW')}"
              th:classappend="${activePage == 'tickets'} ? ' is-open'">
-            <a class="subnav-item" th:classappend="${activeSubPage == 'pending'} ? ' active'" href="/tickets/pending">My Pending Tickets</a>
-            <a class="subnav-item" th:classappend="${activeSubPage == 'resolved'} ? ' active'" href="/tickets/resolved">My Resolved Tickets</a>
-            <a class="subnav-item" th:if="${currentFeatures.contains('FEATURE_TICKETS_REVIEW')}" th:classappend="${activeSubPage == 'review'} ? ' active'" href="/tickets/review">My Review Tickets</a>
-            <a class="subnav-item" th:if="${currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW')}" th:classappend="${activeSubPage == 'all'} ? ' active'" href="/tickets/all">All Tickets</a>
+            <a class="subnav-item"
+               th:if="${currentRoles.contains('ROLE_VENDOR') and currentFeatures.contains('FEATURE_TICKETS_CREATED_VIEW')}"
+               th:classappend="${activeSubPage == 'created'} ? ' active'"
+               href="/tickets/created">My Created Tickets</a>
+            <a class="subnav-item"
+               th:if="${!currentRoles.contains('ROLE_VENDOR')}"
+               th:classappend="${activeSubPage == 'pending'} ? ' active'"
+               href="/tickets/pending">My Pending Tickets</a>
+            <a class="subnav-item"
+               th:if="${!currentRoles.contains('ROLE_VENDOR')}"
+               th:classappend="${activeSubPage == 'resolved'} ? ' active'"
+               href="/tickets/resolved">My Resolved Tickets</a>
+            <a class="subnav-item"
+               th:if="${!currentRoles.contains('ROLE_VENDOR') and currentFeatures.contains('FEATURE_TICKETS_REVIEW')}"
+               th:classappend="${activeSubPage == 'review'} ? ' active'"
+               href="/tickets/review">My Review Tickets</a>
+            <a class="subnav-item"
+               th:if="${!currentRoles.contains('ROLE_VENDOR') and currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW')}"
+               th:classappend="${activeSubPage == 'all'} ? ' active'"
+               href="/tickets/all">All Tickets</a>
         </div>
         <a class="nav-item" th:if="${currentFeatures.contains('FEATURE_PROFILE_ACCESS')}" th:classappend="${activePage == 'profile'} ? ' active'" href="/profile"><i class="bi bi-person-circle"></i><span class="nav-label">User Profile</span></a>
         <a class="nav-item" th:if="${currentFeatures.contains('FEATURE_CHAT_ACCESS')}" th:classappend="${activePage == 'chat'} ? ' active'" href="/chat"><i class="bi bi-chat-dots"></i><span class="nav-label">Chat</span></a>

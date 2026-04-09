@@ -324,6 +324,26 @@ textarea.form-control[readonly]::placeholder {
     gap: 1rem;
 }
 
+.dashboard-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.chart-donut-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.5rem 0;
+}
+
+.chart-donut-wrap canvas {
+    max-width: 290px;
+    max-height: 290px;
+    width: 100% !important;
+}
+
 .metric-card,
 .toolbar-card,
 .table-card,

@@ -58,6 +58,7 @@ public class TicketRestController {
     public Page<AuthDtos.TicketSummary> list(Principal principal,
                                              @RequestParam(defaultValue = "false") boolean adminScope,
                                              @RequestParam(defaultValue = "true") boolean assignedOnly,
+                                             @RequestParam(defaultValue = "false") boolean createdOnly,
                                              @RequestParam(required = false) String statuses,
                                              @RequestParam(required = false) String status,
                                              @RequestParam(required = false) String priority,
@@ -68,7 +69,7 @@ public class TicketRestController {
                                              @RequestParam(defaultValue = "0") int page,
                                              @RequestParam(defaultValue = "10") int size) {
         String effectiveStatuses = (statuses != null && !statuses.isBlank()) ? statuses : status;
-        return ticketService.list(principal.getName(), adminScope, assignedOnly, effectiveStatuses, priority, assignedToId, search, page, size, sortBy, direction);
+        return ticketService.list(principal.getName(), adminScope, assignedOnly, createdOnly, effectiveStatuses, priority, assignedToId, search, page, size, sortBy, direction);
     }
 
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")

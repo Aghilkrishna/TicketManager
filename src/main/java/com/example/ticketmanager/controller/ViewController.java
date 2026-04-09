@@ -79,30 +79,49 @@ public class ViewController {
 
     @GetMapping("/tickets")
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
-    public String tickets() {
+    public String tickets(Principal principal) {
+        if (principal != null && userService.hasRole(principal.getName(), "ROLE_VENDOR")
+                && userService.hasAuthority(principal.getName(), "FEATURE_TICKETS_CREATED_VIEW")) {
+            return "redirect:/tickets/created";
+        }
         return "redirect:/tickets/pending";
     }
 
     @GetMapping("/tickets/pending")
-    @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
+    @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW') and !hasAuthority('ROLE_VENDOR')")
     public String pendingTickets(Model model) {
         model.addAttribute("ticketTab", "pending");
         model.addAttribute("ticketPageTitle", "My Pending Tickets");
         model.addAttribute("ticketSubtitle", "Open, in-progress, and on-hold tickets assigned to you");
         model.addAttribute("forcedStatuses", java.util.List.of("OPEN", "IN_PROGRESS", "ON_HOLD"));
         model.addAttribute("assignedOnly", true);
+        model.addAttribute("createdOnly", false);
         model.addAttribute("adminScope", false);
         return "tickets";
     }
 
     @GetMapping("/tickets/resolved")
-    @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
+    @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW') and !hasAuthority('ROLE_VENDOR')")
     public String resolvedTickets(Model model) {
         model.addAttribute("ticketTab", "resolved");
         model.addAttribute("ticketPageTitle", "My Resolved Tickets");
         model.addAttribute("ticketSubtitle", "Resolved, closed, and cancelled tickets assigned to you");
         model.addAttribute("forcedStatuses", java.util.List.of("RESOLVED", "CLOSED", "CANCELLED"));
         model.addAttribute("assignedOnly", true);
+        model.addAttribute("createdOnly", false);
+        model.addAttribute("adminScope", false);
+        return "tickets";
+    }
+
+    @GetMapping("/tickets/created")
+    @PreAuthorize("hasAuthority('FEATURE_TICKETS_CREATED_VIEW') and hasAuthority('ROLE_VENDOR')")
+    public String createdTickets(Model model) {
+        model.addAttribute("ticketTab", "created");
+        model.addAttribute("ticketPageTitle", "My Created Tickets");
+        model.addAttribute("ticketSubtitle", "Tickets created by you");
+        model.addAttribute("forcedStatuses", java.util.List.of());
+        model.addAttribute("assignedOnly", false);
+        model.addAttribute("createdOnly", true);
         model.addAttribute("adminScope", false);
         return "tickets";
     }
@@ -115,6 +134,7 @@ public class ViewController {
         model.addAttribute("ticketSubtitle", "Resolved tickets ready for review and closure decisions");
         model.addAttribute("forcedStatuses", java.util.List.of("RESOLVED"));
         model.addAttribute("assignedOnly", false);
+        model.addAttribute("createdOnly", false);
         model.addAttribute("adminScope", true);
         return "tickets";
     }
@@ -127,6 +147,7 @@ public class ViewController {
         model.addAttribute("ticketSubtitle", "All tickets across the workspace");
         model.addAttribute("forcedStatuses", java.util.List.of());
         model.addAttribute("assignedOnly", false);
+        model.addAttribute("createdOnly", false);
         model.addAttribute("adminScope", true);
         return "tickets";
     }
@@ -230,8 +251,14 @@ public class ViewController {
     }
 
     private String resolveTicketNavTab(String requestedTab, String ticketStatus, String username) {
-        if (requestedTab != null && java.util.Set.of("pending", "resolved", "review", "all").contains(requestedTab)) {
+        if (requestedTab != null && java.util.Set.of("pending", "resolved", "created", "review", "all").contains(requestedTab)) {
             return requestedTab;
+        }
+        if (userService.hasRole(username, "ROLE_VENDOR")
+                && userService.hasAuthority(username, "FEATURE_TICKETS_CREATED_VIEW")
+                && !userService.hasAuthority(username, "FEATURE_TICKETS_REVIEW")
+                && !userService.hasAuthority(username, "FEATURE_TICKETS_ALL_VIEW")) {
+            return "created";
         }
         if (userService.hasAuthority(username, "FEATURE_TICKETS_ALL_VIEW")) {
             return "all";

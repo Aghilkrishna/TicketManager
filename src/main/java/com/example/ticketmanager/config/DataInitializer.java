@@ -31,6 +31,9 @@ public class DataInitializer {
             
             seedRole("ROLE_ADMIN", "Full administrative access", Set.of(
                     AppFeature.DASHBOARD_ACCESS,
+                    AppFeature.DASHBOARD_MY_TICKET_STATUS,
+                    AppFeature.DASHBOARD_ALL_TICKET_STATUS,
+                    AppFeature.DASHBOARD_USER_COUNT,
                     AppFeature.PROFILE_ACCESS,
                     AppFeature.TICKETS_VIEW,
                     AppFeature.TICKETS_MANAGE,
@@ -48,6 +51,8 @@ public class DataInitializer {
             ));
             seedRole("ROLE_MANAGER", "Manage ticket operations", Set.of(
                     AppFeature.DASHBOARD_ACCESS,
+                    AppFeature.DASHBOARD_MY_TICKET_STATUS,
+                    AppFeature.DASHBOARD_ALL_TICKET_STATUS,
                     AppFeature.PROFILE_ACCESS,
                     AppFeature.TICKETS_VIEW,
                     AppFeature.TICKETS_MANAGE,
@@ -58,6 +63,7 @@ public class DataInitializer {
             ));
             seedRole("ROLE_AGENT", "Work assigned tickets and chat", Set.of(
                     AppFeature.DASHBOARD_ACCESS,
+                    AppFeature.DASHBOARD_MY_TICKET_STATUS,
                     AppFeature.PROFILE_ACCESS,
                     AppFeature.TICKETS_VIEW,
                     AppFeature.SITE_VISIT_EDIT,
@@ -65,10 +71,12 @@ public class DataInitializer {
             ));
             seedRole("ROLE_VENDOR", "Create and manage vendor-owned tickets", Set.of(
                     AppFeature.DASHBOARD_ACCESS,
+                    AppFeature.DASHBOARD_MY_TICKET_STATUS,
                     AppFeature.PROFILE_ACCESS,
                     AppFeature.TICKETS_VIEW,
                     AppFeature.TICKETS_MANAGE,
-                    AppFeature.TICKETS_CREATE_VENDOR
+                    AppFeature.TICKETS_CREATE_VENDOR,
+                    AppFeature.TICKETS_CREATED_VIEW
             ));
             seedRole("ROLE_USER", "Standard end user access", Set.of(
                     AppFeature.DASHBOARD_ACCESS,
@@ -104,6 +112,14 @@ public class DataInitializer {
                 existing.setFeatures(new HashSet<>(features));
                 existing.setActive(true);
                 changed = true;
+            } else {
+                // Always ensure any newly-seeded features are present on the role
+                for (AppFeature f : features) {
+                    if (!existing.getFeatures().contains(f)) {
+                        existing.getFeatures().add(f);
+                        changed = true;
+                    }
+                }
             }
             if (changed) {
                 roleRepository.save(existing);

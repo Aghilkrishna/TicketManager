@@ -94,7 +94,7 @@ public class TicketService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AuthDtos.TicketSummary> list(String username, boolean adminScope, boolean assignedOnly, String status, String priority,
+    public Page<AuthDtos.TicketSummary> list(String username, boolean adminScope, boolean assignedOnly, boolean createdOnly, String status, String priority,
                                              Long assignedToId, String search, int page, int size,
                                              String sortBy, String direction) {
         AppUser user = userService.getByEmail(username);
@@ -106,7 +106,7 @@ public class TicketService {
         TicketPriority priorityFilter = priority == null || priority.isBlank() ? null : TicketPriority.valueOf(priority);
         String searchFilter = search == null || search.isBlank() ? null : search;
 
-        Specification<Ticket> spec = Specification.where(buildScopeSpecification(user, effectiveAdminScope, assignedOnly))
+        Specification<Ticket> spec = Specification.where(buildScopeSpecification(user, effectiveAdminScope, assignedOnly, createdOnly))
                 .and(statusesSpecification(statusFilter))
                 .and(prioritySpecification(priorityFilter))
                 .and(assignedToSpecification(assignedToId))
@@ -271,14 +271,24 @@ public class TicketService {
                 .collect(java.util.stream.Collectors.toCollection(() -> EnumSet.noneOf(TicketStatus.class)));
     }
 
-    private Specification<Ticket> buildScopeSpecification(AppUser user, boolean effectiveAdminScope, boolean assignedOnly) {
+    private Specification<Ticket> buildScopeSpecification(AppUser user, boolean effectiveAdminScope, boolean assignedOnly, boolean createdOnly) {
         if (effectiveAdminScope) {
             return Specification.where(null);
+        }
+        if (userService.hasRole(user, "ROLE_VENDOR")) {
+            return createdByUserSpecification(user.getId());
+        }
+        if (createdOnly) {
+            return createdByUserSpecification(user.getId());
         }
         if (userService.hasRole(user, "ROLE_AGENT")) {
             return assignedToUserSpecification(user.getId());
         }
         return scopeForUser(user.getId(), assignedOnly);
+    }
+
+    private Specification<Ticket> createdByUserSpecification(Long userId) {
+        return (root, query, cb) -> cb.equal(root.get("createdBy").get("id"), userId);
     }
 
     private Specification<Ticket> assignedToUserSpecification(Long userId) {
@@ -361,7 +371,12 @@ public class TicketService {
 
     private boolean canAccess(Ticket ticket, String username) {
         AppUser user = userService.getByEmail(username);
+        boolean isVendor = userService.hasRole(user, "ROLE_VENDOR");
         boolean isAgent = userService.hasRole(user, "ROLE_AGENT");
+
+        if (isVendor) {
+            return ticket.getCreatedBy() != null && ticket.getCreatedBy().getId().equals(user.getId());
+        }
         
         if (isAgent) {
             // Agent users can only access tickets assigned to them
@@ -689,8 +704,14 @@ public class TicketService {
             tickets = ticketRepository.findAll();
         } else {
             AppUser user = userService.getByEmail(username);
+            boolean isVendor = userService.hasRole(user, "ROLE_VENDOR");
             boolean isAgent = userService.hasRole(user, "ROLE_AGENT");
-            
+
+            if (isVendor) {
+                tickets = ticketRepository.findVisibleTicketsForUser(user.getId()).stream()
+                        .filter(ticket -> ticket.getCreatedBy() != null && ticket.getCreatedBy().getId().equals(user.getId()))
+                        .toList();
+            } else 
             if (isAgent) {
                 // Agent users can only see tickets assigned to them
                 tickets = ticketRepository.findAssignedTicketsForUser(user.getId());
@@ -724,8 +745,15 @@ public class TicketService {
             tickets = ticketRepository.searchAllParentTicketCandidates(value, excludeTicketId, limit);
         } else {
             AppUser user = userService.getByEmail(username);
+            boolean isVendor = userService.hasRole(user, "ROLE_VENDOR");
             boolean isAgent = userService.hasRole(user, "ROLE_AGENT");
-            
+
+            if (isVendor) {
+                tickets = ticketRepository.searchVisibleParentTicketCandidates(user.getId(), value, excludeTicketId, limit)
+                        .stream()
+                        .filter(ticket -> ticket.getCreatedBy() != null && ticket.getCreatedBy().getId().equals(user.getId()))
+                        .toList();
+            } else 
             if (isAgent) {
                 // Agent users can only see tickets assigned to them
                 tickets = ticketRepository.searchVisibleParentTicketCandidates(user.getId(), value, excludeTicketId, limit)
@@ -776,7 +804,9 @@ public class TicketService {
 
     private boolean isVendorRestrictedView(Ticket ticket, String username) {
         AppUser viewer = userService.getByEmail(username);
-        return userService.hasRole(viewer, "ROLE_VENDOR") && ticket.getCreatedBy().getId().equals(viewer.getId());
+        return userService.hasRole(viewer, "ROLE_VENDOR")
+                && ticket.getCreatedBy() != null
+                && ticket.getCreatedBy().getId().equals(viewer.getId());
     }
 
     private List<AuthDtos.TicketCommentResponse> buildReplies(Long parentId, Map<Long, List<TicketComment>> repliesByParentId, String username) {
