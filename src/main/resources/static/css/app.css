@@ -152,6 +152,25 @@ textarea.form-control[readonly]::placeholder {
     color: #fff;
 }
 
+.nav-toggle {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+}
+
+.subnav-chevron {
+    margin-left: auto;
+    font-size: 0.82rem;
+    opacity: 0.9;
+    transition: transform 0.2s ease;
+}
+
+.nav-toggle[aria-expanded='true'] .subnav-chevron {
+    transform: rotate(180deg);
+}
+
 .sidebar-card,
 .glass-card,
 .chart-card,
@@ -305,6 +324,26 @@ textarea.form-control[readonly]::placeholder {
     gap: 1rem;
 }
 
+.dashboard-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.chart-donut-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.5rem 0;
+}
+
+.chart-donut-wrap canvas {
+    max-width: 290px;
+    max-height: 290px;
+    width: 100% !important;
+}
+
 .metric-card,
 .toolbar-card,
 .table-card,
@@ -353,9 +392,13 @@ textarea.form-control[readonly]::placeholder {
 }
 
 .sidebar-subnav {
-    display: grid;
+    display: none;
     gap: 0.35rem;
     margin: -0.15rem 0 0.35rem 2.2rem;
+}
+
+.sidebar-subnav.is-open {
+    display: grid;
 }
 
 .subnav-item {
@@ -861,6 +904,7 @@ textarea.form-control[readonly]::placeholder {
 .status-pill.OPEN, .status-pill.IN_PROGRESS { background: #dbeafe; color: #1d4ed8; }
 .status-pill.ON_HOLD { background: #fef3c7; color: #b45309; }
 .status-pill.RESOLVED, .status-pill.CLOSED { background: #dcfce7; color: #15803d; }
+.status-pill.CANCELLED { background: #f3f4f6; color: #6b7280; }
 
 .priority-pill.LOW { background: #e0f2fe; color: #0369a1; }
 .priority-pill.MEDIUM { background: #e9d5ff; color: #7e22ce; }
@@ -1561,6 +1605,24 @@ textarea.form-control[readonly]::placeholder {
         grid-template-columns: 1fr;
     }
 
+    .auth-wrap-login {
+        min-height: 100dvh;
+    }
+
+    .auth-wrap-login .auth-banner {
+        display: none;
+    }
+
+    .auth-wrap-login > section:last-child {
+        display: block !important;
+        padding: max(0.75rem, env(safe-area-inset-top)) 1rem 1rem;
+    }
+
+    .auth-wrap-login .auth-panel {
+        margin: 0 auto;
+        width: min(460px, 100%);
+    }
+
     .chat-sidebar-card,
     .chat-card {
         height: auto;
@@ -1592,5 +1654,13 @@ textarea.form-control[readonly]::placeholder {
 
     .composer-send {
         grid-column: span 2;
+    }
+
+    .auth-wrap-login > section:last-child {
+        padding: max(0.5rem, env(safe-area-inset-top)) 0.75rem 0.75rem;
+    }
+
+    .auth-wrap-login .auth-panel {
+        padding: 1.25rem;
     }
 }

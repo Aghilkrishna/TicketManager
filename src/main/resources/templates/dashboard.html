@@ -9,65 +9,210 @@
     <div class="main-panel">
         <header th:replace="~{fragments/layout :: topbar('Dashboard', '')}"></header>
         <main class="content-area">
+
+            <!-- Hero welcome banner -->
             <section class="hero-banner glass-card mb-4">
                 <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-start">
                     <div class="d-flex align-items-center gap-3">
                         <div>
                             <img th:if="${profile.profileImageUploaded}" th:src="@{/api/users/profile/picture}" alt="Profile picture" class="rounded-circle border" style="width: 72px; height: 72px; object-fit: cover;">
-                            <div th:if="${!profile.profileImageUploaded}" class="rounded-circle border d-flex align-items-center justify-content-center fw-semibold bg-light text-dark" style="width: 72px; height: 72px;" th:text="${profile.firstName != null && !profile.firstName.isBlank() ? #strings.substring(profile.firstName,0,1).toUpperCase() : #strings.substring(profile.username,0,1).toUpperCase()}">U</div>
+                            <div th:if="${!profile.profileImageUploaded}" class="rounded-circle border d-flex align-items-center justify-content-center fw-semibold bg-light text-dark" style="width: 72px; height: 72px;"
+                                 th:text="${profile.firstName != null && !profile.firstName.isBlank() ? #strings.substring(profile.firstName,0,1).toUpperCase() : #strings.substring(profile.username,0,1).toUpperCase()}">U</div>
                         </div>
                         <div>
-                        <div class="text-uppercase small opacity-75">Overview</div>
-                        <h1 class="display-6 fw-bold mb-2">Welcome back, <span th:text="${profile.firstName != null && !profile.firstName.isBlank() ? profile.firstName : profile.username}"></span></h1>
-                        <p class="mb-0">Monitor open workload, track progress, and react to service updates from a single dashboard.</p>
+                            <div class="text-uppercase small opacity-75">Overview</div>
+                            <h1 class="display-6 fw-bold mb-2">Welcome back, <span th:text="${profile.firstName != null && !profile.firstName.isBlank() ? profile.firstName : profile.username}"></span></h1>
+                            <p class="mb-0">Monitor open workload, track progress, and react to service updates from a single dashboard.</p>
                         </div>
                     </div>
                     <div class="metric-trend"><i class="bi bi-activity"></i> Realtime operations</div>
                 </div>
             </section>
 
-            <section class="metric-grid mb-4">
-                <article class="metric-card"><div class="metric-label">Open Tickets</div><div id="metricOpen" class="metric-value">0</div></article>
-                <article class="metric-card"><div class="metric-label">In Progress</div><div id="metricInProgress" class="metric-value">0</div></article>
-                <article class="metric-card"><div class="metric-label">Pending</div><div id="metricPending" class="metric-value">0</div></article>
-                <article class="metric-card"><div class="metric-label">Closed</div><div id="metricClosed" class="metric-value">0</div></article>
-            </section>
+            <!-- Charts grid — each section gated by its role-feature -->
+            <div class="dashboard-charts-grid">
 
-            <section class="chart-card">
-                <div class="section-title mb-3">Ticket Status Overview</div>
-                <canvas id="ticketChart" height="120"></canvas>
-            </section>
+                <!-- Chart 1: My Ticket Status (admin / manager / agent / vendor) -->
+                <section th:if="${currentFeatures.contains('FEATURE_DASHBOARD_MY_TICKET_STATUS')}"
+                         class="chart-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="section-title mb-0">My Ticket Status</div>
+                        <span class="metric-trend"><i class="bi bi-arrow-clockwise me-1"></i>Live</span>
+                    </div>
+                    <div class="chart-donut-wrap">
+                        <canvas id="myStatusChart"></canvas>
+                    </div>
+                </section>
+
+                <!-- Chart 2: All Ticket Status (admin / manager) -->
+                <section th:if="${currentFeatures.contains('FEATURE_DASHBOARD_ALL_TICKET_STATUS')}"
+                         class="chart-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="section-title mb-0">All Ticket Status</div>
+                        <span class="metric-trend"><i class="bi bi-arrow-clockwise me-1"></i>Live</span>
+                    </div>
+                    <div class="chart-donut-wrap">
+                        <canvas id="allStatusChart"></canvas>
+                    </div>
+                </section>
+
+                <!-- Chart 3: User Count (admin only) -->
+                <section th:if="${currentFeatures.contains('FEATURE_DASHBOARD_USER_COUNT')}"
+                         class="chart-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="section-title mb-0">User Count</div>
+                        <span class="metric-trend"><i class="bi bi-arrow-clockwise me-1"></i>Live</span>
+                    </div>
+                    <div class="chart-donut-wrap">
+                        <canvas id="userCountChart"></canvas>
+                    </div>
+                </section>
+
+            </div>
         </main>
     </div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <script th:src="@{/js/app.js}"></script>
 <script>
-async function loadMetrics() {
-  const res = await fetch('/api/tickets/metrics');
-  const data = await res.json();
-  document.getElementById('metricOpen').textContent = data.open ?? 0;
-  document.getElementById('metricInProgress').textContent = data.inProgress ?? 0;
-  document.getElementById('metricPending').textContent = data.pending ?? 0;
-  document.getElementById('metricClosed').textContent = data.closed ?? 0;
-  new Chart(document.getElementById('ticketChart'), {
-    type: 'bar',
+const KNOWN_COLORS = {
+  STATUS_OPEN: '#0072B2',
+  STATUS_IN_PROGRESS: '#E69F00',
+  STATUS_ON_HOLD: '#CC79A7',
+  STATUS_RESOLVED: '#009E73',
+  STATUS_CLOSED: '#4B5563',
+  STATUS_CANCELLED: '#D55E00'
+};
+
+function toDisplayLabel(key) {
+  return String(key)
+    .toLowerCase()
+    .split('_')
+    .map(part => part ? part.charAt(0).toUpperCase() + part.slice(1) : '')
+    .join(' ')
+    .trim();
+}
+
+function hashString(value) {
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = ((hash << 5) - hash) + value.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function generateColorForKey(key, index) {
+  const normalizedKey = String(key || '').toUpperCase();
+  if (KNOWN_COLORS[normalizedKey]) {
+    return KNOWN_COLORS[normalizedKey];
+  }
+  // Deterministic HSL color generation for newly-added statuses/roles.
+  const hash = hashString(normalizedKey);
+  const hue = (hash + (index * 137.508)) % 360;
+  const saturation = 68;
+  const lightness = 48;
+  return `hsl(${hue.toFixed(0)} ${saturation}% ${lightness}%)`;
+}
+
+function makeDoughnut(canvas, labels, values, colors) {
+  return new Chart(canvas, {
+    type: 'doughnut',
     data: {
-      labels: ['Open', 'In Progress', 'Pending', 'Resolved', 'Closed'],
-      datasets: [{
-        label: 'Tickets',
-        data: [data.open || 0, data.inProgress || 0, data.pending || 0, data.resolved || 0, data.closed || 0],
-        backgroundColor: ['#0f6cbd', '#14b8a6', '#f59e0b', '#22c55e', '#64748b'],
-        borderRadius: 12
-      }]
+      labels,
+      datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, hoverOffset: 6 }]
     },
     options: {
-      plugins: {legend: {display: false}},
-      scales: {y: {beginAtZero: true}}
+      cutout: '66%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { padding: 14, font: { size: 12 }, boxWidth: 13, boxHeight: 13, borderRadius: 4 }
+        },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}` } }
+      },
+      animation: { duration: 500 }
     }
   });
 }
-loadMetrics();
+
+let myStatusChart = null, allStatusChart = null, userCountChart = null;
+
+async function loadMyTicketStatus() {
+  const canvas = document.getElementById('myStatusChart');
+  if (!canvas) return;
+  try {
+    const res = await fetch('/api/dashboard/my-ticket-status');
+    if (!res.ok) return;
+    const data = await res.json();
+    const keys = Object.keys(data);
+    const labels = keys.map(k => toDisplayLabel(k));
+    const values = keys.map(k => data[k] ?? 0);
+    const colors = keys.map((k, i) => generateColorForKey(`STATUS_${k}`, i));
+    if (myStatusChart) {
+      myStatusChart.data.labels = labels;
+      myStatusChart.data.datasets[0].data = values;
+      myStatusChart.data.datasets[0].backgroundColor = colors;
+      myStatusChart.update();
+    } else {
+      myStatusChart = makeDoughnut(canvas, labels, values, colors);
+    }
+  } catch (e) { console.warn('My ticket status load failed', e); }
+}
+
+async function loadAllTicketStatus() {
+  const canvas = document.getElementById('allStatusChart');
+  if (!canvas) return;
+  try {
+    const res = await fetch('/api/dashboard/all-ticket-status');
+    if (!res.ok) return;
+    const data = await res.json();
+    const keys = Object.keys(data);
+    const labels = keys.map(k => toDisplayLabel(k));
+    const values = keys.map(k => data[k] ?? 0);
+    const colors = keys.map((k, i) => generateColorForKey(`STATUS_${k}`, i));
+    if (allStatusChart) {
+      allStatusChart.data.labels = labels;
+      allStatusChart.data.datasets[0].data = values;
+      allStatusChart.data.datasets[0].backgroundColor = colors;
+      allStatusChart.update();
+    } else {
+      allStatusChart = makeDoughnut(canvas, labels, values, colors);
+    }
+  } catch (e) { console.warn('All ticket status load failed', e); }
+}
+
+async function loadUserCount() {
+  const canvas = document.getElementById('userCountChart');
+  if (!canvas) return;
+  try {
+    const res = await fetch('/api/dashboard/user-count');
+    if (!res.ok) return;
+    const data = await res.json();
+    const labels = Object.keys(data);
+    const values = labels.map(k => data[k]);
+    const colors = labels.map((k, i) => {
+      const normalized = String(k).toUpperCase().replace(/\s+/g, '_');
+      return generateColorForKey(`ROLE_${normalized}`, i);
+    });
+    if (userCountChart) {
+      userCountChart.data.labels = labels;
+      userCountChart.data.datasets[0].data = values;
+      userCountChart.data.datasets[0].backgroundColor = colors;
+      userCountChart.update();
+    } else {
+      userCountChart = makeDoughnut(canvas, labels, values, colors);
+    }
+  } catch (e) { console.warn('User count load failed', e); }
+}
+
+async function refreshAll() {
+  await Promise.all([loadMyTicketStatus(), loadAllTicketStatus(), loadUserCount()]);
+}
+
+refreshAll();
+setInterval(refreshAll, 30000);
 </script>
 </body>
 </html>

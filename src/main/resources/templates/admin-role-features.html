@@ -54,6 +54,9 @@ function featureIcon(name) {
   if (name.includes('ROLE_MANAGEMENT')) return 'bi-shield-lock';
   if (name.includes('ROLE_FEATURE_ASSIGNMENT')) return 'bi-sliders';
   if (name.includes('SUPPORT_TICKETS')) return 'bi-life-preserver';
+  if (name.includes('NOTIFICATION_ACCESS')) return 'bi-bell';
+  if (name.includes('EMAIL_NOTIFICATION_MANAGEMENT')) return 'bi-envelope-gear';
+  if (name.includes('REPORT_ACCESS')) return 'bi-graph-up';
   return 'bi-check2-square';
 }
 
@@ -118,18 +121,27 @@ document.getElementById('featureSearch').addEventListener('input', renderFeature
 document.getElementById('saveFeatureAssignments').addEventListener('click', async () => {
   const role = selectedRole();
   if (!role) return;
+  const saveButton = document.getElementById('saveFeatureAssignments');
   const checked = Array.from(document.querySelectorAll('#featureList input:checked')).map(input => input.value);
-  const res = await fetch(`/api/admin/roles/${role.id}/features`, {
-    method: 'PUT',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({features: checked})
-  });
-  if (!res.ok) {
-    const payload = await res.json().catch(() => ({}));
-    window.alert(payload.message || 'Failed to update features');
-    return;
+  setButtonLoading(saveButton, true, 'Saving...');
+  try {
+    const res = await fetch(`/api/admin/roles/${role.id}/features`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({features: checked})
+    });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      showAppAlert(payload.message || 'Failed to update role features.', 'danger', 'Save Failed');
+      return;
+    }
+    showAppAlert(`Role features saved for ${role.label}.`, 'success', 'Saved');
+    await loadRoleFeatures();
+  } catch (_error) {
+    showAppAlert('Unable to save role features right now. Please try again.', 'danger', 'Save Failed');
+  } finally {
+    setButtonLoading(saveButton, false);
   }
-  await loadRoleFeatures();
 });
 
 loadRoleFeatures();

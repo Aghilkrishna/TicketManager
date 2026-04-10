@@ -105,6 +105,12 @@ public class Ticket {
     @Column(precision = 12, scale = 2)
     private BigDecimal actualCost;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private TicketBillingStatus billingStatus = TicketBillingStatus.UNPAID;
+
+    private LocalDateTime billingPaidAt;
+
     @Column(length = 3000)
     private String additionalNotes;
 

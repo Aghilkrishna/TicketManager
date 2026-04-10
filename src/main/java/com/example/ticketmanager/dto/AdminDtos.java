@@ -6,7 +6,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 public final class AdminDtos {
@@ -118,6 +120,52 @@ public final class AdminDtos {
             String uploadStatus,
             Boolean verified,
             String verificationNotes
+    ) {
+    }
+
+    public record StaffBillingSummary(
+            Long userId,
+            String username,
+            String email,
+            Set<String> roleLabels,
+            long resolvedTicketCount,
+            BigDecimal resolvedAmount,
+            long closedTicketCount,
+            BigDecimal closedAmount,
+            String billingStatusLabel
+    ) {
+    }
+
+    public record StaffBillingTicketLine(
+            Long ticketId,
+            String title,
+            String status,
+            BigDecimal amount,
+            String billingStatus,
+            LocalDateTime updatedAt
+    ) {
+    }
+
+    public record StaffBillingDetails(
+            Long userId,
+            String username,
+            String email,
+            String phone,
+            Set<String> roleLabels,
+            long resolvedTicketCount,
+            BigDecimal resolvedAmount,
+            long closedTicketCount,
+            BigDecimal closedAmount,
+            BigDecimal totalClosedAmount,
+            BigDecimal totalPaidAmount,
+            BigDecimal totalUnpaidAmount,
+            String billingStatusLabel,
+            List<StaffBillingTicketLine> tickets
+    ) {
+    }
+
+    public record StaffBillingStatusUpdateRequest(
+            @NotBlank String status
     ) {
     }
 }
