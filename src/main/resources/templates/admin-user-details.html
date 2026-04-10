@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
+    <title>Admin User Details</title>
     <th:block th:replace="~{fragments/layout :: head('Admin User Details')}"></th:block>
     <style>
         .id-proof-card {
@@ -63,11 +64,25 @@
         .glass-card h3 {
             margin-bottom: 1.5rem;
         }
+        .summary-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .summary-label {
+            color: var(--muted);
+            font-size: 0.875rem;
+        }
+        .empty-state {
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+            background: color-mix(in srgb, var(--panel) 88%, transparent);
+        }
     </style>
 </head>
 <body>
 <div class="app-shell">
-    <aside th:replace="~{fragments/layout :: sidebar('admin-users', '')}"></aside>
+    <aside th:replace="~{fragments/layout :: sidebar('admin', 'users')}"></aside>
     <div class="main-panel">
         <header th:replace="~{fragments/layout :: topbar('Admin User Details', '')}"></header>
         <main class="content-area">
@@ -88,7 +103,7 @@
                     <section class="glass-card">
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <h3 class="h4 mb-0 fw-bold">Profile Information</h3>
-<!--                            <span class="badge bg-primary px-3 py-2" th:text="${userDetails.username}"></span>-->
+                            <span class="badge bg-primary-subtle text-primary-emphasis px-3 py-2" th:text="${userDetails.username}">Username</span>
                         </div>
 
                         <div class="detail-row">
@@ -100,6 +115,14 @@
                         <div class="detail-row">
                             <div class="detail-label">Username</div>
                             <div class="detail-value" th:text="${userDetails.username}"></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Full Name</div>
+                            <div class="detail-value"
+                                 th:text="${(userDetails.firstName != null and !userDetails.firstName.isEmpty()) or (userDetails.lastName != null and !userDetails.lastName.isEmpty()) ?
+                                            ((userDetails.firstName != null ? userDetails.firstName : '') +
+                                            (userDetails.firstName != null and !userDetails.firstName.isEmpty() and userDetails.lastName != null and !userDetails.lastName.isEmpty() ? ' ' : '') +
+                                            (userDetails.lastName != null ? userDetails.lastName : '')) : 'Not provided'}"></div>
                         </div>
                         <div class="detail-row">
                             <div class="detail-label">Email</div>
@@ -126,6 +149,7 @@
                         <div class="detail-row">
                             <div class="detail-label">Address</div>
                             <div class="detail-value">
+                                <span th:if="${(userDetails.flat == null or userDetails.flat.isEmpty()) and (userDetails.building == null or userDetails.building.isEmpty()) and (userDetails.area == null or userDetails.area.isEmpty()) and (userDetails.city == null or userDetails.city.isEmpty()) and (userDetails.state == null or userDetails.state.isEmpty()) and (userDetails.country == null or userDetails.country.isEmpty()) and (userDetails.pincode == null or userDetails.pincode.isEmpty())}">Not provided</span>
                                 <span th:text="${userDetails.flat != null and !userDetails.flat.isEmpty() ? userDetails.flat + ', ' : ''}"></span>
                                 <span th:text="${userDetails.building != null and !userDetails.building.isEmpty() ? userDetails.building + ', ' : ''}"></span>
                                 <span th:text="${userDetails.area != null and !userDetails.area.isEmpty() ? userDetails.area + ', ' : ''}"></span>
@@ -133,6 +157,23 @@
                                 <span th:text="${userDetails.state != null and !userDetails.state.isEmpty() ? userDetails.state + ', ' : ''}"></span>
                                 <span th:text="${userDetails.country != null and !userDetails.country.isEmpty() ? userDetails.country + ', ' : ''}"></span>
                                 <span th:text="${userDetails.pincode != null and !userDetails.pincode.isEmpty() ? userDetails.pincode : ''}"></span>
+                            </div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Verification Summary</div>
+                            <div class="detail-value d-flex flex-wrap gap-2 align-items-center">
+                                <span class="badge text-bg-success" th:if="${userDetails.idProofVerified}">
+                                    <i class="bi bi-shield-check me-1"></i>At least one document verified
+                                </span>
+                                <span class="badge text-bg-warning" th:if="${userDetails.hasPendingVerification}">
+                                    <i class="bi bi-hourglass-split me-1"></i>Pending review
+                                </span>
+                                <span class="badge text-bg-secondary" th:if="${!userDetails.hasMandatoryIdProofs}">
+                                    <i class="bi bi-exclamation-circle me-1"></i>Missing required documents
+                                </span>
+                                <span class="badge text-bg-info" th:if="${userDetails.hasMandatoryIdProofs}">
+                                    <i class="bi bi-files me-1"></i>Required documents uploaded
+                                </span>
                             </div>
                         </div>
                     </section>
@@ -148,21 +189,19 @@
                                 <button class="btn btn-sm btn-outline-secondary" onclick="refreshIdProofs()" title="Refresh documents">
                                     <i class="bi bi-arrow-clockwise"></i>
                                 </button>
-<!--                                <span class="badge bg-primary px-3 py-2" th:text="${userDetails.idProofVerified ? 'Verified' : 'Pending'}"></span>-->
+                                <span class="badge bg-primary-subtle text-primary-emphasis px-3 py-2"
+                                      th:text="${userDetails.hasPendingVerification ? 'Pending review' : (userDetails.idProofVerified ? 'Verified' : 'Awaiting upload')}">Status</span>
                             </div>
                         </div>
 
-                        <div th:if="${#lists.isEmpty(idProofs)}" class="text-center py-5" id="idProofsContainer">
+                        <div id="idProofSummary" class="row g-3 mb-4"></div>
+
+                        <div id="idProofEmptyState" class="empty-state text-center py-5 px-3 d-none">
                             <p class="text-muted mb-0">No ID proofs have been uploaded yet.</p>
                             <p class="text-muted">Users can upload ID documents from their profile section.</p>
                         </div>
 
-                        <!-- JavaScript will populate this container with ID proof table -->
-                        <div id="idProofsContainer">
-                            <!-- Initial content will be replaced by JavaScript -->
-                        </div>
-
-                        <div sec:authorize="hasRole('ADMIN')" class="mt-4 pt-4 border-top border-secondary border-opacity-25">
+                        <div id="idVerificationPanel" class="mt-4 pt-4 border-top border-secondary border-opacity-25">
                             <h5 class="fw-bold mb-3">
                                 <i class="bi bi-shield-check me-2"></i>Verification Action
                             </h5>
@@ -208,18 +247,110 @@
 <script th:src="@{/js/app.js}"></script>
 <script th:inline="javascript">
     /*<![CDATA[*/
-    const userId = [[${userDetails.id}]];
+    const userId = /*[[${userDetails.id}]]*/ 0;
+    const initialIdProofs = /*[[${idProofs}]]*/ [];
+    const supportedDocuments = Object.freeze({
+        'Aadhar Card': {
+            statusKey: 'aadharCardStatus',
+            notesKey: 'aadharCardNotes'
+        },
+        'PAN Card': {
+            statusKey: 'panCardStatus',
+            notesKey: 'panCardNotes'
+        }
+    });
+
+    let currentIdProofs = Array.isArray(initialIdProofs) ? initialIdProofs : [];
     let lastKnownDocumentCount = 0;
     
-    // Initialize verification form based on current status
-    function initializeVerificationCheckboxes() {
-        const idProofs = [[${idProofs}]];
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function getDocumentKey(idProofType) {
+        return String(idProofType || '').replace(/\s+/g, '_');
+    }
+
+    function getStatusMeta(idProof) {
+        if (idProof.uploadStatus === 'PENDING_VERIFICATION') {
+            return {statusClass: 'status-pending', statusText: 'Pending'};
+        }
+        if (idProof.verified) {
+            return {statusClass: 'status-verified', statusText: 'Verified'};
+        }
+        return {statusClass: 'status-rejected', statusText: 'Rejected'};
+    }
+
+    function formatUploadDate(uploadDate) {
+        if (!uploadDate) {
+            return '—';
+        }
+        const date = new Date(uploadDate);
+        return Number.isNaN(date.getTime())
+            ? '—'
+            : date.toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'});
+    }
+
+    function renderSummaryCards(idProofs) {
+        const summary = document.getElementById('idProofSummary');
+        if (!summary) return;
+
+        const uploadedCount = idProofs.length;
+        const verifiedCount = idProofs.filter(doc => doc.verified).length;
+        const pendingCount = idProofs.filter(doc => doc.uploadStatus === 'PENDING_VERIFICATION').length;
+        const requiredDocsComplete = ['Aadhar Card', 'PAN Card'].every(type =>
+            idProofs.some(doc => doc.idProofType === type)
+        );
+
+        const cards = [
+            {
+                value: uploadedCount,
+                label: uploadedCount === 1 ? 'Document uploaded' : 'Documents uploaded',
+                hint: 'Available for admin review'
+            },
+            {
+                value: verifiedCount,
+                label: verifiedCount === 1 ? 'Document verified' : 'Documents verified',
+                hint: verifiedCount > 0 ? 'Verification completed' : 'No verified documents yet'
+            },
+            {
+                value: pendingCount,
+                label: pendingCount === 1 ? 'Document pending' : 'Documents pending',
+                hint: pendingCount > 0 ? 'Awaiting admin action' : 'Review queue is clear'
+            },
+            {
+                value: requiredDocsComplete ? 'Complete' : 'Missing',
+                label: 'Required documents',
+                hint: 'Aadhar Card and PAN Card'
+            }
+        ];
+
+        summary.innerHTML = cards.map(card => `
+            <div class="col-md-6 col-xl-3">
+                <div class="id-proof-card h-100 mb-0">
+                    <div class="summary-value">${escapeHtml(card.value)}</div>
+                    <div class="summary-label mt-1">${escapeHtml(card.label)}</div>
+                    <div class="small text-muted mt-2">${escapeHtml(card.hint)}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderVerificationTable(idProofs) {
         const tableBody = document.getElementById('idProofTableBody');
+        const emptyState = document.getElementById('idProofEmptyState');
+        const saveButton = document.getElementById('saveVerificationBtn');
         if (!tableBody) return;
         
         tableBody.innerHTML = '';
         
         if (idProofs.length === 0) {
+            emptyState?.classList.remove('d-none');
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="6" class="text-center py-4 text-muted">
@@ -227,40 +358,49 @@
                     </td>
                 </tr>
             `;
+            if (saveButton) {
+                saveButton.disabled = true;
+            }
             return;
         }
-        
+
+        emptyState?.classList.add('d-none');
+
         idProofs.forEach(idProof => {
             const row = document.createElement('tr');
-            const statusClass = idProof.uploadStatus === 'PENDING_VERIFICATION' ? 'status-pending' : 
-                               (idProof.verified ? 'status-verified' : 'status-rejected');
-            const statusText = idProof.uploadStatus === 'PENDING_VERIFICATION' ? 'Pending' : 
-                              (idProof.verified ? 'Verified' : 'Rejected');
-            
+            const {statusClass, statusText} = getStatusMeta(idProof);
+            const documentKey = getDocumentKey(idProof.idProofType);
+            const documentConfig = supportedDocuments[idProof.idProofType];
+            const isSupportedDocument = Boolean(documentConfig);
+
             row.innerHTML = `
-                <td class="fw-bold">${idProof.idProofType}</td>
+                <td class="fw-bold">${escapeHtml(idProof.idProofType)}</td>
                 <td>
                     <div class="d-flex align-items-center">
                         <i class="bi bi-file-earmark-text me-2 text-muted"></i>
-                        <span class="text-break">${idProof.fileName}</span>
+                        <div>
+                            <div class="text-break">${escapeHtml(idProof.fileName)}</div>
+                            <div class="small text-muted">Uploaded ${escapeHtml(formatUploadDate(idProof.uploadDate))}</div>
+                        </div>
                     </div>
                 </td>
                 <td>
                     <span class="status-badge ${statusClass}">${statusText}</span>
                 </td>
                 <td>
-                    <select class="form-select form-select-sm" id="status_${idProof.idProofType.replace(/\s+/g, '_')}" 
-                            ${idProof.verified ? 'disabled' : ''}>
+                    <select class="form-select form-select-sm" id="status_${documentKey}"
+                            ${idProof.verified || !isSupportedDocument ? 'disabled' : ''}>
                         <option value="">Select status...</option>
                         <option value="PENDING_VERIFICATION" ${idProof.uploadStatus === 'PENDING_VERIFICATION' ? 'selected' : ''}>Pending</option>
                         <option value="VERIFIED" ${idProof.verified ? 'selected' : ''}>Approved</option>
                         <option value="REJECTED" ${idProof.uploadStatus === 'REJECTED' ? 'selected' : ''}>Rejected</option>
                     </select>
+                    ${!isSupportedDocument ? '<div class="small text-muted mt-1">This document can be viewed here, but approval is only supported for Aadhar and PAN.</div>' : ''}
                 </td>
                 <td>
-                    <textarea class="form-control form-control-sm" id="notes_${idProof.idProofType.replace(/\s+/g, '_')}" 
-                              rows="2" placeholder="Add comments..." 
-                              ${idProof.verified ? 'disabled' : ''}>${idProof.verificationNotes || ''}</textarea>
+                    <textarea class="form-control form-control-sm" id="notes_${documentKey}"
+                              rows="2" placeholder="Add comments..."
+                              ${idProof.verified || !isSupportedDocument ? 'disabled' : ''}>${escapeHtml(idProof.verificationNotes || '')}</textarea>
                 </td>
                 <td>
                     <div class="btn-group-vertical btn-group-sm" role="group">
@@ -273,46 +413,53 @@
             `;
             tableBody.appendChild(row);
         });
+
+        if (saveButton) {
+            saveButton.disabled = !idProofs.some(doc => supportedDocuments[doc.idProofType]);
+        }
+    }
+
+    function renderIdProofs(idProofs) {
+        renderSummaryCards(idProofs);
+        renderVerificationTable(idProofs);
     }
     
-    // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
-        initializeVerificationCheckboxes();
-        // Set initial document count
-        const idProofs = [[${idProofs}]];
-        lastKnownDocumentCount = idProofs.length;
-        
-        // Check if there are rejected documents - if so, refresh more frequently
-        const hasRejectedDocuments = idProofs.some(doc => doc.uploadStatus === 'REJECTED');
-        const refreshInterval = hasRejectedDocuments ? 10000 : 30000; // 10 seconds if rejected docs, 30 seconds otherwise
-        
+        renderIdProofs(currentIdProofs);
+        lastKnownDocumentCount = currentIdProofs.length;
+
+        const hasRejectedDocuments = currentIdProofs.some(doc => doc.uploadStatus === 'REJECTED');
+        const refreshInterval = hasRejectedDocuments ? 10000 : 30000;
+
         console.log('Setting refresh interval to:', refreshInterval, 'ms (rejected documents:', hasRejectedDocuments + ')');
         setInterval(refreshIdProofs, refreshInterval);
     });
 
-    // Function to refresh ID proofs data
     async function refreshIdProofs() {
         try {
             console.log('Refreshing ID proofs for user:', userId);
             const response = await fetch(`/api/admin/users/${userId}/id-proofs`);
+            if (!response.ok) {
+                throw new Error('Failed to refresh ID proofs');
+            }
             const idProofs = await response.json();
             console.log('Received ID proofs:', idProofs);
             
-            // Check if new documents were uploaded
             if (idProofs.length > lastKnownDocumentCount) {
                 showNotification('New documents uploaded!', 'success');
-                lastKnownDocumentCount = idProofs.length;
-                console.log('New documents detected, updating count to:', lastKnownDocumentCount);
             }
-            
-            // Update verification form with latest data
-            initializeVerificationCheckboxesWithNewData(idProofs);
+
+            currentIdProofs = Array.isArray(idProofs) ? idProofs : [];
+            lastKnownDocumentCount = currentIdProofs.length;
+            console.log('Updated document count to:', lastKnownDocumentCount);
+
+            renderIdProofs(currentIdProofs);
         } catch (error) {
             console.error('Error refreshing ID proofs:', error);
+            showNotification(error.message || 'Unable to refresh ID proofs right now.', 'danger');
         }
     }
 
-    // Show notification for new documents
     function showNotification(message, type) {
         const notification = document.createElement('div');
         notification.className = `alert alert-${type} py-2 position-fixed top-0 start-50 translate-middle-x mt-3`;
@@ -334,70 +481,6 @@
         }, 5000);
     }
 
-    // Initialize verification form with new data
-    function initializeVerificationCheckboxesWithNewData(idProofs) {
-        const tableBody = document.getElementById('idProofTableBody');
-        if (!tableBody) return;
-        
-        tableBody.innerHTML = '';
-        
-        if (idProofs.length === 0) {
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="text-center py-4 text-muted">
-                        <i class="bi bi-inbox me-2"></i>No ID proofs have been uploaded yet.
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-        
-        idProofs.forEach(idProof => {
-            const row = document.createElement('tr');
-            const statusClass = idProof.uploadStatus === 'PENDING_VERIFICATION' ? 'status-pending' : 
-                               (idProof.verified ? 'status-verified' : 'status-rejected');
-            const statusText = idProof.uploadStatus === 'PENDING_VERIFICATION' ? 'Pending' : 
-                              (idProof.verified ? 'Verified' : 'Rejected');
-            
-            row.innerHTML = `
-                <td class="fw-bold">${idProof.idProofType}</td>
-                <td>
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-file-earmark-text me-2 text-muted"></i>
-                        <span class="text-break">${idProof.fileName}</span>
-                    </div>
-                </td>
-                <td>
-                    <span class="status-badge ${statusClass}">${statusText}</span>
-                </td>
-                <td>
-                    <select class="form-select form-select-sm" id="status_${idProof.idProofType.replace(/\s+/g, '_')}" 
-                            ${idProof.verified ? 'disabled' : ''}>
-                        <option value="">Select status...</option>
-                        <option value="PENDING_VERIFICATION" ${idProof.uploadStatus === 'PENDING_VERIFICATION' ? 'selected' : ''}>Pending</option>
-                        <option value="VERIFIED" ${idProof.verified ? 'selected' : ''}>Approved</option>
-                        <option value="REJECTED" ${idProof.uploadStatus === 'REJECTED' ? 'selected' : ''}>Rejected</option>
-                    </select>
-                </td>
-                <td>
-                    <textarea class="form-control form-control-sm" id="notes_${idProof.idProofType.replace(/\s+/g, '_')}" 
-                              rows="2" placeholder="Add comments..." 
-                              ${idProof.verified ? 'disabled' : ''}>${idProof.verificationNotes || ''}</textarea>
-                </td>
-                <td>
-                    <div class="btn-group-vertical btn-group-sm" role="group">
-                        <a href="/api/admin/users/${userId}/id-proof/${encodeURIComponent(idProof.idProofType)}" 
-                           target="_blank" class="btn btn-outline-primary btn-sm">
-                            <i class="bi bi-eye me-1"></i>View
-                        </a>
-                    </div>
-                </td>
-            `;
-            tableBody.appendChild(row);
-        });
-    }
-
-    // Also refresh when page becomes visible again (user returns from other tab)
     document.addEventListener('visibilitychange', function() {
         if (!document.hidden) {
             refreshIdProofs();
@@ -412,12 +495,24 @@
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
 
-        const data = {
-            aadharCardStatus: document.getElementById('status_Aadhar_Card')?.value || '',
-            aadharCardNotes: document.getElementById('notes_Aadhar_Card')?.value || '',
-            panCardStatus: document.getElementById('status_PAN_Card')?.value || '',
-            panCardNotes: document.getElementById('notes_PAN_Card')?.value || ''
-        };
+        const data = {};
+        currentIdProofs.forEach(idProof => {
+            const config = supportedDocuments[idProof.idProofType];
+            if (!config) {
+                return;
+            }
+            const documentKey = getDocumentKey(idProof.idProofType);
+            data[config.statusKey] = document.getElementById(`status_${documentKey}`)?.value || idProof.uploadStatus || '';
+            data[config.notesKey] = document.getElementById(`notes_${documentKey}`)?.value || '';
+        });
+
+        if (Object.keys(data).length === 0) {
+            const messageDiv = document.getElementById('verificationMessage');
+            messageDiv.innerHTML = '<div class="alert alert-warning py-2">No supported documents are available for verification.</div>';
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            return;
+        }
 
         try {
             const response = await fetch(`/api/admin/users/${userId}/verify-id-proofs`, {
@@ -428,22 +523,20 @@
                 body: JSON.stringify(data)
             });
 
+            const payload = await response.json().catch(() => ({}));
+
             if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.message || 'Failed to update');
+                throw new Error(payload.message || 'Failed to update');
             }
 
             const messageDiv = document.getElementById('verificationMessage');
-            messageDiv.innerHTML = '<div class="alert alert-success py-2">Verification status updated successfully!</div>';
-            
-            // Refresh the ID proofs data to show updated status
+            messageDiv.innerHTML = `<div class="alert alert-success py-2">${escapeHtml(payload.message || 'Verification status updated successfully!')}</div>`;
+
             await refreshIdProofs();
             
-            // Re-enable button and restore original text
             btn.disabled = false;
             btn.innerHTML = originalText;
             
-            // Clear success message after 3 seconds
             setTimeout(() => {
                 messageDiv.innerHTML = '';
             }, 3000);

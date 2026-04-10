@@ -49,6 +49,43 @@ function showAppAlert(message, variant = 'danger', title = null) {
   window.setTimeout(close, 4200);
 }
 
+// Device detection function
+function isMobileDevice() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+         (window.innerWidth <= 768 && 'ontouchstart' in window);
+}
+
+// Build appropriate map URL based on device
+function buildMapUrl(latitude, longitude) {
+  const coords = latitude + ',' + longitude;
+  const encodedCoords = encodeURIComponent(coords);
+  
+  if (isMobileDevice()) {
+    // For mobile devices, use Google Maps app URL scheme
+    return `https://maps.google.com/maps?q=${encodedCoords}`;
+  } else {
+    // For desktop, use web Google Maps
+    return `https://www.google.com/maps?q=${encodedCoords}`;
+  }
+}
+
+// Handle external map links with device detection
+function handleMapLink(url) {
+  if (isMobileDevice()) {
+    // For mobile devices, try to open in Google Maps app
+    // Convert web URL to app URL if needed
+    if (url.includes('maps.google.com')) {
+      // Already a Google Maps URL, use as-is
+      return url;
+    } else if (url.includes('google.com/maps')) {
+      // Convert to mobile app URL
+      return url.replace('www.google.com/maps', 'maps.google.com/maps');
+    }
+  }
+  // For desktop or if URL is already properly formatted, use as-is
+  return url;
+}
+
 function showInlineAlert(target, message, variant = 'danger', title = null) {
   if (!target) return;
   const meta = alertMeta(variant, title);
@@ -143,6 +180,63 @@ function initAppShell() {
 
   if (sidebarToggle && sidebar) {
     sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('is-open'));
+  }
+
+  if (sidebar) {
+    const subnavToggles = Array.from(sidebar.querySelectorAll('[data-subnav-toggle]'));
+
+    const closeSubnav = toggle => {
+      const subnavId = toggle.getAttribute('data-subnav-toggle');
+      const subnav = subnavId ? document.getElementById(subnavId) : null;
+      toggle.setAttribute('aria-expanded', 'false');
+      if (subnav) {
+        subnav.classList.remove('is-open');
+      }
+    };
+
+    const openSubnav = toggle => {
+      const subnavId = toggle.getAttribute('data-subnav-toggle');
+      const subnav = subnavId ? document.getElementById(subnavId) : null;
+      toggle.setAttribute('aria-expanded', 'true');
+      if (subnav) {
+        subnav.classList.add('is-open');
+      }
+    };
+
+    const closeOtherSubnavs = currentToggle => {
+      subnavToggles.forEach(toggle => {
+        if (toggle !== currentToggle) {
+          closeSubnav(toggle);
+        }
+      });
+    };
+
+    subnavToggles.forEach(toggle => {
+      const subnavId = toggle.getAttribute('data-subnav-toggle');
+      const subnav = subnavId ? document.getElementById(subnavId) : null;
+      if (!subnav) return;
+
+      // Keep initial state aligned between ARIA and CSS class.
+      const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+      subnav.classList.toggle('is-open', isExpanded);
+
+      toggle.addEventListener('click', event => {
+        event.preventDefault();
+        const expanded = toggle.getAttribute('aria-expanded') === 'true';
+        if (expanded) {
+          closeSubnav(toggle);
+          return;
+        }
+        closeOtherSubnavs(toggle);
+        openSubnav(toggle);
+      });
+    });
+
+    // If multiple sections are marked open by markup, keep only the first as open.
+    const initiallyExpanded = subnavToggles.filter(toggle => toggle.getAttribute('aria-expanded') === 'true');
+    if (initiallyExpanded.length > 1) {
+      initiallyExpanded.slice(1).forEach(closeSubnav);
+    }
   }
 
   if (logoutBtn) {

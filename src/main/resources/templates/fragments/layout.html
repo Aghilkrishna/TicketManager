@@ -25,20 +25,64 @@
     </div>
     <nav class="sidebar-nav">
         <a class="nav-item" th:classappend="${activePage == 'dashboard'} ? ' active'" href="/dashboard"><i class="bi bi-grid"></i><span class="nav-label">Dashboard</span></a>
-        <a class="nav-item" th:if="${currentFeatures.contains('FEATURE_TICKETS_VIEW')}" th:classappend="${activePage == 'tickets'} ? ' active'" href="/tickets"><i class="bi bi-ticket-detailed"></i><span class="nav-label" th:text="${currentRoles.contains('ROLE_VENDOR') ? 'My Tickets' : 'Ticket Management'}">Ticket Management</span></a>
-        <div class="sidebar-subnav" th:if="${activePage == 'tickets'}">
-            <a class="subnav-item" th:classappend="${activeSubPage == 'open'} ? ' active'" href="/tickets" th:text="${currentRoles.contains('ROLE_VENDOR') ? 'My Tickets' : 'My Open Tickets'}">My Open Tickets</a>
-            <a class="subnav-item" th:classappend="${activeSubPage == 'closed'} ? ' active'" href="/tickets/closed" th:text="${currentRoles.contains('ROLE_VENDOR') ? 'My Closed Tickets' : 'Closed Tickets'}">Closed Tickets</a>
+        <button class="nav-item nav-toggle"
+                type="button"
+                th:if="${currentFeatures.contains('FEATURE_TICKETS_VIEW')}"
+                th:classappend="${activePage == 'tickets'} ? ' active'"
+                data-subnav-toggle="tickets-subnav"
+                th:attr="aria-expanded=${activePage == 'tickets'}"
+                aria-controls="tickets-subnav">
+            <i class="bi bi-ticket-detailed"></i>
+            <span class="nav-label">Ticket Management</span>
+            <i class="bi bi-chevron-down subnav-chevron" aria-hidden="true"></i>
+        </button>
+        <div class="sidebar-subnav"
+             id="tickets-subnav"
+             th:if="${currentFeatures.contains('FEATURE_TICKETS_VIEW')}"
+             th:classappend="${activePage == 'tickets'} ? ' is-open'">
+            <a class="subnav-item"
+               th:if="${currentRoles.contains('ROLE_VENDOR') and currentFeatures.contains('FEATURE_TICKETS_CREATED_VIEW')}"
+               th:classappend="${activeSubPage == 'created'} ? ' active'"
+               href="/tickets/created">My Created Tickets</a>
+            <a class="subnav-item"
+               th:if="${!currentRoles.contains('ROLE_VENDOR')}"
+               th:classappend="${activeSubPage == 'pending'} ? ' active'"
+               href="/tickets/pending">My Pending Tickets</a>
+            <a class="subnav-item"
+               th:if="${!currentRoles.contains('ROLE_VENDOR')}"
+               th:classappend="${activeSubPage == 'resolved'} ? ' active'"
+               href="/tickets/resolved">My Resolved Tickets</a>
+            <a class="subnav-item"
+               th:if="${!currentRoles.contains('ROLE_VENDOR') and currentFeatures.contains('FEATURE_TICKETS_REVIEW')}"
+               th:classappend="${activeSubPage == 'review'} ? ' active'"
+               href="/tickets/review">My Review Tickets</a>
+            <a class="subnav-item"
+               th:if="${!currentRoles.contains('ROLE_VENDOR') and currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW')}"
+               th:classappend="${activeSubPage == 'all'} ? ' active'"
+               href="/tickets/all">All Tickets</a>
         </div>
         <a class="nav-item" th:if="${currentFeatures.contains('FEATURE_PROFILE_ACCESS')}" th:classappend="${activePage == 'profile'} ? ' active'" href="/profile"><i class="bi bi-person-circle"></i><span class="nav-label">User Profile</span></a>
         <a class="nav-item" th:if="${currentFeatures.contains('FEATURE_CHAT_ACCESS')}" th:classappend="${activePage == 'chat'} ? ' active'" href="/chat"><i class="bi bi-chat-dots"></i><span class="nav-label">Chat</span></a>
-        <a class="nav-item" th:if="${currentRoles.contains('ROLE_ADMIN')}" th:classappend="${activePage == 'admin'} ? ' active'" href="/admin/support-tickets"><i class="bi bi-shield-check"></i><span class="nav-label">Admin</span></a>
-        <div class="sidebar-subnav" th:if="${activePage == 'admin' and currentRoles.contains('ROLE_ADMIN')}">
-            <a class="subnav-item" th:classappend="${activeSubPage == 'support-tickets'} ? ' active'" href="/admin/support-tickets">All Support Tickets</a>
-            <a class="subnav-item" th:classappend="${activeSubPage == 'users'} ? ' active'" href="/admin/users">User Management</a>
-            <a class="subnav-item" th:classappend="${activeSubPage == 'roles'} ? ' active'" href="/admin/roles">Role Management</a>
-            <a class="subnav-item" th:classappend="${activeSubPage == 'role-features'} ? ' active'" href="/admin/role-features">Role Features</a>
-            <a class="subnav-item" th:classappend="${activeSubPage == 'email-notifications'} ? ' active'" href="/admin/email-notifications">Email Notification</a>
+        <button class="nav-item nav-toggle"
+                type="button"
+                th:if="${currentFeatures.contains('FEATURE_ADMIN_ACCESS') or currentFeatures.contains('FEATURE_ADMIN_SUPPORT_TICKETS') or currentFeatures.contains('FEATURE_ADMIN_USER_MANAGEMENT') or currentFeatures.contains('FEATURE_ADMIN_ROLE_MANAGEMENT') or currentFeatures.contains('FEATURE_ADMIN_ROLE_FEATURE_ASSIGNMENT') or currentFeatures.contains('FEATURE_ADMIN_EMAIL_NOTIFICATION_MANAGEMENT') or currentFeatures.contains('FEATURE_ADMIN_STAFF_BILLING')}"
+                th:classappend="${activePage == 'admin'} ? ' active'"
+                data-subnav-toggle="admin-subnav"
+                th:attr="aria-expanded=${activePage == 'admin'}"
+                aria-controls="admin-subnav">
+            <i class="bi bi-shield-check"></i>
+            <span class="nav-label">Admin</span>
+            <i class="bi bi-chevron-down subnav-chevron" aria-hidden="true"></i>
+        </button>
+        <div class="sidebar-subnav"
+             id="admin-subnav"
+             th:if="${currentFeatures.contains('FEATURE_ADMIN_ACCESS') or currentFeatures.contains('FEATURE_ADMIN_SUPPORT_TICKETS') or currentFeatures.contains('FEATURE_ADMIN_USER_MANAGEMENT') or currentFeatures.contains('FEATURE_ADMIN_ROLE_MANAGEMENT') or currentFeatures.contains('FEATURE_ADMIN_ROLE_FEATURE_ASSIGNMENT') or currentFeatures.contains('FEATURE_ADMIN_EMAIL_NOTIFICATION_MANAGEMENT') or currentFeatures.contains('FEATURE_ADMIN_STAFF_BILLING')}"
+             th:classappend="${activePage == 'admin'} ? ' is-open'">
+            <a class="subnav-item" th:if="${currentFeatures.contains('FEATURE_ADMIN_USER_MANAGEMENT')}" th:classappend="${activeSubPage == 'users'} ? ' active'" href="/admin/users">User Management</a>
+            <a class="subnav-item" th:if="${currentFeatures.contains('FEATURE_ADMIN_ROLE_MANAGEMENT')}" th:classappend="${activeSubPage == 'roles'} ? ' active'" href="/admin/roles">Role Management</a>
+            <a class="subnav-item" th:if="${currentFeatures.contains('FEATURE_ADMIN_ROLE_FEATURE_ASSIGNMENT')}" th:classappend="${activeSubPage == 'role-features'} ? ' active'" href="/admin/role-features">Role Features</a>
+            <a class="subnav-item" th:if="${currentFeatures.contains('FEATURE_ADMIN_EMAIL_NOTIFICATION_MANAGEMENT')}" th:classappend="${activeSubPage == 'email-notifications'} ? ' active'" href="/admin/email-notifications">Email Notification</a>
+            <a class="subnav-item" th:if="${currentRoles.contains('ROLE_ADMIN') and currentFeatures.contains('FEATURE_ADMIN_STAFF_BILLING')}" th:classappend="${activeSubPage == 'staff-billing'} ? ' active'" href="/admin/staff-billing">Staff Billing</a>
         </div>
     </nav>
 

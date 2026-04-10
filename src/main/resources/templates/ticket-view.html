@@ -3,9 +3,9 @@
 <head>
     <th:block th:replace="~{fragments/layout :: head('Ticket Details')}"></th:block>
 </head>
-<body>
+<body th:with="vendorOnlyViewer=${currentFeatures.contains('FEATURE_TICKETS_CREATE_VENDOR') and !currentFeatures.contains('FEATURE_TICKETS_CREATE_STANDARD') and !currentFeatures.contains('FEATURE_TICKETS_MANAGE') and !currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW') and !currentFeatures.contains('FEATURE_TICKETS_REVIEW')},adminTicketScope=${currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW') or currentFeatures.contains('FEATURE_TICKETS_REVIEW')}">
 <div class="app-shell">
-    <aside th:replace="~{fragments/layout :: sidebar('tickets', 'open')}"></aside>
+    <aside th:replace="~{fragments/layout :: sidebar('tickets', 'pending')}"></aside>
     <div class="main-panel">
         <header th:replace="~{fragments/layout :: topbar('Ticket Details', 'Review the full ticket context, service requirements, and conversation history')}"></header>
         <main class="content-area">
@@ -64,7 +64,7 @@
                                 <div class="small text-muted text-uppercase mb-1">Parent Ticket</div>
                                 <div class="fw-semibold" th:text="${ticket.parentTicketId != null ? '#'+ticket.parentTicketId+' '+ticket.parentTicketTitle : 'Not linked'}"></div>
                             </div>
-                            <div class="col-md-6" th:if="${!currentRoles.contains('ROLE_VENDOR')}">
+                            <div class="col-md-6" th:if="${!vendorOnlyViewer}">
                                 <div class="small text-muted text-uppercase mb-1">Assigned User</div>
                                 <div class="fw-semibold" th:text="${ticket.assignedTo != null ? ticket.assignedTo : 'Unassigned'}"></div>
                             </div>
@@ -136,7 +136,7 @@
                                 <div class="small text-muted text-uppercase mb-1">Vendor User</div>
                                 <div class="fw-semibold" th:text="${ticket.vendorName != null ? ticket.vendorName : 'Not linked'}"></div>
                             </div>
-                            <div class="col-md-6" th:if="${!currentRoles.contains('ROLE_VENDOR')}">
+                            <div class="col-md-6" th:if="${!vendorOnlyViewer}">
                                 <div class="small text-muted text-uppercase mb-1">Vendor Contact</div>
                                 <div class="fw-semibold" th:text="${ticket.vendorEmail != null ? ticket.vendorEmail + (ticket.vendorPhone != null ? ' · ' + ticket.vendorPhone : '') : 'Not available'}"></div>
                             </div>
@@ -157,7 +157,7 @@
                         </div>
                     </section>
 
-                    <section class="form-card glass-card mb-4" th:if="${currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')}">
+                    <section class="form-card glass-card mb-4" th:if="${adminTicketScope}">
                         <div class="section-title mb-3">Price Section</div>
                         <div class="row g-3">
                             <div class="col-md-4">
@@ -182,7 +182,7 @@
                     <section class="form-card glass-card">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div class="section-title section-title-icon"><i class="bi bi-chat-left-text"></i><span>Comment History</span></div>
-                            <div class="small text-muted" th:text="${currentRoles.contains('ROLE_VENDOR') ? 'Only your comments are visible in this history.' : 'Review the full communication trail and latest ticket updates.'}">Review the full communication trail and latest ticket updates.</div>
+                            <div class="small text-muted" th:text="${vendorOnlyViewer ? 'Only your comments are visible in this history.' : 'Review the full communication trail and latest ticket updates.'}">Review the full communication trail and latest ticket updates.</div>
                         </div>
                         <form id="commentForm" class="mb-4">
                             <input type="hidden" id="parentCommentId">
@@ -224,8 +224,8 @@
                             </div>
                         </div>
                         <div class="mt-4 d-flex gap-2 flex-wrap">
-                            <a class="btn btn-outline-secondary" th:href="${currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')} ? '/admin/support-tickets' : '/tickets'">Back</a>
-                            <a class="btn btn-primary" th:if="${(currentFeatures.contains('FEATURE_TICKETS_MANAGE') or currentFeatures.contains('FEATURE_SITE_VISIT_EDIT')) and (ticket.status != 'CLOSED' or (currentRoles.contains('ROLE_ADMIN') or currentRoles.contains('ROLE_MANAGER')))}" th:href="@{/tickets/edit(id=${ticket.id})}">Edit Ticket</a>
+                            <a class="btn btn-outline-secondary" th:href="${adminTicketScope} ? '/admin/support-tickets' : '/tickets/pending'">Back</a>
+                            <a class="btn btn-primary" th:if="${(currentFeatures.contains('FEATURE_TICKETS_MANAGE') or currentFeatures.contains('FEATURE_SITE_VISIT_EDIT')) and (ticket.status != 'CLOSED' or adminTicketScope)}" th:href="@{/tickets/edit(id=${ticket.id})}">Edit Ticket</a>
                         </div>
                     </section>
                 </div>
@@ -238,7 +238,7 @@
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 <script th:inline="javascript">
 const ticketId = /*[[${ticket.id}]]*/ 0;
-const vendorViewer = /*[[${currentRoles.contains('ROLE_VENDOR')}]]*/ false;
+const vendorViewer = /*[[${vendorOnlyViewer}]]*/ false;
 let commentClient = null;
 let commentLoading = false;
 
@@ -319,9 +319,6 @@ function renderSiteVisits(visits) {
   `).join('') : '<div class="empty-state">No site visits recorded yet.</div>';
 }
 
-function buildMapUrl(latitude, longitude) {
-  return `https://www.google.com/maps?q=${encodeURIComponent(latitude + ',' + longitude)}`;
-}
 
 function formatVisitDateTime(value) {
   return new Date(value).toLocaleString([], {
@@ -389,7 +386,8 @@ document.getElementById('commentForm').addEventListener('submit', async event =>
 });
 
 document.querySelectorAll('.external-map-link').forEach(link => {
-  link.href = normalizeExternalUrl(link.dataset.url);
+  const originalUrl = normalizeExternalUrl(link.dataset.url);
+  link.href = handleMapLink(originalUrl);
 });
 
 if (typeof SockJS !== 'undefined' && typeof Stomp !== 'undefined') {

@@ -15,13 +15,18 @@
                         <div class="section-title" th:text="${ticketPageTitle}">My Open Tickets</div>
                         <div class="table-subtitle" th:text="${ticketSubtitle}">Search, sort, and navigate your assigned tickets.</div>
                     </div>
-                    <a class="btn btn-primary btn-lg" th:if="${currentFeatures.contains('FEATURE_TICKETS_MANAGE')}" href="/tickets/create"><i class="bi bi-plus-circle me-2"></i>Create Ticket</a>
+                    <a class="btn btn-primary btn-lg"
+                       th:if="${currentFeatures.contains('FEATURE_TICKETS_MANAGE') or currentFeatures.contains('FEATURE_TICKETS_CREATE_STANDARD') or currentFeatures.contains('FEATURE_TICKETS_CREATE_VENDOR')}"
+                       href="/tickets/create">
+                        <i class="bi bi-plus-circle me-2"></i>
+                        <span th:text="${currentFeatures.contains('FEATURE_TICKETS_CREATE_VENDOR') and !currentFeatures.contains('FEATURE_TICKETS_CREATE_STANDARD') ? 'Create Vendor Ticket' : 'Create Ticket'}">Create Ticket</span>
+                    </a>
                 </div>
                 <div class="toolbar-grid">
                     <input id="search" class="form-control" placeholder="Search by ID, title, status, priority, assigned user">
                     <select id="status" class="form-select">
                         <option value="">All status</option>
-                        <option>OPEN</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>RESOLVED</option><option>CLOSED</option>
+                        <option>OPEN</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>RESOLVED</option><option>CLOSED</option><option>CANCELLED</option>
                     </select>
                     <select id="priority" class="form-select">
                         <option value="">All priority</option>
@@ -71,14 +76,19 @@
     </div>
 </div>
 <script th:src="@{/js/app.js}"></script>
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 <script th:inline="javascript">
-const forcedStatus = /*[[${forcedStatus}]]*/ 'OPEN';
-const canEditTickets = /*[[${currentFeatures.contains('FEATURE_TICKETS_MANAGE')}]]*/ false;
+const forcedStatuses = /*[[${forcedStatuses}]]*/ [];
+const canEditTickets = /*[[${currentFeatures.contains('FEATURE_TICKETS_MANAGE') or currentFeatures.contains('FEATURE_SITE_VISIT_EDIT')}]]*/ false;
 const assignedOnly = /*[[${assignedOnly}]]*/ true;
-const currentRoles = /*[[${currentRoles}]]*/ [];
-const isAdmin = currentRoles.includes('ROLE_ADMIN') || currentRoles.includes('ROLE_MANAGER');
+const createdOnly = /*[[${createdOnly}]]*/ false;
+const adminScope = /*[[${adminScope}]]*/ false;
+const canViewAllTickets = /*[[${currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW')}]]*/ false;
 let currentPage = 0;
 let pageSize = 10;
+const refreshTicketsDebounced = debounce(() => loadTickets(), 400);
+let lastTicketRefreshToastAt = 0;
 
 function renderPagination(data) {
   const list = document.getElementById('paginationList');
@@ -105,11 +115,13 @@ function renderPagination(data) {
 
 async function loadTickets() {
   const params = new URLSearchParams({
+    adminScope: String(adminScope),
     assignedOnly: String(assignedOnly),
+    createdOnly: String(createdOnly),
     page: String(currentPage),
     size: String(pageSize),
     search: document.getElementById('search').value,
-    status: document.getElementById('status').value || forcedStatus,
+    statuses: document.getElementById('status').value || forcedStatuses.join(','),
     priority: document.getElementById('priority').value,
     sortBy: document.getElementById('sortBy').value,
     direction: document.getElementById('direction').value
@@ -136,19 +148,36 @@ async function loadTickets() {
         <td>${assignedUsers || 'Unassigned'}</td>
         <td class="text-end">
           <a class="btn btn-sm btn-outline-secondary" href="/tickets/view?id=${ticket.id}" title="View"><i class="bi bi-eye"></i></a>
-          ${canEditTickets && (ticket.status !== 'CLOSED' || isAdmin) ? `<a class="btn btn-sm btn-outline-primary" href="/tickets/edit?id=${ticket.id}" title="Edit"><i class="bi bi-pencil"></i></a>` : ''}
+          ${canEditTickets && (ticket.status !== 'CLOSED' || canViewAllTickets) ? `<a class="btn btn-sm btn-outline-primary" href="/tickets/edit?id=${ticket.id}" title="Edit"><i class="bi bi-pencil"></i></a>` : ''}
         </td>
       </tr>`;
   });
   renderPagination(data);
 }
 
-document.getElementById('status').value = forcedStatus;
+if (forcedStatuses.length === 1) {
+  document.getElementById('status').value = forcedStatuses[0];
+}
 document.getElementById('applyFilters').addEventListener('click', () => {
   currentPage = 0;
   loadTickets();
 });
 loadTickets();
+
+if (typeof SockJS !== 'undefined' && typeof Stomp !== 'undefined') {
+  const socket = new SockJS('/ws');
+  const refreshClient = Stomp.over(socket);
+  refreshClient.connect({}, () => {
+    refreshClient.subscribe('/topic/tickets-refresh', () => {
+      refreshTicketsDebounced();
+      const now = Date.now();
+      if (now - lastTicketRefreshToastAt > 5000) {
+        showAppAlert('Ticket list auto-refreshed to show the latest updates.', 'info', 'Live Update');
+        lastTicketRefreshToastAt = now;
+      }
+    });
+  });
+}
 </script>
 </body>
 </html>

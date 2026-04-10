@@ -24,6 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -103,9 +106,10 @@ public class AuthService {
     }
 
     private AuthDtos.AuthResponse login(AuthDtos.LoginRequest request, HttpServletResponse response, boolean vendorPortal) {
-        log.info("Login attempt for email: {} from vendor portal: {}", request.email(), vendorPortal);
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.email(), request.password()));
-        AppUser user = userRepository.findByEmail(request.email())
+        String identifier = normalize(request.email());
+        log.info("Login attempt for identifier: {} from vendor portal: {}", identifier, vendorPortal);
+        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(identifier, request.password()));
+        AppUser user = findByLoginIdentifier(identifier)
                 .orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
         boolean vendorUser = user.getRoles().stream().filter(Role::isActive).anyMatch(role -> "ROLE_VENDOR".equals(role.getName()));
         if (vendorPortal && !vendorUser) {
@@ -179,5 +183,36 @@ public class AuthService {
 
     private String normalize(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private java.util.Optional<AppUser> findByLoginIdentifier(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        return userRepository.findFirstByEmailIgnoreCaseOrPhoneIn(identifier, buildPhoneCandidates(identifier));
+    }
+
+    private List<String> buildPhoneCandidates(String identifier) {
+        LinkedHashSet<String> candidates = new LinkedHashSet<>();
+        candidates.add(identifier);
+
+        String digits = identifier.replaceAll("\\D", "");
+        if (!digits.isEmpty()) {
+            candidates.add(digits);
+            candidates.add("+" + digits);
+
+            if (digits.length() == 10) {
+                candidates.add("91" + digits);
+                candidates.add("+91" + digits);
+            }
+
+            if (digits.length() >= 12 && digits.startsWith("91")) {
+                String local = digits.substring(digits.length() - 10);
+                candidates.add(local);
+                candidates.add("+91" + local);
+            }
+        }
+
+        return new ArrayList<>(candidates);
     }
 }

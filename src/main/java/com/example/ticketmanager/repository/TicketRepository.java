@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Collection;
 
 public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecificationExecutor<Ticket> {
     Page<Ticket> findByCreatedByOrAssignedToOrServiceUsersContains(AppUser createdBy, AppUser assignedTo, AppUser serviceUser, Pageable pageable);
@@ -211,6 +212,39 @@ public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecif
             @Param("excludeTicketId") Long excludeTicketId,
             Pageable pageable
     );
+
+    // --- Dashboard metric queries ---
+
+    /** Tickets assigned to (assignedTo OR serviceUsers) grouped by status. Used for admin/manager/agent "My Ticket Status". */
+    @Query("""
+            select t.status, count(distinct t.id) from Ticket t
+            left join t.assignedTo a
+            left join t.serviceUsers su
+            where (a.id = :userId or su.id = :userId)
+            group by t.status
+            """)
+    List<Object[]> countAssignedByStatus(@Param("userId") Long userId);
+
+    /** Tickets created by the user grouped by status. Used for vendor "My Ticket Status". */
+    @Query("""
+            select t.status, count(distinct t.id) from Ticket t
+            where t.createdBy.id = :userId
+            group by t.status
+            """)
+    List<Object[]> countCreatedByStatus(@Param("userId") Long userId);
+
+    /** All tickets grouped by status. Used for admin/manager "All Ticket Status". */
+    @Query("select t.status, count(t.id) from Ticket t group by t.status")
+    List<Object[]> countAllByStatus();
+
+    @EntityGraph(attributePaths = {"assignedTo", "assignedTo.roles"})
+    List<Ticket> findByAssignedToIsNotNullAndStatusIn(Collection<TicketStatus> statuses);
+
+    @EntityGraph(attributePaths = {"assignedTo", "assignedTo.roles", "createdBy"})
+    List<Ticket> findByAssignedToIdAndStatusInOrderByUpdatedAtDesc(Long assignedToId, Collection<TicketStatus> statuses);
+
+    @EntityGraph(attributePaths = {"assignedTo", "assignedTo.roles", "createdBy"})
+    List<Ticket> findByAssignedToIdAndStatusOrderByUpdatedAtDesc(Long assignedToId, TicketStatus status);
 
     @Query("""
             select distinct t from Ticket t

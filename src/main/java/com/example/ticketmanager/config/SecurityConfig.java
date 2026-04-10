@@ -43,7 +43,6 @@ public class SecurityConfig {
                         .requestMatchers("/", "/login", "/register", "/vendor/login", "/vendor/register",
                                 "/verify-email", "/reset-password", "/css/**", "/js/**",
                                 "/api/auth/**", "/api/public/**", "/ws/**", "/access-denied", "/error").permitAll()
-                        .requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {
@@ -64,7 +63,7 @@ public class SecurityConfig {
                                 writeJsonError(response, HttpStatus.FORBIDDEN, "You do not have permission to perform this action.");
                                 return;
                             }
-                            response.sendRedirect("/access-denied");
+                            writeHtmlError(response, HttpStatus.FORBIDDEN, "Access denied", "You do not have permission to perform this action.");
                         }))
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -111,5 +110,28 @@ public class SecurityConfig {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.getWriter().write("{\"message\":\"" + message.replace("\"", "\\\"") + "\"}");
+    }
+
+    private void writeHtmlError(jakarta.servlet.http.HttpServletResponse response, HttpStatus status, String title, String message) throws java.io.IOException {
+        response.setStatus(status.value());
+        response.setContentType(MediaType.TEXT_HTML_VALUE);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        String safeMessage = message.replace("\\", "\\\\").replace("\"", "\\\"");
+        response.getWriter().write("""
+                <!doctype html>
+                <html>
+                <head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>%s</title></head>
+                <body>
+                <script>
+                alert(\"%s\");
+                if (window.history.length > 1) {
+                  window.history.back();
+                } else {
+                  window.location.href = '/dashboard';
+                }
+                </script>
+                </body>
+                </html>
+                """.formatted(title, safeMessage));
     }
 }

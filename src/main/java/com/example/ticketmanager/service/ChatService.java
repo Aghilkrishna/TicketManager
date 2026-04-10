@@ -54,8 +54,8 @@ public class ChatService {
         conversation.getParticipants().stream()
                 .filter(user -> !user.getId().equals(sender.getId()))
                 .forEach(user -> {
-                    messagingTemplate.convertAndSendToUser(user.getUsername(), "/queue/chat", response);
-                    messagingTemplate.convertAndSendToUser(sender.getUsername(), "/queue/chat-status",
+                    messagingTemplate.convertAndSendToUser(user.getEmail(), "/queue/chat", response);
+                    messagingTemplate.convertAndSendToUser(sender.getEmail(), "/queue/chat-status",
                             new AuthDtos.ChatStatusResponse(conversation.getId(), saved.getId(), "DELIVERED", user.getUsername()));
                     notificationService.notify(user, NotificationType.CHAT_MESSAGE,
                             "New chat message from " + sender.getUsername(), "CHAT", conversation.getId(), EmailNotificationAction.CHAT_MESSAGE);
@@ -70,7 +70,7 @@ public class ChatService {
         List<ChatMessage> unread = messageRepository.findByConversationIdAndSenderIdNotAndReadAtIsNull(conversationId, currentUser.getId());
         unread.forEach(message -> {
             message.setReadAt(java.time.LocalDateTime.now());
-            messagingTemplate.convertAndSendToUser(message.getSender().getUsername(), "/queue/chat-status",
+            messagingTemplate.convertAndSendToUser(message.getSender().getEmail(), "/queue/chat-status",
                     new AuthDtos.ChatStatusResponse(conversationId, message.getId(), "READ", currentUser.getUsername()));
         });
         return messageRepository.findTop100ByConversationIdOrderByCreatedAtAsc(conversation.getId()).stream()
@@ -125,7 +125,7 @@ public class ChatService {
             conversation.getParticipants().stream()
                     .filter(user -> !user.getId().equals(sender.getId()))
                     .forEach(user -> messagingTemplate.convertAndSendToUser(
-                            user.getUsername(),
+                            user.getEmail(),
                             "/queue/chat-typing",
                             new AuthDtos.ChatTypingEvent(conversation.getId(), sender.getId(), sender.getUsername(), event.typing())
                     ));
@@ -134,9 +134,9 @@ public class ChatService {
         if (event.recipientId() != null) {
             AppUser recipient = userService.getById(event.recipientId());
             messagingTemplate.convertAndSendToUser(
-                    recipient.getUsername(),
+                    recipient.getEmail(),
                     "/queue/chat-typing",
-                    new AuthDtos.ChatTypingEvent(null, recipient.getId(), sender.getUsername(), event.typing())
+                    new AuthDtos.ChatTypingEvent(null, sender.getId(), sender.getUsername(), event.typing())
             );
         }
     }

@@ -104,9 +104,10 @@ window.deleteRole = async (roleId) => {
   const res = await fetch(`/api/admin/roles/${roleId}`, {method: 'DELETE'});
   if (!res.ok) {
     const payload = await res.json().catch(() => ({}));
-    window.alert(payload.message || 'Failed to delete role');
+    showAppAlert(payload.message || 'Failed to delete role.', 'danger', 'Delete Failed');
     return;
   }
+  showAppAlert('Role deleted successfully.', 'success', 'Deleted');
   await loadRoles();
 };
 
@@ -119,25 +120,34 @@ async function loadRoles() {
 
 document.getElementById('roleForm').addEventListener('submit', async event => {
   event.preventDefault();
+  const saveButton = event.target.querySelector('button[type="submit"]');
   const roleId = document.getElementById('roleId').value;
   const method = roleId ? 'PUT' : 'POST';
   const url = roleId ? `/api/admin/roles/${roleId}` : '/api/admin/roles';
-  const res = await fetch(url, {
-    method,
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      name: document.getElementById('roleName').value,
-      description: document.getElementById('roleDescription').value,
-      active: document.getElementById('roleActive').checked
-    })
-  });
-  if (!res.ok) {
-    const payload = await res.json().catch(() => ({}));
-    window.alert(payload.message || 'Failed to save role');
-    return;
+  setButtonLoading(saveButton, true, 'Saving...');
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        name: document.getElementById('roleName').value,
+        description: document.getElementById('roleDescription').value,
+        active: document.getElementById('roleActive').checked
+      })
+    });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      showAppAlert(payload.message || 'Failed to save role.', 'danger', 'Save Failed');
+      return;
+    }
+    showAppAlert(`Role ${roleId ? 'updated' : 'created'} successfully.`, 'success', 'Saved');
+    resetRoleForm();
+    await loadRoles();
+  } catch (_error) {
+    showAppAlert('Unable to save role right now. Please try again.', 'danger', 'Save Failed');
+  } finally {
+    setButtonLoading(saveButton, false);
   }
-  resetRoleForm();
-  await loadRoles();
 });
 
 loadRoles();
