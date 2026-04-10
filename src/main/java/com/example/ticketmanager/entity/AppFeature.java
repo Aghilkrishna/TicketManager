@@ -22,6 +22,7 @@ public enum AppFeature {
     ADMIN_ROLE_MANAGEMENT("Admin Role Management", "Create, edit, and delete roles."),
     ADMIN_ROLE_FEATURE_ASSIGNMENT("Admin Role Feature Assignment", "Assign features and permissions to roles."),
     ADMIN_EMAIL_NOTIFICATION_MANAGEMENT("Admin Email Notification Management", "Configure email notification settings and templates."),
+    ADMIN_STAFF_BILLING("Admin Staff Billing", "Review assigned staff ticket billing summaries and invoices."),
     ADMIN_REPORT_ACCESS("Admin Report Access", "View system reports and analytics.");
 
     private final String label;

@@ -47,6 +47,7 @@ public class DataInitializer {
                     AppFeature.ADMIN_ROLE_MANAGEMENT,
                     AppFeature.ADMIN_ROLE_FEATURE_ASSIGNMENT,
                     AppFeature.ADMIN_EMAIL_NOTIFICATION_MANAGEMENT,
+                    AppFeature.ADMIN_STAFF_BILLING,
                     AppFeature.ADMIN_REPORT_ACCESS
             ));
             seedRole("ROLE_MANAGER", "Manage ticket operations", Set.of(

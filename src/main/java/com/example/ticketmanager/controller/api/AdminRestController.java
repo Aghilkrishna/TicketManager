@@ -1,8 +1,11 @@
 package com.example.ticketmanager.controller.api;
 
 import com.example.ticketmanager.dto.AdminDtos;
+import com.example.ticketmanager.entity.TicketBillingStatus;
+import com.example.ticketmanager.exception.AppException;
 import com.example.ticketmanager.repository.UserRepository;
 import com.example.ticketmanager.service.AdminService;
+import com.example.ticketmanager.service.StaffBillingService;
 import com.example.ticketmanager.service.TicketService;
 import com.example.ticketmanager.service.UserService;
 import jakarta.validation.Valid;
@@ -11,6 +14,7 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +31,7 @@ public class AdminRestController {
     private final UserRepository userRepository;
     private final UserService userService;
     private final AdminService adminService;
+    private final StaffBillingService staffBillingService;
 
     @GetMapping("/report")
     @PreAuthorize("hasAuthority('FEATURE_ADMIN_REPORT_ACCESS')")
@@ -138,5 +143,39 @@ public class AdminRestController {
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @PutMapping("/staff-billing/{userId}/status")
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_STAFF_BILLING') and hasAuthority('ROLE_ADMIN')")
+    public Map<String, Object> updateStaffBillingStatus(@PathVariable Long userId,
+                                                        @Valid @RequestBody AdminDtos.StaffBillingStatusUpdateRequest request) {
+        TicketBillingStatus status;
+        try {
+            status = TicketBillingStatus.valueOf(request.status().trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Invalid billing status");
+        }
+        staffBillingService.updateClosedTicketBillingStatus(userId, status);
+        return Map.of(
+                "message", "PAID".equals(status.name()) ? "Closed-ticket billing marked as paid" : "Closed-ticket billing marked as unpaid",
+                "status", status.name()
+        );
+    }
+
+    @PutMapping("/staff-billing/tickets/{ticketId}/billing-status")
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_STAFF_BILLING') and hasAuthority('ROLE_ADMIN')")
+    public Map<String, Object> updateSingleTicketBillingStatus(@PathVariable Long ticketId,
+                                                               @Valid @RequestBody AdminDtos.StaffBillingStatusUpdateRequest request) {
+        TicketBillingStatus status;
+        try {
+            status = TicketBillingStatus.valueOf(request.status().trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Invalid billing status");
+        }
+        staffBillingService.updateSingleTicketBillingStatus(ticketId, status);
+        return Map.of(
+                "message", "PAID".equals(status.name()) ? "Ticket billing marked as paid" : "Ticket billing marked as unpaid",
+                "status", status.name()
+        );
     }
 }

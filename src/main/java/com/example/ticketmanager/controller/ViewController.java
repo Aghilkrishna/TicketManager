@@ -2,6 +2,7 @@ package com.example.ticketmanager.controller;
 
 import com.example.ticketmanager.service.TicketService;
 import com.example.ticketmanager.service.UserService;
+import com.example.ticketmanager.service.StaffBillingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -17,6 +18,7 @@ import java.security.Principal;
 public class ViewController {
     private final UserService userService;
     private final TicketService ticketService;
+    private final StaffBillingService staffBillingService;
 
     @GetMapping("/")
     public String home() {
@@ -230,6 +232,31 @@ public class ViewController {
     @GetMapping("/admin/email-notifications")
     public String adminEmailNotifications() {
         return "admin-email-notifications";
+    }
+
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_STAFF_BILLING') and hasAuthority('ROLE_ADMIN')")
+    @GetMapping("/admin/staff-billing")
+    public String adminStaffBilling(Model model) {
+        model.addAttribute("billingSummaries", staffBillingService.listStaffBillingSummaries());
+        return "admin-staff-billing";
+    }
+
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_STAFF_BILLING') and hasAuthority('ROLE_ADMIN')")
+    @GetMapping("/admin/staff-billing/{userId}")
+    public String adminStaffBillingDetails(@PathVariable Long userId, Model model) {
+        model.addAttribute("billingDetails", staffBillingService.getStaffBillingDetails(userId));
+        return "admin-staff-billing-details";
+    }
+
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_STAFF_BILLING') and hasAuthority('ROLE_ADMIN')")
+    @GetMapping("/admin/staff-billing/{userId}/invoice")
+    public String adminStaffBillingInvoice(@PathVariable Long userId, Model model) {
+        var billingDetails = staffBillingService.getStaffBillingDetails(userId);
+        model.addAttribute("billingDetails", billingDetails);
+        model.addAttribute("invoiceNumber", "INV-" + userId + "-" + java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        model.addAttribute("invoiceGeneratedAt", java.time.LocalDateTime.now());
+        model.addAttribute("invoiceTickets", billingDetails.tickets().stream().filter(ticket -> "CLOSED".equals(ticket.status())).toList());
+        return "admin-staff-billing-invoice";
     }
 
     @GetMapping("/chat")

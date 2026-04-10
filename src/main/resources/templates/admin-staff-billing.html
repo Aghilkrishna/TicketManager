@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/layout :: head('Staff Billing')}"></th:block>
+    <style>
+        .billing-stat-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 1rem 1.25rem;
+            height: 100%;
+        }
+        .billing-stat-label {
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+        .billing-stat-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+        }
+    </style>
+</head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('admin', 'staff-billing')}"></aside>
+    <div class="main-panel">
+        <header th:replace="~{fragments/layout :: topbar('Staff Billing', 'Review staff delivery totals and billing readiness')}" ></header>
+        <main class="content-area">
+            <section class="hero-banner glass-card mb-4">
+                <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-start">
+                    <div>
+                        <div class="text-uppercase small opacity-75">Admin Billing</div>
+                        <h1 class="display-6 fw-bold mb-2">Staff Billing</h1>
+                        <p class="mb-0">Review resolved and closed tickets assigned to each staff member, track billing totals, and open invoice-ready details.</p>
+                    </div>
+                    <div class="metric-trend"><i class="bi bi-receipt"></i> Billing workspace</div>
+                </div>
+            </section>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="billing-stat-card">
+                        <div class="billing-stat-label">Staff Members</div>
+                        <div class="billing-stat-value" th:text="${#lists.size(billingSummaries)}">0</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="billing-stat-card">
+                        <div class="billing-stat-label">Pending Closed Billing</div>
+                        <div class="billing-stat-value" th:text="${#aggregates.sum(billingSummaries.![closedAmount])}">0</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="billing-stat-card">
+                        <div class="billing-stat-label">Resolved Ticket Billing</div>
+                        <div class="billing-stat-value" th:text="${#aggregates.sum(billingSummaries.![resolvedAmount])}">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <section class="table-card glass-card">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                        <tr>
+                            <th>S.No</th>
+                            <th>Staff Member</th>
+                            <th>Roles</th>
+                            <th>Resolved Tickets</th>
+                            <th>Resolved Amount</th>
+                            <th>Unpaid Closed</th>
+                            <th>Pending Amount</th>
+                            <th>Billing Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(billingSummaries)}">
+                            <td colspan="9" class="text-center text-muted py-5">No staff billing records available yet.</td>
+                        </tr>
+                        <tr th:each="item, stat : ${billingSummaries}">
+                            <td th:text="${stat.index + 1}">1</td>
+                            <td>
+                                <div class="fw-semibold" th:text="${item.username}">Staff Name</div>
+                                <div class="text-muted small" th:text="${item.email}">staff@example.com</div>
+                            </td>
+                            <td th:text="${#strings.listJoin(item.roleLabels, ', ')}">Agent</td>
+                            <td th:text="${item.resolvedTicketCount}">0</td>
+                            <td th:text="${item.resolvedAmount}">0</td>
+                            <td th:text="${item.closedTicketCount}">0</td>
+                            <td th:text="${item.closedAmount}">0</td>
+                            <td>
+                                <span class="badge rounded-pill"
+                                      th:classappend="${item.billingStatusLabel == 'Paid'} ? ' text-bg-success' : (${item.billingStatusLabel == 'Partially Paid'} ? ' text-bg-warning' : (${item.billingStatusLabel == 'No Closed Tickets'} ? ' text-bg-secondary' : ' text-bg-danger'))"
+                                      th:text="${item.billingStatusLabel}">Unpaid</span>
+                            </td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" th:href="@{|/admin/staff-billing/${item.userId}|}">
+                                    <i class="bi bi-eye me-1"></i>View
+                                </a>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>
+
