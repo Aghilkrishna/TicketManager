@@ -3,7 +3,7 @@
 <head>
     <th:block th:replace="~{fragments/layout :: head('Ticket Details')}"></th:block>
 </head>
-<body th:with="vendorOnlyViewer=${currentFeatures.contains('FEATURE_TICKETS_CREATE_VENDOR') and !currentFeatures.contains('FEATURE_TICKETS_CREATE_STANDARD') and !currentFeatures.contains('FEATURE_TICKETS_MANAGE') and !currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW') and !currentFeatures.contains('FEATURE_TICKETS_REVIEW')},adminTicketScope=${currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW') or currentFeatures.contains('FEATURE_TICKETS_REVIEW')}">
+<body th:with="vendorOnlyViewer=${currentFeatures.contains('FEATURE_TICKETS_CREATE_VENDOR') and !currentFeatures.contains('FEATURE_TICKETS_CREATE_STANDARD') and !currentFeatures.contains('FEATURE_TICKETS_MANAGE') and !currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW') and !currentFeatures.contains('FEATURE_TICKETS_REVIEW')},adminTicketScope=${currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW') or currentFeatures.contains('FEATURE_TICKETS_REVIEW')},agentViewer=${currentFeatures.contains('FEATURE_SITE_VISIT_EDIT') and !currentFeatures.contains('FEATURE_TICKETS_MANAGE') and !currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW') and !currentFeatures.contains('FEATURE_TICKETS_REVIEW')}">
 <div class="app-shell">
     <aside th:replace="~{fragments/layout :: sidebar('tickets', 'pending')}"></aside>
     <div class="main-panel">
@@ -129,7 +129,7 @@
                         </div>
                     </section>
 
-                    <section class="form-card glass-card mb-4">
+                    <section class="form-card glass-card mb-4" th:if="${!agentViewer}">
                         <div class="section-title section-title-icon mb-3"><i class="bi bi-briefcase"></i><span>Service and Vendor Details</span></div>
                         <div class="row g-3">
                             <div class="col-md-6">
