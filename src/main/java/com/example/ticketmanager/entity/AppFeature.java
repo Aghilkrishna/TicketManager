@@ -10,7 +10,7 @@ public enum AppFeature {
     TICKETS_MANAGE("Ticket Management", "Create and edit tickets."),
     TICKETS_CREATE_STANDARD("Create Ticket", "Create standard tickets for internal support operations."),
     TICKETS_CREATE_VENDOR("Create Vendor Ticket", "Create vendor-owned tickets from vendor workspace."),
-    TICKETS_CREATED_VIEW("My Created Tickets", "View tickets created by the current user."),
+    TICKETS_CREATED_VIEW("My Tickets", "View tickets created by or assigned to the current vendor user."),
     TICKETS_REVIEW("Ticket Review", "Review resolved tickets and move them to closed or cancelled."),
     TICKETS_ALL_VIEW("All Tickets View", "View all tickets across the workspace."),
     SITE_VISIT_EDIT("Site Visit Edit", "Update site visit counters and log visit history."),

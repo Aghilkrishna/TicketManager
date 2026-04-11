@@ -43,7 +43,7 @@
             <a class="subnav-item"
                th:if="${currentRoles.contains('ROLE_VENDOR') and currentFeatures.contains('FEATURE_TICKETS_CREATED_VIEW')}"
                th:classappend="${activeSubPage == 'created'} ? ' active'"
-               href="/tickets/created">My Created Tickets</a>
+               href="/tickets/created">My Tickets</a>
             <a class="subnav-item"
                th:if="${!currentRoles.contains('ROLE_VENDOR')}"
                th:classappend="${activeSubPage == 'pending'} ? ' active'"

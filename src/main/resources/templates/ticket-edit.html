@@ -120,7 +120,7 @@
                                 </div>
                             </div>
 
-                            <div class="col-lg-4">
+                            <div class="col-lg-4" th:if="${!agentEditorView}">
                                 <div class="section-title mb-3">Vendor Details</div>
                                 <div class="p-3 rounded-4 border bg-white mb-3" th:if="${vendorOnlyEditor}">
                                     <div class="small text-uppercase text-muted mb-1">Vendor User</div>
@@ -483,24 +483,24 @@ if (canAssignUsers) {
   document.getElementById('assignedSearch').addEventListener('input', debounce(event => searchUsers(
     event.target.value,
     document.getElementById('assignedResults'),
-    user => !hasRole(user, 'ROLE_VENDOR'),
+    user => true,
     user => {
       document.getElementById('assignedSearch').value = `${user.username} (${user.email})`;
       document.getElementById('assignedToId').value = user.id;
     }
   ), 220));
-  const vendorSearch = document.getElementById('vendorSearch');
-  if (vendorSearch) {
-    vendorSearch.addEventListener('input', debounce(event => searchUsers(
-      event.target.value,
-      document.getElementById('vendorResults'),
-      user => hasRole(user, 'ROLE_VENDOR'),
-      user => {
-        vendorSearch.value = `${user.username} (${user.email})`;
-        document.getElementById('vendorUserId').value = user.id;
-      }
-    ), 220));
-  }
+}
+const vendorSearchEdit = document.getElementById('vendorSearch');
+if (vendorSearchEdit) {
+  vendorSearchEdit.addEventListener('input', debounce(event => searchUsers(
+    event.target.value,
+    document.getElementById('vendorResults'),
+    user => hasRole(user, 'ROLE_VENDOR'),
+    user => {
+      vendorSearchEdit.value = `${user.username} (${user.email})`;
+      document.getElementById('vendorUserId').value = user.id;
+    }
+  ), 220));
 }
 
 document.querySelectorAll('.address-part').forEach(field => field.addEventListener('input', updateAddressPreview));

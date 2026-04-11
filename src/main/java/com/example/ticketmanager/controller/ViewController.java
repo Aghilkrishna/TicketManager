@@ -119,8 +119,8 @@ public class ViewController {
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_CREATED_VIEW') and hasAuthority('ROLE_VENDOR')")
     public String createdTickets(Model model) {
         model.addAttribute("ticketTab", "created");
-        model.addAttribute("ticketPageTitle", "My Created Tickets");
-        model.addAttribute("ticketSubtitle", "Tickets created by you");
+        model.addAttribute("ticketPageTitle", "My Tickets");
+        model.addAttribute("ticketSubtitle", "Tickets created by you or assigned to you");
         model.addAttribute("forcedStatuses", java.util.List.of());
         model.addAttribute("assignedOnly", false);
         model.addAttribute("createdOnly", true);

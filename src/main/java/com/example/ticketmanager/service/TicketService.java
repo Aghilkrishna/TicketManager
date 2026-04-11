@@ -276,7 +276,7 @@ public class TicketService {
             return Specification.where(null);
         }
         if (userService.hasRole(user, "ROLE_VENDOR")) {
-            return createdByUserSpecification(user.getId());
+            return vendorVisibleSpecification(user.getId());
         }
         if (createdOnly) {
             return createdByUserSpecification(user.getId());
@@ -293,6 +293,14 @@ public class TicketService {
 
     private Specification<Ticket> assignedToUserSpecification(Long userId) {
         return (root, query, cb) -> cb.equal(root.get("assignedTo").get("id"), userId);
+    }
+
+    private Specification<Ticket> vendorVisibleSpecification(Long userId) {
+        return (root, query, cb) -> cb.or(
+                cb.equal(root.get("createdBy").get("id"), userId),
+                cb.equal(root.get("assignedTo").get("id"), userId),
+                cb.equal(root.get("vendorUser").get("id"), userId)
+        );
     }
 
     private Specification<Ticket> statusesSpecification(Set<TicketStatus> statuses) {
@@ -375,7 +383,9 @@ public class TicketService {
         boolean isAgent = userService.hasRole(user, "ROLE_AGENT");
 
         if (isVendor) {
-            return ticket.getCreatedBy() != null && ticket.getCreatedBy().getId().equals(user.getId());
+            return (ticket.getCreatedBy() != null && ticket.getCreatedBy().getId().equals(user.getId()))
+                    || (ticket.getAssignedTo() != null && ticket.getAssignedTo().getId().equals(user.getId()))
+                    || (ticket.getVendorUser() != null && ticket.getVendorUser().getId().equals(user.getId()));
         }
         
         if (isAgent) {
@@ -465,9 +475,6 @@ public class TicketService {
         } else {
             ticket.setVendorUser(resolveVendor(request.vendorUserId(), actor, vendorActor));
             AppUser assignedUser = request.assignedToId() == null ? null : userService.getById(request.assignedToId());
-            if (assignedUser != null && userService.hasRole(assignedUser, "ROLE_VENDOR")) {
-                throw new AppException(HttpStatus.BAD_REQUEST, "Vendor users cannot be assigned as support agents");
-            }
             ticket.setAssignedTo(assignedUser);
 
             Set<AppUser> serviceUsers = new HashSet<>();
@@ -708,10 +715,8 @@ public class TicketService {
             boolean isAgent = userService.hasRole(user, "ROLE_AGENT");
 
             if (isVendor) {
-                tickets = ticketRepository.findVisibleTicketsForUser(user.getId()).stream()
-                        .filter(ticket -> ticket.getCreatedBy() != null && ticket.getCreatedBy().getId().equals(user.getId()))
-                        .toList();
-            } else 
+                tickets = ticketRepository.findVendorVisibleTickets(user.getId());
+            } else
             if (isAgent) {
                 // Agent users can only see tickets assigned to them
                 tickets = ticketRepository.findAssignedTicketsForUser(user.getId());
@@ -749,11 +754,8 @@ public class TicketService {
             boolean isAgent = userService.hasRole(user, "ROLE_AGENT");
 
             if (isVendor) {
-                tickets = ticketRepository.searchVisibleParentTicketCandidates(user.getId(), value, excludeTicketId, limit)
-                        .stream()
-                        .filter(ticket -> ticket.getCreatedBy() != null && ticket.getCreatedBy().getId().equals(user.getId()))
-                        .toList();
-            } else 
+                tickets = ticketRepository.searchVendorParentTicketCandidates(user.getId(), value, excludeTicketId, limit);
+            } else
             if (isAgent) {
                 // Agent users can only see tickets assigned to them
                 tickets = ticketRepository.searchVisibleParentTicketCandidates(user.getId(), value, excludeTicketId, limit)
@@ -795,6 +797,7 @@ public class TicketService {
         }
         return vendor;
     }
+
 
     private void ensureCanUpdate(Ticket ticket, AppUser actor) {
         if (userService.hasRole(actor, "ROLE_VENDOR") && !ticket.getCreatedBy().getId().equals(actor.getId())) {
