@@ -115,6 +115,38 @@ public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecif
             """)
     java.util.List<Ticket> findVisibleTicketsForUser(@Param("userId") Long userId);
 
+    @Query("""
+            select distinct t from Ticket t
+            left join t.createdBy createdUser
+            left join t.assignedTo assignedUser
+            left join t.vendorUser vendorUser
+            where (createdUser.id = :userId or assignedUser.id = :userId or vendorUser.id = :userId)
+            """)
+    @EntityGraph(attributePaths = {"createdBy", "assignedTo", "serviceUsers"})
+    java.util.List<Ticket> findVendorVisibleTickets(@Param("userId") Long userId);
+
+    @Query("""
+            select distinct t from Ticket t
+            left join t.createdBy createdUser
+            left join t.assignedTo assignedUser
+            left join t.vendorUser vendorUser
+            where (createdUser.id = :userId or assignedUser.id = :userId or vendorUser.id = :userId)
+              and (:excludeTicketId is null or t.id <> :excludeTicketId)
+              and (
+                    lower(str(t.id)) like concat('%', lower(cast(:search as string)), '%')
+                    or lower(t.title) like concat('%', lower(cast(:search as string)), '%')
+                    or lower(coalesce(t.customerName, '')) like concat('%', lower(cast(:search as string)), '%')
+                  )
+            order by t.updatedAt desc
+            """)
+    @EntityGraph(attributePaths = {"createdBy", "assignedTo"})
+    java.util.List<Ticket> searchVendorParentTicketCandidates(
+            @Param("userId") Long userId,
+            @Param("search") String search,
+            @Param("excludeTicketId") Long excludeTicketId,
+            Pageable pageable
+    );
+
     @Query(
             value = """
                     select distinct t from Ticket t

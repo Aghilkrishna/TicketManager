@@ -84,6 +84,19 @@
                             </div>
 
                             <div class="col-lg-4">
+                                <div th:if="${adminTicketScope and !vendorOnlyCreator}">
+                                    <div class="section-title mb-3">Vendor Details</div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Vendor User</label>
+                                        <input id="vendorSearch" class="form-control" placeholder="Search vendor by name, email or mobile">
+                                        <div id="vendorResults" class="autosuggest-panel mt-2" hidden></div>
+                                        <input type="hidden" name="vendorUserId" id="vendorUserId">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Vendor Notes</label>
+                                        <textarea class="form-control" name="vendorNotes" rows="4" maxlength="500" placeholder="Notes about vendor involvement"></textarea>
+                                    </div>
+                                </div>
                                 <div class="section-title mt-4 mb-3">Attachments</div>
                                 <label class="form-label">Related Files</label>
                                 <input class="form-control" type="file" name="files" multiple>
@@ -305,10 +318,22 @@ if (document.getElementById('assignedSearch')) {
   document.getElementById('assignedSearch').addEventListener('input', debounce(event => searchUsers(
     event.target.value,
     document.getElementById('assignedResults'),
-    user => !hasRole(user, 'ROLE_VENDOR'),
+    user => true,
     user => {
       document.getElementById('assignedSearch').value = `${user.username} (${user.email})`;
       document.getElementById('assignedToId').value = user.id;
+    }
+  ), 220));
+}
+const vendorSearchCreate = document.getElementById('vendorSearch');
+if (vendorSearchCreate) {
+  vendorSearchCreate.addEventListener('input', debounce(event => searchUsers(
+    event.target.value,
+    document.getElementById('vendorResults'),
+    user => hasRole(user, 'ROLE_VENDOR'),
+    user => {
+      vendorSearchCreate.value = `${user.username} (${user.email})`;
+      document.getElementById('vendorUserId').value = user.id;
     }
   ), 220));
 }

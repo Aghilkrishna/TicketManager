@@ -483,24 +483,24 @@ if (canAssignUsers) {
   document.getElementById('assignedSearch').addEventListener('input', debounce(event => searchUsers(
     event.target.value,
     document.getElementById('assignedResults'),
-    user => !hasRole(user, 'ROLE_VENDOR'),
+    user => true,
     user => {
       document.getElementById('assignedSearch').value = `${user.username} (${user.email})`;
       document.getElementById('assignedToId').value = user.id;
     }
   ), 220));
-  const vendorSearch = document.getElementById('vendorSearch');
-  if (vendorSearch) {
-    vendorSearch.addEventListener('input', debounce(event => searchUsers(
-      event.target.value,
-      document.getElementById('vendorResults'),
-      user => hasRole(user, 'ROLE_VENDOR'),
-      user => {
-        vendorSearch.value = `${user.username} (${user.email})`;
-        document.getElementById('vendorUserId').value = user.id;
-      }
-    ), 220));
-  }
+}
+const vendorSearchEdit = document.getElementById('vendorSearch');
+if (vendorSearchEdit) {
+  vendorSearchEdit.addEventListener('input', debounce(event => searchUsers(
+    event.target.value,
+    document.getElementById('vendorResults'),
+    user => hasRole(user, 'ROLE_VENDOR'),
+    user => {
+      vendorSearchEdit.value = `${user.username} (${user.email})`;
+      document.getElementById('vendorUserId').value = user.id;
+    }
+  ), 220));
 }
 
 document.querySelectorAll('.address-part').forEach(field => field.addEventListener('input', updateAddressPreview));
