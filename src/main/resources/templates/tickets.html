@@ -22,32 +22,24 @@
                         <span th:text="${currentFeatures.contains('FEATURE_TICKETS_CREATE_VENDOR') and !currentFeatures.contains('FEATURE_TICKETS_CREATE_STANDARD') ? 'Create Vendor Ticket' : 'Create Ticket'}">Create Ticket</span>
                     </a>
                 </div>
-                <div class="toolbar-grid">
-                    <input id="search" class="form-control" placeholder="Search by ID, title, status, priority, assigned user">
-                    <select id="status" class="form-select">
-                        <option value="">All status</option>
-                        <option>LEADS</option><option>OPEN</option><option>SITE_VISITED</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>RESOLVED</option><option>CLOSED</option><option>CANCELLED</option>
-                    </select>
-                    <select id="priority" class="form-select">
-                        <option value="">All priority</option>
-                        <option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option>
-                    </select>
-                    <div th:if="${!currentRoles.contains('ROLE_VENDOR')}">
-                        <input id="vendorSearch" class="form-control" placeholder="Vendor company">
-                        <div id="vendorResults" class="autosuggest-panel mt-2" hidden></div>
-                        <input type="hidden" id="vendorUserId">
+                <div class="toolbar-filters-section">
+                    <h6 class="toolbar-section-title">Filters</h6>
+                    <div class="toolbar-grid">
+                        <input id="search" class="form-control" placeholder="Search by Ticket ID, Type, Title, Priority, Status, Vendor, Created By, Created Date, Scheduled Date, Updated Date, Assigned To, Customer name, Customer mobile">
+                        <select id="status" class="form-select">
+                            <option value="">All status</option>
+                            <option>LEADS</option><option>OPEN</option><option>SITE_VISITED</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>RESOLVED</option><option>CLOSED</option><option>CANCELLED</option>
+                        </select>
+                        <select id="priority" class="form-select">
+                            <option value="">All priority</option>
+                            <option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option>
+                        </select>
+                        <div th:if="${!currentRoles.contains('ROLE_VENDOR')}">
+                            <input id="vendorSearch" class="form-control" placeholder="Vendor company">
+                            <div id="vendorResults" class="autosuggest-panel mt-2" hidden></div>
+                            <input type="hidden" id="vendorUserId">
+                        </div>
                     </div>
-                    <select id="sortBy" class="form-select">
-                        <option value="id">Ticket ID</option>
-                        <option value="title">Title</option>
-                        <option value="serviceType">Service Type</option>
-                        <option value="createdBy">Created By</option>
-                        <option value="status">Status</option>
-                        <option value="priority">Priority</option>
-                        <option value="updatedAt" selected>Last Updated</option>
-                    </select>
-                    <select id="direction" class="form-select"><option value="desc">Descending</option><option value="asc">Ascending</option></select>
-                    <button id="applyFilters" class="btn btn-dark">Apply</button>
                 </div>
             </section>
 
@@ -56,17 +48,44 @@
                     <table class="table align-middle">
                         <thead>
                         <tr>
-                            <th>Ticket ID</th>
-                            <th>Type</th>
+                            <th class="sortable-header" data-sort="id">
+                                Ticket ID
+                                <span class="sort-indicator" id="sort-id"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="serviceType">
+                                Type
+                                <span class="sort-indicator" id="sort-serviceType"></span>
+                            </th>
                             <th>Title</th>
-                            <th>Priority</th>
-                            <th>Status</th>
+                            <th class="sortable-header" data-sort="priority">
+                                Priority
+                                <span class="sort-indicator" id="sort-priority"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="status">
+                                Status
+                                <span class="sort-indicator" id="sort-status"></span>
+                            </th>
                             <th>Vendor</th>
-                            <th>Created By</th>
-                            <th>Created Date</th>
-                            <th>Scheduled Date</th>
-                            <th>Updated Date</th>
-                            <th>Assigned To</th>
+                            <th class="sortable-header" data-sort="createdBy">
+                                Created By
+                                <span class="sort-indicator" id="sort-createdBy"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="createdAt">
+                                Created Date
+                                <span class="sort-indicator" id="sort-createdAt"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="scheduleDate">
+                                Scheduled Date
+                                <span class="sort-indicator" id="sort-scheduleDate"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="updatedAt">
+                                Updated Date
+                                <span class="sort-indicator" id="sort-updatedAt"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="assignedTo">
+                                Assigned To
+                                <span class="sort-indicator" id="sort-assignedTo"></span>
+                            </th>
                             <th class="text-end">Actions</th>
                         </tr>
                         </thead>
@@ -198,8 +217,8 @@ async function loadTickets() {
     statuses: document.getElementById('status').value || forcedStatuses.join(','),
     priority: document.getElementById('priority').value,
     vendorUserId: document.getElementById('vendorUserId').value,
-    sortBy: document.getElementById('sortBy').value,
-    direction: document.getElementById('direction').value
+    sortBy: currentSortBy,
+    direction: currentDirection
   });
   const res = await fetch('/api/tickets?' + params.toString());
   const data = await res.json();
@@ -232,13 +251,59 @@ async function loadTickets() {
   renderPagination(data);
 }
 
+let currentSortBy = 'updatedAt';
+let currentDirection = 'desc';
+
+function updateSortIndicators() {
+  // Clear all indicators
+  document.querySelectorAll('.sort-indicator').forEach(indicator => {
+    indicator.textContent = '';
+  });
+  
+  // Set current sort indicator
+  const currentIndicator = document.getElementById(`sort-${currentSortBy}`);
+  if (currentIndicator) {
+    currentIndicator.textContent = currentDirection === 'asc' ? ' ↑' : ' ↓';
+  }
+}
+
+function handleHeaderSort(sortField) {
+  if (currentSortBy === sortField) {
+    // Toggle direction if same field
+    currentDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    // New field, default to desc
+    currentSortBy = sortField;
+    currentDirection = 'desc';
+  }
+  
+  currentPage = 0;
+  updateSortIndicators();
+  loadTickets();
+}
+
+// Add click handlers to sortable headers
+document.querySelectorAll('.sortable-header').forEach(header => {
+  header.addEventListener('click', () => {
+    const sortField = header.dataset.sort;
+    if (sortField) {
+      handleHeaderSort(sortField);
+    }
+  });
+  header.style.cursor = 'pointer';
+});
+
 if (forcedStatuses.length === 1) {
   document.getElementById('status').value = forcedStatuses[0];
 }
-document.getElementById('applyFilters').addEventListener('click', () => {
+
+// Initialize sort indicators
+updateSortIndicators();
+
+document.getElementById('search').addEventListener('input', debounce(event => {
   currentPage = 0;
   loadTickets();
-});
+}, 400));
 document.getElementById('status').addEventListener('change', () => {
   currentPage = 0;
   loadTickets();

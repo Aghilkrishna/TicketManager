@@ -382,7 +382,7 @@ public class TicketService {
             var assignedTo = root.join("assignedTo", JoinType.LEFT);
             var serviceUsers = root.join("serviceUsers", JoinType.LEFT);
             return cb.or(
-                    cb.like(root.get("id").as(String.class), likeValue),
+                    cb.like(cb.toString(root.get("id")), likeValue),
                     cb.like(cb.lower(root.get("title")), likeValue),
                     cb.like(cb.lower(root.get("description")), likeValue),
                     cb.like(cb.lower(createdBy.get("username")), likeValue),
