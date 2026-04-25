@@ -60,7 +60,7 @@ textarea.form-control[readonly]::placeholder {
 }
 
 .sidebar {
-    width: 292px;
+    width: 271px;
     padding: 1.5rem 1.25rem;
     background: linear-gradient(180deg, #0f172a, #132238);
     color: #e2e8f0;
