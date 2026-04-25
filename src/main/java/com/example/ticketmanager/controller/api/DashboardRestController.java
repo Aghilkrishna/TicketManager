@@ -33,7 +33,7 @@ public class DashboardRestController {
     @GetMapping("/my-ticket-status")
     public Map<String, Long> myTicketStatus(Principal principal) {
         com.example.ticketmanager.entity.AppUser user = userService.getByEmail(principal.getName());
-        boolean isVendor = userService.hasRole(principal.getName(), "ROLE_VENDOR");
+        boolean isVendor = userService.hasRole(user, "ROLE_VENDOR");  // use loaded user, not email string
 
         List<Object[]> rows = isVendor
                 ? ticketRepository.countCreatedByStatus(user.getId())

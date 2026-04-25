@@ -10,8 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -27,7 +25,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     public static final String AUTH_COOKIE = "TM_TOKEN";
 
     private final JwtService jwtService;
-    private final UserDetailsService userDetailsService;
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        if (uri == null || uri.isBlank()) {
+            return false;
+        }
+        return uri.startsWith("/css/")
+                || uri.startsWith("/js/")
+                || uri.startsWith("/images/")
+                || uri.startsWith("/webjars/")
+                || uri.startsWith("/api/auth/")
+                || uri.startsWith("/api/public/")
+                || uri.equals("/")
+                || uri.equals("/login")
+                || uri.equals("/register")
+                || uri.equals("/vendor/login")
+                || uri.equals("/vendor/register")
+                || uri.equals("/verify-email")
+                || uri.equals("/reset-password")
+                || uri.startsWith("/ws/");
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -38,14 +57,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             log.trace("JWT token found in request: {}", request.getRequestURI());
             
             if (jwtService.isValid(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
+                // The JWT is signed with the server secret and is not expired.
+                // It already carries the complete authority set (ROLE_xxx + FEATURE_xxx),
+                // so no database round-trip is needed to authenticate the request.
                 AppUserPrincipal principal = jwtService.extractPrincipal(token);
-                log.debug("JWT authentication successful for user: {}, uri: {}", 
+                log.debug("JWT authentication successful for user: {}, uri: {}",
                         principal.getUsername(), request.getRequestURI());
 
-                UserDetails liveUserDetails = userDetailsService.loadUserByUsername(principal.getUsername());
-
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        liveUserDetails, null, liveUserDetails.getAuthorities()
+                        principal, null, principal.getAuthorities()
                 );
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);

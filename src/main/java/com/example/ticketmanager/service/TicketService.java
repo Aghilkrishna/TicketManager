@@ -98,7 +98,8 @@ public class TicketService {
                                              Long assignedToId, String search, int page, int size,
                                              String sortBy, String direction) {
         AppUser user = userService.getByEmail(username);
-        boolean effectiveAdminScope = adminScope && canManageAllTickets(username);
+        // Use already-loaded user to avoid a second getByEmail inside canManageAllTickets
+        boolean effectiveAdminScope = adminScope && userService.hasAuthority(user, "FEATURE_TICKETS_ALL_VIEW");
         Sort sort = Sort.by("desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC,
                 mapSortProperty(sortBy));
         Pageable pageable = PageRequest.of(page, size, sort);
@@ -112,8 +113,13 @@ public class TicketService {
                 .and(assignedToSpecification(assignedToId))
                 .and(searchSpecification(searchFilter));
 
+        // Pre-compute per-viewer constants once so the mapping lambda
+        // does not call getByEmail() for every ticket in the page (N+1 fix).
+        final boolean isVendorViewer = userService.hasRole(user, "ROLE_VENDOR");
+        final Long viewerUserId = user.getId();
+
         return ticketRepository.findAll(spec, pageable)
-                .map(ticket -> toListSummary(ticket, username));
+                .map(ticket -> toListSummary(ticket, isVendorViewer, viewerUserId));
     }
 
     @Transactional(readOnly = true)
@@ -576,6 +582,21 @@ public class TicketService {
 
     public AuthDtos.TicketSummary toListSummary(Ticket ticket, String viewerUsername) {
         boolean vendorRestrictedView = viewerUsername != null && isVendorRestrictedView(ticket, viewerUsername);
+        return buildListSummary(ticket, vendorRestrictedView);
+    }
+
+    /**
+     * Efficient list-row mapping that accepts pre-computed viewer flags,
+     * avoiding a getByEmail() DB round-trip for every ticket in the page.
+     */
+    private AuthDtos.TicketSummary toListSummary(Ticket ticket, boolean isVendorViewer, Long viewerUserId) {
+        boolean vendorRestrictedView = isVendorViewer
+                && ticket.getCreatedBy() != null
+                && ticket.getCreatedBy().getId().equals(viewerUserId);
+        return buildListSummary(ticket, vendorRestrictedView);
+    }
+
+    private AuthDtos.TicketSummary buildListSummary(Ticket ticket, boolean vendorRestrictedView) {
         return new AuthDtos.TicketSummary(
                 ticket.getId(),
                 ticket.getTitle(),
