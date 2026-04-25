@@ -35,4 +35,10 @@ public interface UserRepository extends JpaRepository<AppUser, Long> {
     /** Count active users grouped by role name. Used for the admin dashboard User Count chart. */
     @Query("select r.name, count(distinct u.id) from AppUser u join u.roles r where r.active = true and u.enabled = true group by r.name")
     List<Object[]> countUsersByRole();
+
+    @Query("select count(distinct u.id) from AppUser u join u.roles r where u.enabled = true and r.active = true and r.name in :roleNames")
+    long countEnabledUsersByActiveRoleNames(List<String> roleNames);
+
+    @Query("select distinct u from AppUser u join u.roles r where u.enabled = true and r.active = true and r.name in :roleNames")
+    List<AppUser> findEnabledUsersByActiveRoleNames(List<String> roleNames);
 }

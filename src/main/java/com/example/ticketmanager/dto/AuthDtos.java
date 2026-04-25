@@ -155,6 +155,7 @@ public final class AuthDtos {
             String parentTicketTitle,
             Long vendorUserId,
             String vendorName,
+            String vendorCompanyName,
             String vendorEmail,
             String vendorPhone,
             String vendorNotes,
@@ -183,7 +184,17 @@ public final class AuthDtos {
             Set<String> serviceUsers,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
-            List<String> attachmentNames
+            List<String> attachmentNames,
+            boolean hasAttachments,
+            List<TicketAttachmentInfo> attachments
+    ) {
+    }
+
+    public record TicketAttachmentInfo(
+            Long id,
+            String fileName,
+            String contentType,
+            long fileSize
     ) {
     }
 

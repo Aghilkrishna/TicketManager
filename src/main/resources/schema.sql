@@ -18,6 +18,11 @@ CREATE TABLE IF NOT EXISTS email_notification_settings (
     action_name VARCHAR(60) PRIMARY KEY,
     enabled BOOLEAN NOT NULL DEFAULT TRUE
 );
+ALTER TABLE email_notification_settings ADD COLUMN IF NOT EXISTS email_enabled BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE email_notification_settings ADD COLUMN IF NOT EXISTS sms_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+UPDATE email_notification_settings
+SET email_enabled = enabled
+WHERE email_enabled IS DISTINCT FROM enabled;
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(80);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(80);

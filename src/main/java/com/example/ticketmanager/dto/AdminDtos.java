@@ -72,13 +72,15 @@ public final class AdminDtos {
             String action,
             String label,
             String description,
-            boolean enabled
+            boolean emailEnabled,
+            boolean smsEnabled
     ) {
     }
 
     public record EmailNotificationSettingUpdateItem(
             String action,
-            boolean enabled
+            boolean emailEnabled,
+            boolean smsEnabled
     ) {
     }
 

@@ -301,4 +301,24 @@ function initAppShell() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', initAppShell);
+function initDefaultDateFields() {
+  const now = new Date();
+  const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  const currentDate = localNow.toISOString().slice(0, 10);
+  const currentDateTime = localNow.toISOString().slice(0, 16);
+  document.querySelectorAll('input[type="date"]').forEach(input => {
+    if (!input.value) {
+      input.value = currentDate;
+    }
+  });
+  document.querySelectorAll('input[type="datetime-local"]').forEach(input => {
+    if (!input.value) {
+      input.value = currentDateTime;
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initAppShell();
+  initDefaultDateFields();
+});

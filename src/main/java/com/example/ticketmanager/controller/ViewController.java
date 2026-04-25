@@ -105,7 +105,7 @@ public class ViewController {
         model.addAttribute("ticketTab", "pending");
         model.addAttribute("ticketPageTitle", "My Pending Tickets");
         model.addAttribute("ticketSubtitle", "Open, in-progress, and on-hold tickets assigned to you");
-        model.addAttribute("forcedStatuses", java.util.List.of("OPEN", "IN_PROGRESS", "ON_HOLD"));
+        model.addAttribute("forcedStatuses", java.util.List.of("OPEN", "SITE_VISITED", "IN_PROGRESS", "ON_HOLD"));
         model.addAttribute("assignedOnly", true);
         model.addAttribute("createdOnly", false);
         model.addAttribute("adminScope", false);

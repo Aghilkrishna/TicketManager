@@ -16,8 +16,13 @@
             <section class="toolbar-card glass-card mb-4">
                 <div class="toolbar-grid">
                     <input id="adminSearch" class="form-control" placeholder="Search title or description">
-                    <select id="adminStatus" class="form-select"><option value="">All status</option><option>OPEN</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>RESOLVED</option><option>CLOSED</option><option>CANCELLED</option></select>
+                    <select id="adminStatus" class="form-select"><option value="">All status</option><option>LEADS</option><option>OPEN</option><option>SITE_VISITED</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>RESOLVED</option><option>CLOSED</option><option>CANCELLED</option></select>
                     <select id="adminPriority" class="form-select"><option value="">All priority</option><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select>
+                    <div>
+                        <input id="adminVendorSearch" class="form-control" placeholder="Vendor company">
+                        <div id="adminVendorResults" class="autosuggest-panel mt-2" hidden></div>
+                        <input type="hidden" id="adminVendorUserId">
+                    </div>
                     <select id="adminSortBy" class="form-select"><option value="updatedAt">Last Updated</option><option value="createdAt">Created</option><option value="scheduleDate">Schedule Date</option><option value="serviceType">Service Type</option><option value="createdBy">Created By</option></select>
                     <select id="adminDirection" class="form-select"><option value="desc">Descending</option><option value="asc">Ascending</option></select>
                     <button id="adminApply" class="btn btn-dark">Apply</button>
@@ -32,14 +37,25 @@
                     <table class="table align-middle">
                         <thead>
                         <tr>
-                            <th>S.No</th><th>Title</th><th>Type</th><th>Created By</th><th>Description</th><th>Schedule Date</th><th>Status</th><th>Priority</th><th>Assigned Users</th><th class="text-end">Actions</th>
+                            <th>Ticket ID</th><th>Type</th><th>Title</th><th>Priority</th><th>Status</th><th>Vendor</th><th>Created By</th><th>Created Date</th><th>Scheduled Date</th><th>Updated Date</th><th>Assigned To</th><th class="text-end">Actions</th>
                         </tr>
                         </thead>
                         <tbody id="adminTicketTable"></tbody>
                     </table>
                 </div>
                 <div class="pagination-wrap">
-                    <div id="adminPaginationSummary" class="text-muted small"></div>
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div id="adminPaginationSummary" class="text-muted small"></div>
+                        <div class="d-flex align-items-center gap-2">
+                            <label class="small text-muted" for="adminPageSize">Records per page</label>
+                            <select id="adminPageSize" class="form-select form-select-sm" style="width: auto;">
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100" selected>100</option>
+                                <option value="200">200</option>
+                            </select>
+                        </div>
+                    </div>
                     <div id="adminPaginationList" class="pagination-list"></div>
                 </div>
             </section>
@@ -51,15 +67,71 @@
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 <script>
 let adminPage = 0;
-const adminPageSize = 10;
+let adminPageSize = 100;
 const refreshAdminTicketsDebounced = debounce(() => loadAdminTickets(), 400);
 let lastAdminTicketRefreshToastAt = 0;
+
+function escapeAdminHtml(value) {
+  return (value || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+function hasAdminRole(user, roleName) {
+  return Array.isArray(user.roles) && user.roles.includes(roleName);
+}
+
+function vendorSuggestionMarkup(user) {
+  const company = user.companyName ? escapeAdminHtml(user.companyName) : escapeAdminHtml(user.username || 'Vendor');
+  const subtitle = escapeAdminHtml(user.email || user.phone || '');
+  return `
+    <button type="button" class="autosuggest-item" data-id="${user.id}">
+      <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${company}" loading="lazy" decoding="async">
+      <div class="autosuggest-body">
+        <div class="autosuggest-title-row"><span class="autosuggest-title">${company}</span></div>
+        <div class="autosuggest-subtitle">${subtitle}</div>
+      </div>
+      <span class="autosuggest-action" aria-hidden="true"><i class="bi bi-building"></i></span>
+    </button>`;
+}
+
+function showAdminSuggestionState(target, content, visible = true) {
+  target.innerHTML = content;
+  target.hidden = !visible;
+}
+
+async function searchAdminUsers(query, target, filterFn, onSelect) {
+  if (!query || query.trim().length < 2) {
+    document.getElementById('adminVendorUserId').value = '';
+    showAdminSuggestionState(target, '', false);
+    return;
+  }
+  showAdminSuggestionState(target, '<div class="autosuggest-empty autosuggest-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Searching vendors...</span></div>');
+  const res = await fetch('/api/users/search?query=' + encodeURIComponent(query));
+  const users = (await res.json()).filter(filterFn);
+  showAdminSuggestionState(target, users.map(vendorSuggestionMarkup).join('') || '<div class="autosuggest-empty">No matching vendors found.</div>', true);
+  target.querySelectorAll('button[data-id]').forEach(button => button.addEventListener('click', () => {
+    const user = users.find(item => item.id === Number(button.dataset.id));
+    onSelect(user);
+    showAdminSuggestionState(target, '', false);
+  }));
+}
+
+function formatAdminDateTime(value) {
+  if (!value) return '-';
+  return new Date(value).toLocaleString();
+}
+
+function formatAdminDate(value) {
+  if (!value) return '-';
+  return new Date(value + 'T00:00:00').toLocaleDateString();
+}
 
 function renderAdminPagination(data) {
   const list = document.getElementById('adminPaginationList');
   const summary = document.getElementById('adminPaginationSummary');
   list.innerHTML = '';
-  summary.textContent = `Showing page ${data.number + 1} of ${Math.max(data.totalPages, 1)} · ${data.totalElements} tickets`;
+  const start = data.totalElements === 0 ? 0 : (data.number * data.size) + 1;
+  const end = Math.min((data.number + 1) * data.size, data.totalElements);
+  summary.textContent = `Showing ${start}-${end} of ${data.totalElements} tickets · Page ${data.number + 1} of ${Math.max(data.totalPages, 1)}`;
   const addButton = (label, page, disabled = false, active = false) => {
     const button = document.createElement('button');
     button.className = 'page-link-btn' + (active ? ' active' : '');
@@ -87,6 +159,7 @@ async function loadAdminTickets() {
     search: document.getElementById('adminSearch').value,
     status: document.getElementById('adminStatus').value,
     priority: document.getElementById('adminPriority').value,
+    vendorUserId: document.getElementById('adminVendorUserId').value,
     sortBy: document.getElementById('adminSortBy').value,
     direction: document.getElementById('adminDirection').value
   });
@@ -105,19 +178,21 @@ async function loadAdminTickets() {
   const data = await res.json();
   const table = document.getElementById('adminTicketTable');
   table.innerHTML = '';
-  (data.content || []).forEach((ticket, index) => {
-    const assignedUsers = [ticket.assignedTo, ...(ticket.serviceUsers || [])].filter(Boolean).join(', ');
+  (data.content || []).forEach(ticket => {
+    const assignedUser = ticket.assignedTo || 'Unassigned';
     table.innerHTML += `
       <tr>
-        <td>${adminPage * adminPageSize + index + 1}</td>
-        <td><a class="fw-semibold text-decoration-none" href="/tickets/view?id=${ticket.id}">${ticket.title}</a></td>
+        <td>#${ticket.id}</td>
         <td>${ticket.serviceTypeLabel || '-'}</td>
-        <td>${ticket.createdBy || '-'}</td>
-        <td><div class="text-muted small">${ticket.description.slice(0, 100)}</div></td>
-        <td>${ticket.scheduleDate || '-'}</td>
-        <td><span class="status-pill ${ticket.status}">${ticket.status}</span></td>
+        <td><a class="fw-semibold text-decoration-none" href="/tickets/view?id=${ticket.id}">${ticket.title}${ticket.hasAttachments ? ' <i class="bi bi-paperclip ms-1 text-muted" title="Attachments available"></i>' : ''}</a></td>
         <td><span class="priority-pill ${ticket.priority}">${ticket.priority}</span></td>
-        <td>${assignedUsers || 'Unassigned'}</td>
+        <td><span class="status-pill ${ticket.status}">${ticket.status}</span></td>
+        <td>${ticket.vendorCompanyName || '-'}</td>
+        <td>${ticket.createdBy || '-'}</td>
+        <td>${formatAdminDateTime(ticket.createdAt)}</td>
+        <td>${formatAdminDate(ticket.scheduleDate)}</td>
+        <td>${formatAdminDateTime(ticket.updatedAt)}</td>
+        <td>${assignedUser}</td>
         <td class="text-end">
           <a class="btn btn-sm btn-outline-secondary" href="/tickets/view?id=${ticket.id}" title="View"><i class="bi bi-eye"></i></a>
           <a class="btn btn-sm btn-outline-primary" href="/tickets/edit?id=${ticket.id}" title="Update"><i class="bi bi-pencil"></i></a>
@@ -145,6 +220,30 @@ document.getElementById('adminApply').addEventListener('click', () => {
   adminPage = 0;
   loadAdminTickets();
 });
+document.getElementById('adminStatus').addEventListener('change', () => {
+  adminPage = 0;
+  loadAdminTickets();
+});
+document.getElementById('adminPriority').addEventListener('change', () => {
+  adminPage = 0;
+  loadAdminTickets();
+});
+document.getElementById('adminPageSize').addEventListener('change', event => {
+  adminPageSize = Number(event.target.value) || 100;
+  adminPage = 0;
+  loadAdminTickets();
+});
+document.getElementById('adminVendorSearch').addEventListener('input', debounce(event => searchAdminUsers(
+  event.target.value,
+  document.getElementById('adminVendorResults'),
+  user => hasAdminRole(user, 'ROLE_VENDOR'),
+  user => {
+    document.getElementById('adminVendorSearch').value = user.companyName || user.username;
+    document.getElementById('adminVendorUserId').value = user.id;
+    adminPage = 0;
+    loadAdminTickets();
+  }
+), 220));
 
 loadAdminTickets();
 

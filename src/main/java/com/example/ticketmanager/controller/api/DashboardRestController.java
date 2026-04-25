@@ -14,6 +14,7 @@ import java.security.Principal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/dashboard")
@@ -69,6 +70,30 @@ public class DashboardRestController {
         return result;
     }
 
+    @PreAuthorize("hasAuthority('FEATURE_DASHBOARD_ACCESS')")
+    @GetMapping("/metrics")
+    public Map<String, Object> metrics(Principal principal) {
+        var user = userService.getByEmail(principal.getName());
+        boolean vendor = userService.hasRole(user, "ROLE_VENDOR");
+        boolean allTicketScope = userService.hasAuthority(user, "FEATURE_DASHBOARD_ALL_TICKET_STATUS");
+
+        List<Object[]> rows = allTicketScope
+                ? ticketRepository.countAllByStatus()
+                : (vendor ? ticketRepository.countCreatedByStatus(user.getId()) : ticketRepository.countAssignedByStatus(user.getId()));
+
+        Map<String, Long> statusCounts = buildStatusMap(rows);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("statusCounts", statusCounts);
+        result.put("totalTickets", statusCounts.values().stream().mapToLong(Long::longValue).sum());
+        result.put("activeUsers", vendor ? null : userRepository.countEnabledUsersByActiveRoleNames(List.of("ROLE_ADMIN", "ROLE_MANAGER", "ROLE_AGENT")));
+        result.put("activeVendors", vendor ? null : userRepository.countEnabledUsersByActiveRoleNames(List.of("ROLE_VENDOR")));
+        result.put("scope", allTicketScope ? "all" : "mine");
+        result.put("visibleCards", vendor
+                ? Set.of("enquiry", "open", "inProgress", "onHold", "resolved", "closed", "cancelled", "totalTickets")
+                : Set.of("enquiry", "open", "inProgress", "onHold", "resolved", "closed", "cancelled", "totalTickets", "activeUsers", "activeVendors"));
+        return result;
+    }
+
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
@@ -92,4 +117,3 @@ public class DashboardRestController {
         return result;
     }
 }
-

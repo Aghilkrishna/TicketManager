@@ -29,6 +29,8 @@
                 </div>
             </section>
 
+            <section class="metric-grid dashboard-metric-grid mb-4" id="dashboardMetrics"></section>
+
             <!-- Charts grid — each section gated by its role-feature -->
             <div class="dashboard-charts-grid">
 
@@ -77,7 +79,9 @@
 <script th:src="@{/js/app.js}"></script>
 <script>
 const KNOWN_COLORS = {
+  STATUS_LEADS: '#A855F7',
   STATUS_OPEN: '#0072B2',
+  STATUS_SITE_VISITED: '#0F766E',
   STATUS_IN_PROGRESS: '#E69F00',
   STATUS_ON_HOLD: '#CC79A7',
   STATUS_RESOLVED: '#009E73',
@@ -138,6 +142,56 @@ function makeDoughnut(canvas, labels, values, colors) {
 }
 
 let myStatusChart = null, allStatusChart = null, userCountChart = null;
+
+const DASHBOARD_METRICS = [
+  {key: 'enquiry', title: 'Enquiry', icon: 'bi bi-megaphone', statusKey: 'LEADS', tone: 'metric-tone-enquiry'},
+  {key: 'open', title: 'Open Ticket', icon: 'bi bi-folder2-open', statusKey: 'OPEN', tone: 'metric-tone-open'},
+  {key: 'inProgress', title: 'Inprogress Ticket', icon: 'bi bi-tools', statusKey: 'IN_PROGRESS', tone: 'metric-tone-progress'},
+  {key: 'onHold', title: 'Onhold Ticket', icon: 'bi bi-pause-circle', statusKey: 'ON_HOLD', tone: 'metric-tone-hold'},
+  {key: 'resolved', title: 'Resolved Ticket', icon: 'bi bi-check2-circle', statusKey: 'RESOLVED', tone: 'metric-tone-resolved'},
+  {key: 'closed', title: 'Closed Ticket', icon: 'bi bi-lock', statusKey: 'CLOSED', tone: 'metric-tone-closed'},
+  {key: 'cancelled', title: 'Cancelled Ticket', icon: 'bi bi-x-circle', statusKey: 'CANCELLED', tone: 'metric-tone-cancelled'},
+  {key: 'totalTickets', title: 'Total Ticket', icon: 'bi bi-ticket-detailed', valueKey: 'totalTickets', tone: 'metric-tone-total'},
+  {key: 'activeUsers', title: 'Active Users', icon: 'bi bi-people', valueKey: 'activeUsers', tone: 'metric-tone-users'},
+  {key: 'activeVendors', title: 'Active Vendors', icon: 'bi bi-person-badge', valueKey: 'activeVendors', tone: 'metric-tone-vendors'}
+];
+
+function formatMetricValue(value) {
+  const numericValue = Number(value || 0);
+  return new Intl.NumberFormat().format(numericValue);
+}
+
+function renderMetricCards(payload) {
+  const container = document.getElementById('dashboardMetrics');
+  if (!container) return;
+  const statusCounts = payload.statusCounts || {};
+  const visibleCards = new Set(payload.visibleCards || DASHBOARD_METRICS.map(metric => metric.key));
+  container.innerHTML = DASHBOARD_METRICS
+    .filter(metric => visibleCards.has(metric.key))
+    .map(metric => {
+      const value = metric.statusKey ? (statusCounts[metric.statusKey] ?? 0) : (payload[metric.valueKey] ?? 0);
+      return `
+        <article class="metric-card dashboard-metric-card ${metric.tone}">
+          <div class="dashboard-metric-icon"><i class="${metric.icon}"></i></div>
+          <div class="dashboard-metric-copy">
+            <div class="dashboard-metric-title">${metric.title}</div>
+            <div class="metric-value">${formatMetricValue(value)}</div>
+          </div>
+        </article>`;
+    })
+    .join('');
+}
+
+async function loadDashboardMetrics() {
+  const container = document.getElementById('dashboardMetrics');
+  if (!container) return;
+  try {
+    const res = await fetch('/api/dashboard/metrics');
+    if (!res.ok) return;
+    const data = await res.json();
+    renderMetricCards(data);
+  } catch (e) { console.warn('Dashboard metrics load failed', e); }
+}
 
 async function loadMyTicketStatus() {
   const canvas = document.getElementById('myStatusChart');
@@ -208,11 +262,11 @@ async function loadUserCount() {
 }
 
 async function refreshAll() {
-  await Promise.all([loadMyTicketStatus(), loadAllTicketStatus(), loadUserCount()]);
+  await Promise.all([loadDashboardMetrics(), loadMyTicketStatus(), loadAllTicketStatus(), loadUserCount()]);
 }
 
 refreshAll();
-setInterval(refreshAll, 30000);
+setInterval(refreshAll, 10000);
 </script>
 </body>
 </html>

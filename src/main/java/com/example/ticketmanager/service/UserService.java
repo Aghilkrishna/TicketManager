@@ -235,6 +235,11 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
+    public List<AppUser> getAdmins() {
+        return userRepository.findEnabledUsersByActiveRoleNames(List.of("ROLE_ADMIN"));
+    }
+
+    @Transactional(readOnly = true)
     public Page<AdminDtos.UserSummary> listUsers(String query, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "username"));
         String search = query == null ? "" : query.trim();

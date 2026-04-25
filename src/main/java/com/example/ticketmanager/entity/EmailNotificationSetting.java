@@ -21,6 +21,9 @@ public class EmailNotificationSetting {
     @Column(name = "action_name", nullable = false, length = 60)
     private EmailNotificationAction action;
 
-    @Column(nullable = false)
-    private boolean enabled = true;
+    @Column(name = "email_enabled", nullable = false)
+    private boolean emailEnabled = true;
+
+    @Column(name = "sms_enabled", nullable = false)
+    private boolean smsEnabled = false;
 }

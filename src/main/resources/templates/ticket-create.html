@@ -37,9 +37,10 @@
                                         <label class="form-label">Type of Service</label>
                                         <select class="form-select" name="serviceType">
                                             <option value="">Select service type</option>
+                                            <option value="LEADS">Leads</option>
                                             <option value="INSTALLATION">Installation</option>
                                             <option value="REPAIR">Repair</option>
-                                            <option value="MAINTENANCE">Maintenance</option>
+                                            <option value="MAINTENANCE">AMC</option>
                                             <option value="SITE_VISIT">Site Visit</option>
                                         </select>
                                     </div>
@@ -50,7 +51,9 @@
                                     <div class="col-md-4">
                                         <label class="form-label">Status</label>
                                         <select class="form-select" name="status">
+                                            <option value="LEADS">Leads</option>
                                             <option selected value="OPEN">Open</option>
+                                            <option value="SITE_VISITED">Site Visited</option>
                                             <option value="IN_PROGRESS">In Progress</option>
                                             <option value="ON_HOLD">On Hold</option>
                                             <option value="RESOLVED">Resolved</option>
@@ -100,6 +103,7 @@
                                 <div class="section-title mt-4 mb-3">Attachments</div>
                                 <label class="form-label">Related Files</label>
                                 <input class="form-control" type="file" name="files" multiple>
+                                <div id="selectedAttachments" class="d-flex flex-wrap gap-2 mt-3"></div>
                                 <div class="small text-muted mt-2">Attach quotations, photos, checklists, or any supporting documents.</div>
                             </div>
                         </div>
@@ -233,14 +237,16 @@ function formatRoleLabel(roleName) {
 }
 
 function userSuggestionMarkup(user) {
+  const title = escapeHtml(user.companyName || user.username);
+  const subtitle = escapeHtml(user.companyName ? `${user.username} · ${user.email || ''}` : 'Select user');
   return `
     <button type="button" class="autosuggest-item" data-id="${user.id}">
       <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${escapeHtml(user.username || 'User')}" loading="lazy" decoding="async">
       <div class="autosuggest-body">
         <div class="autosuggest-title-row">
-          <span class="autosuggest-title">${escapeHtml(user.username)}</span>
+          <span class="autosuggest-title">${title}</span>
         </div>
-        <div class="autosuggest-subtitle">Select user</div>
+        <div class="autosuggest-subtitle">${subtitle}</div>
       </div>
       <span class="autosuggest-action" aria-hidden="true"><i class="bi bi-arrow-up-right"></i></span>
     </button>`;
@@ -267,6 +273,13 @@ function parentTicketSuggestionMarkup(ticket) {
       </div>
       <span class="autosuggest-action" aria-hidden="true"><i class="bi bi-diagram-3"></i></span>
     </button>`;
+}
+
+function selectedFileMarkup(file, objectUrl) {
+  return `
+    <a class="selected-user-chip text-decoration-none" href="${objectUrl}" target="_blank" rel="noopener noreferrer">
+      <i class="bi bi-paperclip me-1"></i>${escapeHtml(file.name)}
+    </a>`;
 }
 
 function showSuggestionState(target, content, visible = true) {
@@ -332,10 +345,18 @@ if (vendorSearchCreate) {
     document.getElementById('vendorResults'),
     user => hasRole(user, 'ROLE_VENDOR'),
     user => {
-      vendorSearchCreate.value = `${user.username} (${user.email})`;
+      vendorSearchCreate.value = user.companyName || user.username;
       document.getElementById('vendorUserId').value = user.id;
     }
   ), 220));
+}
+const fileInput = document.querySelector('input[name="files"]');
+if (fileInput) {
+  fileInput.addEventListener('change', event => {
+    const container = document.getElementById('selectedAttachments');
+    const files = Array.from(event.target.files || []);
+    container.innerHTML = files.map(file => selectedFileMarkup(file, URL.createObjectURL(file))).join('');
+  });
 }
 document.getElementById('parentTicketSearch').addEventListener('input', debounce(event => searchParentTickets(event.target.value), 220));
 

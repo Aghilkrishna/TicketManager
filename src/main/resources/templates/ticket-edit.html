@@ -67,9 +67,10 @@
                                         <label class="form-label">Type of Service</label>
                                         <select class="form-select" name="serviceType">
                                             <option value="" th:selected="${ticket.serviceType == null}">Select service type</option>
+                                            <option value="LEADS" th:selected="${ticket.serviceType == 'LEADS'}">Leads</option>
                                             <option value="INSTALLATION" th:selected="${ticket.serviceType == 'INSTALLATION'}">Installation</option>
                                             <option value="REPAIR" th:selected="${ticket.serviceType == 'REPAIR'}">Repair</option>
-                                            <option value="MAINTENANCE" th:selected="${ticket.serviceType == 'MAINTENANCE'}">Maintenance</option>
+                                            <option value="MAINTENANCE" th:selected="${ticket.serviceType == 'MAINTENANCE'}">AMC</option>
                                             <option value="SITE_VISIT" th:selected="${ticket.serviceType == 'SITE_VISIT'}">Site Visit</option>
                                         </select>
                                     </div>
@@ -90,7 +91,9 @@
                                     <div class="col-md-4">
                                         <label class="form-label">Status</label>
                                         <select class="form-select" name="status" id="ticketStatus">
+                                            <option value="LEADS" th:selected="${ticket.status == 'LEADS'}">Leads</option>
                                             <option value="OPEN" th:selected="${ticket.status == 'OPEN'}">Open</option>
+                                            <option value="SITE_VISITED" th:selected="${ticket.status == 'SITE_VISITED'}">Site Visited</option>
                                             <option value="IN_PROGRESS" th:selected="${ticket.status == 'IN_PROGRESS'}">In Progress</option>
                                             <option value="ON_HOLD" th:selected="${ticket.status == 'ON_HOLD'}">On Hold</option>
                                             <option value="RESOLVED" th:selected="${ticket.status == 'RESOLVED'}">Resolved</option>
@@ -142,8 +145,13 @@
                                 <div class="mt-3">
                                     <div class="small text-uppercase text-muted mb-2">Existing Files</div>
                                     <div class="d-flex flex-wrap gap-2">
-                                        <span class="selected-user-chip" th:each="attachment : ${ticket.attachmentNames}" th:text="${attachment}">file.pdf</span>
-                                        <span class="text-muted" th:if="${#lists.isEmpty(ticket.attachmentNames)}">No attachments uploaded.</span>
+                                        <a class="selected-user-chip text-decoration-none"
+                                           th:each="attachment : ${ticket.attachments}"
+                                           th:href="@{/api/tickets/{ticketId}/attachments/{attachmentId}(ticketId=${ticket.id},attachmentId=${attachment.id})}"
+                                           th:text="${attachment.fileName}"
+                                           target="_blank"
+                                           rel="noopener noreferrer">file.pdf</a>
+                                        <span class="text-muted" th:if="${#lists.isEmpty(ticket.attachments)}">No attachments uploaded.</span>
                                     </div>
                                 </div>
                             </div>
@@ -301,14 +309,16 @@ function formatRoleLabel(roleName) {
 }
 
 function userSuggestionMarkup(user) {
+  const title = escapeHtml(user.companyName || user.username);
+  const subtitle = escapeHtml(user.companyName ? `${user.username} · ${user.email || ''}` : 'Select user');
   return `
     <button type="button" class="autosuggest-item" data-id="${user.id}">
       <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${escapeHtml(user.username || 'User')}" loading="lazy" decoding="async">
       <div class="autosuggest-body">
         <div class="autosuggest-title-row">
-          <span class="autosuggest-title">${escapeHtml(user.username)}</span>
+          <span class="autosuggest-title">${title}</span>
         </div>
-        <div class="autosuggest-subtitle">Select user</div>
+        <div class="autosuggest-subtitle">${subtitle}</div>
       </div>
       <span class="autosuggest-action" aria-hidden="true"><i class="bi bi-arrow-up-right"></i></span>
     </button>`;
@@ -497,7 +507,7 @@ if (vendorSearchEdit) {
     document.getElementById('vendorResults'),
     user => hasRole(user, 'ROLE_VENDOR'),
     user => {
-      vendorSearchEdit.value = `${user.username} (${user.email})`;
+      vendorSearchEdit.value = user.companyName || user.username;
       document.getElementById('vendorUserId').value = user.id;
     }
   ), 220));
@@ -513,7 +523,7 @@ if (agentEditor) {
       return;
     }
     if (field.id === 'ticketStatus') {
-      const allowed = ['IN_PROGRESS', 'ON_HOLD', 'RESOLVED', 'CANCELLED'];
+      const allowed = ['SITE_VISITED', 'IN_PROGRESS', 'ON_HOLD', 'RESOLVED', 'CANCELLED'];
       Array.from(field.options).forEach(opt => {
         if (!allowed.includes(opt.value) && !opt.selected) {
            opt.disabled = true;

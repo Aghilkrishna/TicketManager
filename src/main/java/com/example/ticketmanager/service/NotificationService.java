@@ -22,6 +22,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final EmailService emailService;
+    private final SmsService smsService;
     private final com.example.ticketmanager.config.AppProperties appProperties;
     private final EmailNotificationSettingsService emailNotificationSettingsService;
     private NotificationService self;
@@ -45,6 +46,7 @@ public class NotificationService {
         Notification saved = notificationRepository.save(notification);
         messagingTemplate.convertAndSendToUser(user.getEmail(), "/queue/notifications", toResponse(saved));
         self.sendEmailNotification(user, type, message, referenceType, referenceId, emailAction);
+        self.sendSmsNotification(user, type, message, referenceType, referenceId, emailAction);
     }
 
     @Async
@@ -52,32 +54,47 @@ public class NotificationService {
         if (user.getEmail() == null || user.getEmail().isBlank()) {
             return;
         }
-        if (emailAction != null && !emailNotificationSettingsService.isEnabled(emailAction)) {
+        if (emailAction != null && !emailNotificationSettingsService.isEmailEnabled(emailAction)) {
             return;
         }
         try {
-            String actionUrl = null;
-            String actionLabel = null;
-            if ("TICKET".equalsIgnoreCase(referenceType) && referenceId != null) {
-                actionUrl = appProperties.baseUrl() + "/tickets/view?id=" + referenceId;
-                actionLabel = "Open Ticket";
-            }
-            String subject = switch (type) {
-                case COMMENT_ADDED -> "New ticket comment";
-                case TICKET_UPDATED -> "Ticket updated";
-                case CHAT_MESSAGE -> "New chat message";
-                case ACCOUNT_EVENT -> "Account notification";
-            };
-            emailService.sendTicketNotificationEmail(
-                    user,
-                    subject,
-                    subject,
-                    message,
-                    actionUrl,
-                    actionLabel == null ? "Open App" : actionLabel
-            );
+            sendEmailDirect(user, type, message, referenceType, referenceId);
         } catch (Exception ex) {
             log.warn("Failed to send notification email to {}", user.getEmail(), ex);
+        }
+    }
+
+    @Async
+    public void sendSmsNotification(AppUser user, NotificationType type, String message, String referenceType, Long referenceId, EmailNotificationAction emailAction) {
+        if (user.getPhone() == null || user.getPhone().isBlank()) {
+            return;
+        }
+        if (emailAction != null && !emailNotificationSettingsService.isSmsEnabled(emailAction)) {
+            return;
+        }
+        try {
+            sendSmsDirect(user, type, message, referenceType, referenceId);
+        } catch (Exception ex) {
+            log.warn("Failed to send notification SMS to {}", user.getPhone(), ex);
+        }
+    }
+
+    @Async
+    public void sendOutboundNotification(AppUser user, NotificationType type, String message, String referenceType, Long referenceId,
+                                         boolean emailEnabled, boolean smsEnabled) {
+        if (emailEnabled && user.getEmail() != null && !user.getEmail().isBlank()) {
+            try {
+                sendEmailDirect(user, type, message, referenceType, referenceId);
+            } catch (Exception ex) {
+                log.warn("Failed to send outbound email to {}", user.getEmail(), ex);
+            }
+        }
+        if (smsEnabled && user.getPhone() != null && !user.getPhone().isBlank()) {
+            try {
+                sendSmsDirect(user, type, message, referenceType, referenceId);
+            } catch (Exception ex) {
+                log.warn("Failed to send outbound SMS to {}", user.getPhone(), ex);
+            }
         }
     }
 
@@ -88,6 +105,44 @@ public class NotificationService {
             case CHAT_MESSAGE -> EmailNotificationAction.CHAT_MESSAGE;
             case ACCOUNT_EVENT -> null;
         };
+    }
+
+    private void sendEmailDirect(AppUser user, NotificationType type, String message, String referenceType, Long referenceId) {
+        String actionUrl = null;
+        String actionLabel = null;
+        if ("TICKET".equalsIgnoreCase(referenceType) && referenceId != null) {
+            actionUrl = appProperties.baseUrl() + "/tickets/view?id=" + referenceId;
+            actionLabel = "Open Ticket";
+        }
+        String subject = switch (type) {
+            case COMMENT_ADDED -> "New ticket comment";
+            case TICKET_UPDATED -> "Ticket updated";
+            case CHAT_MESSAGE -> "New chat message";
+            case ACCOUNT_EVENT -> "Account notification";
+        };
+        emailService.sendTicketNotificationEmail(
+                user,
+                subject,
+                subject,
+                message,
+                actionUrl,
+                actionLabel == null ? "Open App" : actionLabel
+        );
+    }
+
+    private void sendSmsDirect(AppUser user, NotificationType type, String message, String referenceType, Long referenceId) {
+        String prefix = switch (type) {
+            case COMMENT_ADDED -> "Ticket comment alert";
+            case TICKET_UPDATED -> "Ticket update alert";
+            case CHAT_MESSAGE -> "Chat message alert";
+            case ACCOUNT_EVENT -> "Account alert";
+        };
+        StringBuilder body = new StringBuilder(prefix).append(": ").append(message);
+        if ("TICKET".equalsIgnoreCase(referenceType) && referenceId != null) {
+            body.append(" Ticket #").append(referenceId).append(". ");
+            body.append(appProperties.baseUrl()).append("/tickets/view?id=").append(referenceId);
+        }
+        smsService.sendMessage(user.getPhone(), body.toString());
     }
 
     public List<AuthDtos.NotificationResponse> listForUser(Long userId) {
