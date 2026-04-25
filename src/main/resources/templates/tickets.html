@@ -56,7 +56,10 @@
                                 Type
                                 <span class="sort-indicator" id="sort-serviceType"></span>
                             </th>
-                            <th>Title</th>
+                            <th class="sortable-header" data-sort="title">
+                                Title
+                                <span class="sort-indicator" id="sort-title"></span>
+                            </th>
                             <th class="sortable-header" data-sort="priority">
                                 Priority
                                 <span class="sort-indicator" id="sort-priority"></span>
@@ -65,7 +68,10 @@
                                 Status
                                 <span class="sort-indicator" id="sort-status"></span>
                             </th>
-                            <th>Vendor</th>
+                            <th class="sortable-header" data-sort="vendor">
+                                Vendor
+                                <span class="sort-indicator" id="sort-vendor"></span>
+                            </th>
                             <th class="sortable-header" data-sort="createdBy">
                                 Created By
                                 <span class="sort-indicator" id="sort-createdBy"></span>
@@ -255,15 +261,17 @@ let currentSortBy = 'updatedAt';
 let currentDirection = 'desc';
 
 function updateSortIndicators() {
-  // Clear all indicators
+  // Remove active class from all indicators
   document.querySelectorAll('.sort-indicator').forEach(indicator => {
-    indicator.textContent = '';
+    indicator.classList.remove('active');
+    indicator.textContent = '↕';
   });
   
-  // Set current sort indicator
+  // Set current sort indicator with active class
   const currentIndicator = document.getElementById(`sort-${currentSortBy}`);
   if (currentIndicator) {
-    currentIndicator.textContent = currentDirection === 'asc' ? ' ↑' : ' ↓';
+    currentIndicator.classList.add('active');
+    currentIndicator.textContent = currentDirection === 'asc' ? '↑' : '↓';
   }
 }
 

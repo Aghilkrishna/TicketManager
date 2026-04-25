@@ -992,14 +992,25 @@ textarea.form-control[readonly]::placeholder {
 }
 
 .sort-indicator {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     font-weight: 600;
-    color: var(--primary);
+    color: var(--muted);
     margin-left: 0.5rem;
-    opacity: 0.8;
+    opacity: 0.4;
+    transition: all 0.2s ease;
+}
+
+.sort-indicator.active {
+    color: var(--primary);
+    opacity: 1;
+    font-weight: 700;
 }
 
 .sortable-header:hover .sort-indicator {
+    opacity: 0.8;
+}
+
+.sortable-header:hover .sort-indicator.active {
     opacity: 1;
 }
 
@@ -1008,6 +1019,7 @@ textarea.form-control[readonly]::placeholder {
     text-transform: uppercase;
     letter-spacing: 0.04em;
     font-size: 0.78rem;
+    vertical-align: top;
 }
 
 .sortable-header {
