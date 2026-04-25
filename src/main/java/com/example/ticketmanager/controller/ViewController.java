@@ -82,10 +82,20 @@ public class ViewController {
     @GetMapping("/tickets")
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
     public String tickets(Principal principal) {
-        if (principal != null && userService.hasRole(principal.getName(), "ROLE_VENDOR")
+        if (principal == null) {
+            return "redirect:/tickets/pending";
+        }
+
+        if (userService.hasRole(principal.getName(), "ROLE_ADMIN")
+                && userService.hasAuthority(principal.getName(), "FEATURE_TICKETS_ALL_VIEW")) {
+            return "redirect:/tickets/all";
+        }
+
+        if (userService.hasRole(principal.getName(), "ROLE_VENDOR")
                 && userService.hasAuthority(principal.getName(), "FEATURE_TICKETS_CREATED_VIEW")) {
             return "redirect:/tickets/created";
         }
+
         return "redirect:/tickets/pending";
     }
 

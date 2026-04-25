@@ -60,7 +60,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   });
   const data = await res.json().catch(() => ({}));
   setButtonLoading(button, false);
-  if (res.ok) window.location.href = '/dashboard';
+  if (res.ok) window.location.href = '/tickets';
   else showInlineAlert(message, data.message || 'Login failed', 'danger', 'Sign-In Failed');
 });
 </script>
