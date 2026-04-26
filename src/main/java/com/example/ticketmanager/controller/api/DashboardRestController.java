@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
@@ -72,10 +73,21 @@ public class DashboardRestController {
 
     @PreAuthorize("hasAuthority('FEATURE_DASHBOARD_ACCESS')")
     @GetMapping("/metrics")
-    public Map<String, Object> metrics(Principal principal) {
+    public Map<String, Object> metrics(Principal principal, @RequestParam(defaultValue = "all") String scope) {
         var user = userService.getByEmail(principal.getName());
         boolean vendor = userService.hasRole(user, "ROLE_VENDOR");
-        boolean allTicketScope = userService.hasAuthority(user, "FEATURE_DASHBOARD_ALL_TICKET_STATUS");
+        boolean admin = userService.hasRole(user, "ROLE_ADMIN");
+        
+        // For admin users, respect the scope parameter
+        // For non-admin users, use default logic based on authorities
+        boolean allTicketScope;
+        if (admin) {
+            // Admin can choose between 'all' (organization) and 'mine' (assigned to them)
+            allTicketScope = !"mine".equals(scope);
+        } else {
+            // Non-admin users use authority-based logic
+            allTicketScope = userService.hasAuthority(user, "FEATURE_DASHBOARD_ALL_TICKET_STATUS");
+        }
 
         List<Object[]> rows = allTicketScope
                 ? ticketRepository.countAllByStatus()
@@ -88,9 +100,23 @@ public class DashboardRestController {
         result.put("activeUsers", vendor ? null : userRepository.countEnabledUsersByActiveRoleNames(List.of("ROLE_ADMIN", "ROLE_MANAGER", "ROLE_AGENT")));
         result.put("activeVendors", vendor ? null : userRepository.countEnabledUsersByActiveRoleNames(List.of("ROLE_VENDOR")));
         result.put("scope", allTicketScope ? "all" : "mine");
-        result.put("visibleCards", vendor
-                ? Set.of("enquiry", "open", "inProgress", "onHold", "resolved", "closed", "cancelled", "totalTickets")
-                : Set.of("enquiry", "open", "inProgress", "onHold", "resolved", "closed", "cancelled", "totalTickets", "activeUsers", "activeVendors"));
+        result.put("isAdmin", admin);
+        
+        // Determine visible cards based on user role
+        Set<String> visibleCards;
+        if (vendor) {
+            visibleCards = Set.of("enquiry", "open", "inProgress", "onHold", "resolved", "closed", "cancelled", "totalTickets");
+        } else {
+            boolean agent = userService.hasRole(user, "ROLE_AGENT");
+            if (agent) {
+                // Agent users: exclude Active Users and Active Vendor cards
+                visibleCards = Set.of("enquiry", "open", "inProgress", "onHold", "resolved", "closed", "cancelled", "totalTickets");
+            } else {
+                // Admin and Manager users: include all cards
+                visibleCards = Set.of("enquiry", "open", "inProgress", "onHold", "resolved", "closed", "cancelled", "totalTickets", "activeUsers", "activeVendors");
+            }
+        }
+        result.put("visibleCards", visibleCards);
         return result;
     }
 

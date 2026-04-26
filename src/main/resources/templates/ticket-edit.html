@@ -297,6 +297,18 @@ function hasRole(user, roleName) {
   return Array.isArray(user.roles) && user.roles.includes(roleName);
 }
 
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
 function escapeHtml(value) {
   return (value || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
 }
@@ -309,8 +321,8 @@ function formatRoleLabel(roleName) {
 }
 
 function userSuggestionMarkup(user) {
-  const title = escapeHtml(user.companyName || user.username);
-  const subtitle = escapeHtml(user.companyName ? `${user.username} · ${user.email || ''}` : 'Select user');
+  const title = escapeHtml(user.companyName || user.username || 'Unknown User');
+  const subtitle = escapeHtml(user.companyName ? `${user.username || ''} · ${user.email || ''}` : `${user.username || ''} ${user.email || ''}`);
   return `
     <button type="button" class="autosuggest-item" data-id="${user.id}">
       <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${escapeHtml(user.username || 'User')}" loading="lazy" decoding="async">
@@ -375,14 +387,25 @@ async function searchUsers(query, target, filterFn, onSelect) {
     return;
   }
   showSuggestionState(target, '<div class="autosuggest-empty autosuggest-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Searching users...</span></div>');
-  const res = await fetch('/api/users/search?query=' + encodeURIComponent(query));
-  const users = (await res.json()).filter(filterFn);
-  showSuggestionState(target, users.map(userSuggestionMarkup).join('') || '<div class="autosuggest-empty">No matching users found.</div>', true);
-  target.querySelectorAll('button[data-id]').forEach(button => button.addEventListener('click', () => {
-    const user = users.find(item => item.id === Number(button.dataset.id));
-    onSelect(user);
-    showSuggestionState(target, '', false);
-  }));
+  try {
+    const res = await fetch('/api/users/search?query=' + encodeURIComponent(query));
+    if (!res.ok) {
+      throw new Error(`Search failed: ${res.status}`);
+    }
+    const allUsers = await res.json();
+    console.log('All users found:', allUsers);
+    const filteredUsers = allUsers.filter(filterFn);
+    console.log('Filtered users:', filteredUsers);
+    showSuggestionState(target, filteredUsers.map(userSuggestionMarkup).join('') || '<div class="autosuggest-empty">No matching users found.</div>', true);
+    target.querySelectorAll('button[data-id]').forEach(button => button.addEventListener('click', () => {
+      const user = filteredUsers.find(item => item.id === Number(button.dataset.id));
+      onSelect(user);
+      showSuggestionState(target, '', false);
+    }));
+  } catch (error) {
+    console.error('Search error:', error);
+    showSuggestionState(target, '<div class="autosuggest-empty">Error searching users. Please try again.</div>', true);
+  }
 }
 
 async function searchParentTickets(query) {
@@ -489,29 +512,42 @@ async function loadSiteVisits() {
   renderSiteVisits(visits);
 }
 
-if (canAssignUsers) {
-  document.getElementById('assignedSearch').addEventListener('input', debounce(event => searchUsers(
-    event.target.value,
-    document.getElementById('assignedResults'),
-    user => true,
-    user => {
-      document.getElementById('assignedSearch').value = `${user.username} (${user.email})`;
-      document.getElementById('assignedToId').value = user.id;
+// Initialize auto-suggest functionality after DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  // Assigned user auto-suggest
+  if (canAssignUsers) {
+    const assignedSearch = document.getElementById('assignedSearch');
+    if (assignedSearch) {
+      assignedSearch.addEventListener('input', debounce(event => {
+        searchUsers(
+          event.target.value,
+          document.getElementById('assignedResults'),
+          user => true,
+          user => {
+            assignedSearch.value = `${user.username} (${user.email})`;
+            document.getElementById('assignedToId').value = user.id;
+          }
+        );
+      }, 220));
     }
-  ), 220));
-}
-const vendorSearchEdit = document.getElementById('vendorSearch');
-if (vendorSearchEdit) {
-  vendorSearchEdit.addEventListener('input', debounce(event => searchUsers(
-    event.target.value,
-    document.getElementById('vendorResults'),
-    user => hasRole(user, 'ROLE_VENDOR'),
-    user => {
-      vendorSearchEdit.value = user.companyName || user.username;
-      document.getElementById('vendorUserId').value = user.id;
-    }
-  ), 220));
-}
+  }
+
+  // Vendor user auto-suggest
+  const vendorSearch = document.getElementById('vendorSearch');
+  if (vendorSearch) {
+    vendorSearch.addEventListener('input', debounce(event => {
+      searchUsers(
+        event.target.value,
+        document.getElementById('vendorResults'),
+        user => hasRole(user, 'ROLE_VENDOR'),
+        user => {
+          vendorSearch.value = user.companyName || user.username;
+          document.getElementById('vendorUserId').value = user.id;
+        }
+      );
+    }, 220));
+  }
+});
 
 document.querySelectorAll('.address-part').forEach(field => field.addEventListener('input', updateAddressPreview));
 document.getElementById('customerLocationLink').addEventListener('input', mirrorLocationLink);

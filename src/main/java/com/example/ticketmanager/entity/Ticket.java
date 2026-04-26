@@ -96,6 +96,9 @@ public class Ticket {
     @Column(length = 1000)
     private String customerLocationLink;
 
+    @Column(name = "customer_address_reference_id")
+    private Long customerAddressReferenceId;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 30)
     private TicketPricingModel pricingModel;

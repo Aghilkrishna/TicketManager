@@ -129,6 +129,7 @@ public final class AuthDtos {
             @Size(max = 80) String customerState,
             @Size(max = 20) String customerPincode,
             @Size(max = 1000) String customerLocationLink,
+            Long customerAddressReferenceId,
             String pricingModel,
             BigDecimal estimatedCost,
             BigDecimal actualCost,

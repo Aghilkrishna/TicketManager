@@ -499,12 +499,33 @@ public class TicketService {
         ticket.setCustomerName(request.customerName() == null || request.customerName().isBlank() ? null : request.customerName().trim());
         ticket.setCustomerEmail(request.customerEmail() == null || request.customerEmail().isBlank() ? null : request.customerEmail().trim());
         ticket.setCustomerPhone(request.customerPhone() == null || request.customerPhone().isBlank() ? null : request.customerPhone().trim());
-        ticket.setCustomerFlat(request.customerFlat() == null || request.customerFlat().isBlank() ? null : request.customerFlat().trim());
-        ticket.setCustomerStreet(request.customerStreet() == null || request.customerStreet().isBlank() ? null : request.customerStreet().trim());
-        ticket.setCustomerCity(request.customerCity() == null || request.customerCity().isBlank() ? null : request.customerCity().trim());
-        ticket.setCustomerState(request.customerState() == null || request.customerState().isBlank() ? null : request.customerState().trim());
-        ticket.setCustomerPincode(request.customerPincode() == null || request.customerPincode().isBlank() ? null : request.customerPincode().trim());
-        ticket.setCustomerLocationLink(request.customerLocationLink() == null || request.customerLocationLink().isBlank() ? null : request.customerLocationLink().trim());
+        
+        // Handle address reference logic
+        if (request.customerAddressReferenceId() != null) {
+            // Copy address from referenced ticket and store reference ID
+            Ticket referenceTicket = getTicket(request.customerAddressReferenceId());
+            
+            // Store the reference ID
+            ticket.setCustomerAddressReferenceId(request.customerAddressReferenceId());
+            
+            // Copy address fields from referenced ticket
+            ticket.setCustomerFlat(referenceTicket.getCustomerFlat());
+            ticket.setCustomerStreet(referenceTicket.getCustomerStreet());
+            ticket.setCustomerCity(referenceTicket.getCustomerCity());
+            ticket.setCustomerState(referenceTicket.getCustomerState());
+            ticket.setCustomerPincode(referenceTicket.getCustomerPincode());
+            ticket.setCustomerLocationLink(referenceTicket.getCustomerLocationLink());
+        } else {
+            // New address - no reference, save as new address
+            ticket.setCustomerAddressReferenceId(null);
+            
+            ticket.setCustomerFlat(request.customerFlat() == null || request.customerFlat().isBlank() ? null : request.customerFlat().trim());
+            ticket.setCustomerStreet(request.customerStreet() == null || request.customerStreet().isBlank() ? null : request.customerStreet().trim());
+            ticket.setCustomerCity(request.customerCity() == null || request.customerCity().isBlank() ? null : request.customerCity().trim());
+            ticket.setCustomerState(request.customerState() == null || request.customerState().isBlank() ? null : request.customerState().trim());
+            ticket.setCustomerPincode(request.customerPincode() == null || request.customerPincode().isBlank() ? null : request.customerPincode().trim());
+            ticket.setCustomerLocationLink(request.customerLocationLink() == null || request.customerLocationLink().isBlank() ? null : request.customerLocationLink().trim());
+        }
         ticket.setScheduleDate(request.scheduleDate());
         ticket.setPriority(request.priority() == null || request.priority().isBlank()
                 ? TicketPriority.MEDIUM : TicketPriority.valueOf(request.priority()));

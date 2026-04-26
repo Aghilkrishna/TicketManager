@@ -204,17 +204,50 @@ function hasRole(user, roleName) {
   return Array.isArray(user.roles) && user.roles.includes(roleName);
 }
 
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
 function updateAddressPreview() {
-  const parts = [
-    document.querySelector('[name="customerFlat"]').value,
-    document.querySelector('[name="customerStreet"]').value,
-    document.querySelector('[name="customerCity"]').value,
-    document.querySelector('[name="customerState"]').value,
-    document.querySelector('[name="customerPincode"]').value
-  ].map(value => (value || '').trim()).filter(Boolean);
-  const summary = parts.join(', ');
-  document.getElementById('addressPreview').value = summary;
-  document.getElementById('addressSummary').value = summary;
+  try {
+    const flatField = document.querySelector('[name="customerFlat"]');
+    const streetField = document.querySelector('[name="customerStreet"]');
+    const cityField = document.querySelector('[name="customerCity"]');
+    const stateField = document.querySelector('[name="customerState"]');
+    const pincodeField = document.querySelector('[name="customerPincode"]');
+    
+    const parts = [
+      flatField ? flatField.value : '',
+      streetField ? streetField.value : '',
+      cityField ? cityField.value : '',
+      stateField ? stateField.value : '',
+      pincodeField ? pincodeField.value : ''
+    ].map(value => (value || '').trim()).filter(Boolean);
+    
+    const summary = parts.join(', ');
+    
+    const addressPreview = document.getElementById('addressPreview');
+    const addressSummary = document.getElementById('addressSummary');
+    
+    if (addressPreview) {
+      addressPreview.value = summary;
+    }
+    
+    if (addressSummary) {
+      addressSummary.value = summary;
+    }
+    
+  } catch (error) {
+    console.error('Error in updateAddressPreview:', error);
+  }
 }
 
 function mirrorLocationLink() {
@@ -237,8 +270,8 @@ function formatRoleLabel(roleName) {
 }
 
 function userSuggestionMarkup(user) {
-  const title = escapeHtml(user.companyName || user.username);
-  const subtitle = escapeHtml(user.companyName ? `${user.username} · ${user.email || ''}` : 'Select user');
+  const title = escapeHtml(user.companyName || user.username || 'Unknown User');
+  const subtitle = escapeHtml(user.companyName ? `${user.username || ''} · ${user.email || ''}` : `${user.username || ''} ${user.email || ''}`);
   return `
     <button type="button" class="autosuggest-item" data-id="${user.id}">
       <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${escapeHtml(user.username || 'User')}" loading="lazy" decoding="async">
@@ -283,6 +316,31 @@ function selectedFileMarkup(file, objectUrl) {
 }
 
 function showSuggestionState(target, content, visible = true) {
+  if (!target) {
+    console.error('Target element is null!');
+    return;
+  }
+  
+  // For assigned user dropdown, move to body to avoid clipping issues
+  if (target.id === 'assignedResults' && visible) {
+    // Move dropdown to body level
+    if (!target.dataset.movedToBody) {
+      document.body.appendChild(target);
+      target.dataset.movedToBody = 'true';
+    }
+    
+    // Position it relative to the input field
+    const inputField = document.getElementById('assignedSearch');
+    if (inputField) {
+      const rect = inputField.getBoundingClientRect();
+      target.style.position = 'fixed';
+      target.style.top = (rect.bottom + window.scrollY) + 'px';
+      target.style.left = (rect.left + window.scrollX) + 'px';
+      target.style.width = rect.width + 'px';
+      target.style.zIndex = '999999';
+    }
+  }
+  
   target.innerHTML = content;
   target.hidden = !visible;
 }
@@ -293,14 +351,25 @@ async function searchUsers(query, target, filterFn, onSelect) {
     return;
   }
   showSuggestionState(target, '<div class="autosuggest-empty autosuggest-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Searching users...</span></div>');
-  const res = await fetch('/api/users/search?query=' + encodeURIComponent(query));
-  const users = (await res.json()).filter(filterFn);
-  showSuggestionState(target, users.map(userSuggestionMarkup).join('') || '<div class="autosuggest-empty">No matching users found.</div>', true);
-  target.querySelectorAll('button[data-id]').forEach(button => button.addEventListener('click', () => {
-    const user = users.find(item => item.id === Number(button.dataset.id));
-    onSelect(user);
-    showSuggestionState(target, '', false);
-  }));
+  try {
+    const res = await fetch('/api/users/search?query=' + encodeURIComponent(query));
+    if (!res.ok) {
+      throw new Error(`Search failed: ${res.status}`);
+    }
+    const allUsers = await res.json();
+    const filteredUsers = allUsers.filter(filterFn);
+    const markup = filteredUsers.map(userSuggestionMarkup).join('');
+    const finalMarkup = markup || '<div class="autosuggest-empty">No matching users found.</div>';
+    showSuggestionState(target, finalMarkup, true);
+    target.querySelectorAll('button[data-id]').forEach(button => button.addEventListener('click', () => {
+      const user = filteredUsers.find(item => item.id === Number(button.dataset.id));
+      onSelect(user);
+      showSuggestionState(target, '', false);
+    }));
+  } catch (error) {
+    console.error('Search error:', error);
+    showSuggestionState(target, '<div class="autosuggest-empty">Error searching users. Please try again.</div>', true);
+  }
 }
 
 async function searchParentTickets(query) {
@@ -325,31 +394,44 @@ async function searchParentTickets(query) {
   }));
 }
 
+// Initialize auto-suggest functionality after DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  
+  // Assigned user auto-suggest
+  const assignedSearch = document.getElementById('assignedSearch');
+  if (assignedSearch) {
+    assignedSearch.addEventListener('input', debounce(event => {
+      searchUsers(
+        event.target.value,
+        document.getElementById('assignedResults'),
+        user => true,
+        user => {
+          assignedSearch.value = `${user.username} (${user.email})`;
+          document.getElementById('assignedToId').value = user.id;
+        }
+      );
+    }, 220));
+  }
+
+  // Vendor user auto-suggest
+  const vendorSearch = document.getElementById('vendorSearch');
+  if (vendorSearch) {
+    vendorSearch.addEventListener('input', debounce(event => {
+      searchUsers(
+        event.target.value,
+        document.getElementById('vendorResults'),
+        user => hasRole(user, 'ROLE_VENDOR'),
+        user => {
+          vendorSearch.value = user.companyName || user.username;
+          document.getElementById('vendorUserId').value = user.id;
+        }
+      );
+    }, 220));
+  }
+});
+
 document.querySelectorAll('.address-part').forEach(field => field.addEventListener('input', updateAddressPreview));
 document.getElementById('customerLocationLink').addEventListener('input', mirrorLocationLink);
-if (document.getElementById('assignedSearch')) {
-  document.getElementById('assignedSearch').addEventListener('input', debounce(event => searchUsers(
-    event.target.value,
-    document.getElementById('assignedResults'),
-    user => true,
-    user => {
-      document.getElementById('assignedSearch').value = `${user.username} (${user.email})`;
-      document.getElementById('assignedToId').value = user.id;
-    }
-  ), 220));
-}
-const vendorSearchCreate = document.getElementById('vendorSearch');
-if (vendorSearchCreate) {
-  vendorSearchCreate.addEventListener('input', debounce(event => searchUsers(
-    event.target.value,
-    document.getElementById('vendorResults'),
-    user => hasRole(user, 'ROLE_VENDOR'),
-    user => {
-      vendorSearchCreate.value = user.companyName || user.username;
-      document.getElementById('vendorUserId').value = user.id;
-    }
-  ), 220));
-}
 const fileInput = document.querySelector('input[name="files"]');
 if (fileInput) {
   fileInput.addEventListener('change', event => {
@@ -358,12 +440,263 @@ if (fileInput) {
     container.innerHTML = files.map(file => selectedFileMarkup(file, URL.createObjectURL(file))).join('');
   });
 }
+async function searchCustomers(query) {
+  const target = document.getElementById('customerResults');
+  if (!query || query.length < 3) {
+    showSuggestionState(target, '', false);
+    return;
+  }
+  showSuggestionState(target, '<div class="autosuggest-empty autosuggest-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Searching customers...</span></div>');
+  try {
+    const res = await fetch('/api/customers/search?query=' + encodeURIComponent(query));
+    const customers = await res.json();
+    showSuggestionState(target, customers.map(customerSuggestionMarkup).join('') || '<div class="autosuggest-empty">No matching customers found.</div>', true);
+    target.querySelectorAll('button[data-customer]').forEach(button => button.addEventListener('click', () => {
+      const customer = customers.find(item => item.email === button.dataset.customer || item.phone === button.dataset.customer);
+      if (customer) {
+        populateCustomerFields(customer);
+        if (customer.addresses && customer.addresses.length > 0) {
+          showAddressSelection(customer.addresses);
+        }
+      }
+      showSuggestionState(target, '', false);
+    }));
+  } catch (error) {
+    showSuggestionState(target, '<div class="autosuggest-empty">Error searching customers.</div>', true);
+  }
+}
+
+function customerSuggestionMarkup(customer) {
+  const identifier = customer.email || customer.phone;
+  return `<button type="button" class="autosuggest-item" data-customer="${identifier}">
+    <div class="fw-semibold">${customer.name || 'Unknown'}</div>
+    <div class="small text-muted">${customer.email || ''} ${customer.phone || ''}</div>
+    <div class="small text-primary">${customer.addresses ? customer.addresses.length + ' address(es)' : 'No addresses'}</div>
+  </button>`;
+}
+
+function populateCustomerFields(customer) {
+  document.querySelector('input[name="customerName"]').value = customer.name || '';
+  document.querySelector('input[name="customerEmail"]').value = customer.email || '';
+  document.querySelector('input[name="customerPhone"]').value = customer.phone || '';
+}
+
+function showAddressSelection(addresses) {
+  
+  if (addresses.length === 1) {
+    selectAddress(addresses[0]);
+    return;
+  }
+  
+  try {
+    // Create modal for address selection
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'addressSelectionModal';
+    
+    // Build address list HTML safely
+    const addressListHtml = addresses.map((addr, index) => {
+      const locationHtml = addr.locationLink ? 
+        `<div class="small text-muted"><a href="${addr.locationLink}" target="_blank">View Location</a></div>` : '';
+      return `
+        <button type="button" class="list-group-item list-group-item-action" data-address-index="${index}">
+          <div class="fw-semibold">Address ${index + 1}</div>
+          <div class="small">${addr.fullAddress || 'No address details'}</div>
+          ${locationHtml}
+        </button>`;
+    }).join('');
+    
+    modal.innerHTML = `
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Select Customer Address</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="list-group">
+              ${addressListHtml}
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="useNewAddress">Use New Address</button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Try to use Bootstrap modal, fallback to simple display
+    let bsModal;
+    try {
+      if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+      } else {
+        // Fallback: show modal manually
+        modal.style.display = 'block';
+        modal.classList.add('show');
+        modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+      }
+    } catch (error) {
+      console.error('Bootstrap modal error:', error);
+      // Fallback display
+      modal.style.display = 'block';
+      modal.classList.add('show');
+      modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    }
+    
+    // Handle address selection
+    modal.querySelectorAll('[data-address-index]').forEach(button => {
+      button.addEventListener('click', () => {
+        const index = parseInt(button.dataset.addressIndex);
+        selectAddress(addresses[index]);
+        if (bsModal) {
+          bsModal.hide();
+        } else {
+          document.body.removeChild(modal);
+        }
+      });
+    });
+    
+    // Handle new address option
+    const newAddressBtn = modal.querySelector('#useNewAddress');
+    if (newAddressBtn) {
+      newAddressBtn.addEventListener('click', () => {
+        clearAddressFields();
+        if (bsModal) {
+          bsModal.hide();
+        } else {
+          document.body.removeChild(modal);
+        }
+      });
+    }
+    
+    // Handle close button
+    const closeBtn = modal.querySelector('.btn-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        if (bsModal) {
+          bsModal.hide();
+        } else {
+          document.body.removeChild(modal);
+        }
+      });
+    }
+    
+    // Clean up modal after hidden
+    modal.addEventListener('hidden.bs.modal', () => {
+      if (document.body.contains(modal)) {
+        document.body.removeChild(modal);
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in showAddressSelection:', error);
+    alert('Error showing address selection. Please try again.');
+  }
+}
+
+function selectAddress(address) {
+  
+  if (!address) {
+    console.error('Address is null or undefined');
+    return;
+  }
+  
+  try {
+    // Find all address fields
+    const flatField = document.querySelector('input[name="customerFlat"]');
+    const streetField = document.querySelector('input[name="customerStreet"]');
+    const cityField = document.querySelector('input[name="customerCity"]');
+    const stateField = document.querySelector('select[name="customerState"]');
+    const pincodeField = document.querySelector('input[name="customerPincode"]');
+    const locationLinkField = document.querySelector('input[name="customerLocationLink"]');
+    
+    // Set field values
+    if (flatField) flatField.value = address.flat || '';
+    if (streetField) streetField.value = address.street || '';
+    if (cityField) cityField.value = address.city || '';
+    if (stateField) stateField.value = address.state || '';
+    if (pincodeField) pincodeField.value = address.pincode || '';
+    if (locationLinkField) locationLinkField.value = address.locationLink || '';
+    
+    // Store the address reference to prevent duplicates
+    if (address.ticketId) {
+      // Store the reference ticket ID in a hidden field
+      let addressRefField = document.getElementById('customerAddressReferenceId');
+      if (!addressRefField) {
+        addressRefField = document.createElement('input');
+        addressRefField.type = 'hidden';
+        addressRefField.id = 'customerAddressReferenceId';
+        addressRefField.name = 'customerAddressReferenceId';
+        document.getElementById('ticketForm').appendChild(addressRefField);
+      }
+      addressRefField.value = address.ticketId;
+    }
+    
+    // Update address preview
+    updateAddressPreview();
+    
+  } catch (error) {
+    console.error('Error in selectAddress:', error);
+    alert('Error selecting address. Please try again.');
+  }
+}
+
+function clearAddressFields() {
+  try {
+    document.querySelectorAll('.address-part').forEach(field => {
+      if (field.tagName === 'SELECT') {
+        field.value = '';
+      } else {
+        field.value = '';
+      }
+    });
+    
+    // Also clear the location link field
+    const locationLinkField = document.querySelector('input[name="customerLocationLink"]');
+    if (locationLinkField) {
+      locationLinkField.value = '';
+    }
+    
+    // Remove the address reference if it exists (user is choosing new address)
+    const addressRefField = document.getElementById('customerAddressReferenceId');
+    if (addressRefField) {
+      addressRefField.remove();
+    }
+    
+    updateAddressPreview();
+  } catch (error) {
+    console.error('Error in clearAddressFields:', error);
+  }
+}
+
+// Add customer search event listeners
+document.querySelector('input[name="customerPhone"]').addEventListener('input', debounce(event => {
+  searchCustomers(event.target.value);
+}, 400));
+
+document.querySelector('input[name="customerEmail"]').addEventListener('input', debounce(event => {
+  searchCustomers(event.target.value);
+}, 400));
+
+// Add customer results container to the customer section
+const customerSection = document.querySelector('input[name="customerPhone"]').closest('.row');
+const customerResultsDiv = document.createElement('div');
+customerResultsDiv.className = 'col-12';
+customerResultsDiv.innerHTML = '<div id="customerResults" class="autosuggest-panel mt-2" hidden></div>';
+customerSection.appendChild(customerResultsDiv);
+
 document.getElementById('parentTicketSearch').addEventListener('input', debounce(event => searchParentTickets(event.target.value), 220));
 
 document.getElementById('ticketForm').addEventListener('submit', async event => {
   event.preventDefault();
   updateAddressPreview();
   mirrorLocationLink();
+  
   const form = event.target;
   const message = document.getElementById('message');
   const button = form.querySelector('button[type="submit"]');

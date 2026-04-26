@@ -29,7 +29,27 @@
                 </div>
             </section>
 
-            <section class="metric-grid dashboard-metric-grid mb-4" id="dashboardMetrics"></section>
+            <!-- Card metrics section with admin toggle -->
+            <div class="mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="h5 mb-0 fw-semibold">Card Metrics</h2>
+                    <!-- Admin-only scope toggle -->
+                    <div th:if="${currentRoles.contains('ROLE_ADMIN')}" class="d-flex align-items-center gap-2">
+                        <span class="small text-muted me-2">View:</span>
+                        <div class="btn-group btn-group-sm" role="group" id="dashboardScopeToggle">
+                            <input type="radio" class="btn-check" name="dashboardScope" id="scopeOrganization" autocomplete="off" checked>
+                            <label class="btn btn-outline-primary" for="scopeOrganization">
+                                <i class="bi bi-building me-1"></i>Organization
+                            </label>
+                            <input type="radio" class="btn-check" name="dashboardScope" id="scopeMine" autocomplete="off">
+                            <label class="btn btn-outline-primary" for="scopeMine">
+                                <i class="bi bi-person me-1"></i>Mine
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <section class="metric-grid dashboard-metric-grid" id="dashboardMetrics"></section>
+            </div>
 
             <!-- Charts grid — each section gated by its role-feature -->
             <div class="dashboard-charts-grid">
@@ -186,12 +206,41 @@ async function loadDashboardMetrics() {
   const container = document.getElementById('dashboardMetrics');
   if (!container) return;
   try {
-    const res = await fetch('/api/dashboard/metrics');
+    // Get current scope from toggle (for admin users) or default to 'all'
+    const scope = getDashboardScope();
+    const res = await fetch(`/api/dashboard/metrics?scope=${scope}`);
     if (!res.ok) return;
     const data = await res.json();
     renderMetricCards(data);
   } catch (e) { console.warn('Dashboard metrics load failed', e); }
 }
+
+function getDashboardScope() {
+  // Check if admin scope toggle exists
+  const scopeToggle = document.getElementById('dashboardScopeToggle');
+  if (scopeToggle) {
+    const organizationRadio = document.getElementById('scopeOrganization');
+    const mineRadio = document.getElementById('scopeMine');
+    if (mineRadio && mineRadio.checked) {
+      return 'mine';
+    }
+  }
+  return 'all'; // Default to organization view
+}
+
+// Add event listener for scope toggle
+document.addEventListener('DOMContentLoaded', function() {
+  const scopeToggle = document.getElementById('dashboardScopeToggle');
+  if (scopeToggle) {
+    const radios = scopeToggle.querySelectorAll('input[type="radio"]');
+    radios.forEach(radio => {
+      radio.addEventListener('change', function() {
+        // Refresh all dashboard data when scope changes
+        refreshAll();
+      });
+    });
+  }
+});
 
 async function loadMyTicketStatus() {
   const canvas = document.getElementById('myStatusChart');
