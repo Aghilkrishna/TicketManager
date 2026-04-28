@@ -81,31 +81,57 @@ public class ViewController {
 
     @GetMapping("/tickets")
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
-    public String tickets(Principal principal) {
-        if (principal == null) {
+    public String tickets(@RequestParam(required = false) String statuses,
+                         @RequestParam(required = false) String priority,
+                         @RequestParam(required = false) String search,
+                         @RequestParam(required = false) Boolean assignedOnly,
+                         @RequestParam(required = false) Boolean createdOnly,
+                         Principal principal,
+                         Model model) {
+        // If no query parameters are provided, use default role-based redirects
+        if (statuses == null && priority == null && search == null && assignedOnly == null && createdOnly == null) {
+            if (principal == null) {
+                return "redirect:/tickets/pending";
+            }
+
+            if (userService.hasRole(principal.getName(), "ROLE_ADMIN")
+                    && userService.hasAuthority(principal.getName(), "FEATURE_TICKETS_ALL_VIEW")) {
+                return "redirect:/tickets/all";
+            }
+
+            if (userService.hasRole(principal.getName(), "ROLE_VENDOR")
+                    && userService.hasAuthority(principal.getName(), "FEATURE_TICKETS_CREATED_VIEW")) {
+                return "redirect:/tickets/created";
+            }
+
             return "redirect:/tickets/pending";
         }
-
-        if (userService.hasRole(principal.getName(), "ROLE_ADMIN")
-                && userService.hasAuthority(principal.getName(), "FEATURE_TICKETS_ALL_VIEW")) {
-            return "redirect:/tickets/all";
-        }
-
-        if (userService.hasRole(principal.getName(), "ROLE_VENDOR")
-                && userService.hasAuthority(principal.getName(), "FEATURE_TICKETS_CREATED_VIEW")) {
-            return "redirect:/tickets/created";
-        }
-
-        return "redirect:/tickets/pending";
+        
+        // If query parameters are provided, use the general tickets page with proper filters
+        model.addAttribute("ticketTab", "all");
+        model.addAttribute("ticketPageTitle", "Filtered Tickets");
+        model.addAttribute("ticketSubtitle", "Tickets matching your search criteria");
+        model.addAttribute("forcedStatuses", statuses != null ? java.util.List.of(statuses) : java.util.List.of());
+        model.addAttribute("assignedOnly", assignedOnly != null ? assignedOnly : false);
+        model.addAttribute("createdOnly", createdOnly != null ? createdOnly : false);
+        model.addAttribute("adminScope", false);
+        return "tickets";
     }
 
     @GetMapping("/tickets/pending")
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW') and !hasAuthority('ROLE_VENDOR')")
-    public String pendingTickets(Model model) {
+    public String pendingTickets(@RequestParam(required = false) String statuses, Model model) {
         model.addAttribute("ticketTab", "pending");
         model.addAttribute("ticketPageTitle", "My Pending Tickets");
-        model.addAttribute("ticketSubtitle", "Open, in-progress, and on-hold tickets assigned to you");
-        model.addAttribute("forcedStatuses", java.util.List.of("OPEN", "SITE_VISITED", "IN_PROGRESS", "ON_HOLD"));
+        model.addAttribute("ticketSubtitle", "Leads, open, in-progress, and on-hold tickets assigned to you");
+        
+        // If specific status is provided, use it instead of default statuses
+        if (statuses != null && !statuses.isBlank()) {
+            model.addAttribute("forcedStatuses", java.util.List.of(statuses));
+        } else {
+            model.addAttribute("forcedStatuses", java.util.List.of("LEADS", "OPEN", "SITE_VISITED", "IN_PROGRESS", "ON_HOLD"));
+        }
+        
         model.addAttribute("assignedOnly", true);
         model.addAttribute("createdOnly", false);
         model.addAttribute("adminScope", false);
@@ -127,11 +153,18 @@ public class ViewController {
 
     @GetMapping("/tickets/created")
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_CREATED_VIEW') and hasAuthority('ROLE_VENDOR')")
-    public String createdTickets(Model model) {
+    public String createdTickets(@RequestParam(required = false) String statuses, Model model) {
         model.addAttribute("ticketTab", "created");
         model.addAttribute("ticketPageTitle", "My Tickets");
         model.addAttribute("ticketSubtitle", "Tickets created by you or assigned to you");
-        model.addAttribute("forcedStatuses", java.util.List.of());
+        
+        // If specific status is provided, use it instead of default statuses
+        if (statuses != null && !statuses.isBlank()) {
+            model.addAttribute("forcedStatuses", java.util.List.of(statuses));
+        } else {
+            model.addAttribute("forcedStatuses", java.util.List.of());
+        }
+        
         model.addAttribute("assignedOnly", false);
         model.addAttribute("createdOnly", true);
         model.addAttribute("adminScope", false);
@@ -153,11 +186,18 @@ public class ViewController {
 
     @GetMapping("/tickets/all")
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_ALL_VIEW')")
-    public String allTickets(Model model) {
+    public String allTickets(@RequestParam(required = false) String statuses, Model model) {
         model.addAttribute("ticketTab", "all");
         model.addAttribute("ticketPageTitle", "All Tickets");
         model.addAttribute("ticketSubtitle", "All tickets across the workspace");
-        model.addAttribute("forcedStatuses", java.util.List.of());
+        
+        // If specific status is provided, use it instead of default statuses
+        if (statuses != null && !statuses.isBlank()) {
+            model.addAttribute("forcedStatuses", java.util.List.of(statuses));
+        } else {
+            model.addAttribute("forcedStatuses", java.util.List.of());
+        }
+        
         model.addAttribute("assignedOnly", false);
         model.addAttribute("createdOnly", false);
         model.addAttribute("adminScope", true);

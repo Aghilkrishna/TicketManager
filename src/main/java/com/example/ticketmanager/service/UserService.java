@@ -240,15 +240,14 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AdminDtos.UserSummary> listUsers(String query, int page, int size) {
+    public Page<AdminDtos.UserSummary> listUsers(String query, String role, String enabled, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "username"));
         String search = query == null ? "" : query.trim();
-        if (search.isBlank()) {
-            return userRepository.findAll(pageable).map(this::toUserSummary);
-        }
-        return userRepository.findByUsernameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrPhoneContainingIgnoreCase(
-                search, search, search, pageable
-        ).map(this::toUserSummary);
+        String roleName = role == null ? "" : role.trim();
+        Boolean enabledFilter = (enabled == null || enabled.isBlank()) ? null : Boolean.valueOf(enabled);
+
+        return userRepository.findByFilters(search, roleName, enabledFilter, pageable)
+                .map(this::toUserSummary);
     }
 
     @Transactional
@@ -334,6 +333,7 @@ public class UserService {
                 user.getUsername(),
                 user.getEmail(),
                 user.getPhone(),
+                user.getCompanyName(), // Add company name
                 user.isEnabled(),
                 user.isEmailVerified(),
                 user.getRoles().stream().map(Role::getName).collect(Collectors.toCollection(LinkedHashSet::new)),

@@ -45,13 +45,25 @@ public class DashboardRestController {
     }
 
     /**
-     * "All Ticket Status" chart data – all tickets across the workspace.
+     * "All Ticket Status" chart data – all tickets accessible to the user.
      * Visible to Admin and Manager only.
      */
     @PreAuthorize("hasAuthority('FEATURE_DASHBOARD_ALL_TICKET_STATUS')")
     @GetMapping("/all-ticket-status")
-    public Map<String, Long> allTicketStatus() {
-        return buildStatusMap(ticketRepository.countAllByStatus());
+    public Map<String, Long> allTicketStatus(Principal principal) {
+        com.example.ticketmanager.entity.AppUser user = userService.getByEmail(principal.getName());
+        boolean effectiveAdminScope = userService.hasAuthority(user, "FEATURE_TICKETS_ALL_VIEW");
+        
+        if (effectiveAdminScope) {
+            return buildStatusMap(ticketRepository.countAllByStatus());
+        } else {
+            // Apply same scope logic as ticket list for non-admin users
+            boolean isVendor = userService.hasRole(user, "ROLE_VENDOR");
+            List<Object[]> rows = isVendor
+                    ? ticketRepository.countCreatedByStatus(user.getId())
+                    : ticketRepository.countAssignedByStatus(user.getId());
+            return buildStatusMap(rows);
+        }
     }
 
     /**

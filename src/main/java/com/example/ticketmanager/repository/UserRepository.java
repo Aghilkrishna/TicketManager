@@ -41,4 +41,31 @@ public interface UserRepository extends JpaRepository<AppUser, Long> {
 
     @Query("select distinct u from AppUser u join u.roles r where u.enabled = true and r.active = true and r.name in :roleNames")
     List<AppUser> findEnabledUsersByActiveRoleNames(List<String> roleNames);
+
+    /** Find users by role name */
+    @Query("select distinct u from AppUser u join u.roles r where r.name = :roleName")
+    Page<AppUser> findByRoleName(String roleName, Pageable pageable);
+
+    /** Find users by role name and enabled status */
+    @Query("select distinct u from AppUser u join u.roles r where r.name = :roleName and u.enabled = :enabled")
+    Page<AppUser> findByRoleNameAndEnabled(String roleName, Boolean enabled, Pageable pageable);
+
+    /** Find users by enabled status */
+    Page<AppUser> findByEnabled(Boolean enabled, Pageable pageable);
+
+    /** Find users by enabled status and search query */
+    @Query("select u from AppUser u where u.enabled = :enabled and (lower(u.username) like lower(concat('%', :search, '%')) or lower(u.email) like lower(concat('%', :search, '%')) or lower(u.phone) like lower(concat('%', :search, '%')))")
+    Page<AppUser> findByEnabledAndSearch(Boolean enabled, String search, Pageable pageable);
+
+    @Query("""
+            select distinct u from AppUser u
+            left join u.roles r
+            where (:query is null or :query = '' 
+                   or lower(u.username) like lower(concat('%', :query, '%'))
+                   or lower(u.email) like lower(concat('%', :query, '%'))
+                   or lower(coalesce(u.phone, '')) like lower(concat('%', :query, '%')))
+              and (:roleName is null or :roleName = '' or r.name = :roleName)
+              and (:enabled is null or u.enabled = :enabled)
+            """)
+    Page<AppUser> findByFilters(String query, String roleName, Boolean enabled, Pageable pageable);
 }

@@ -140,8 +140,8 @@ function generateColorForKey(key, index) {
   return `hsl(${hue.toFixed(0)} ${saturation}% ${lightness}%)`;
 }
 
-function makeDoughnut(canvas, labels, values, colors) {
-  return new Chart(canvas, {
+function makeDoughnut(canvas, labels, values, colors, chartType) {
+  const chart = new Chart(canvas, {
     type: 'doughnut',
     data: {
       labels,
@@ -156,9 +156,53 @@ function makeDoughnut(canvas, labels, values, colors) {
         },
         tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}` } }
       },
-      animation: { duration: 500 }
+      animation: { duration: 500 },
+      onClick: (event, activeElements) => {
+        if (activeElements.length > 0) {
+          const index = activeElements[0].index;
+          const label = labels[index];
+          handleChartClick(chartType, label);
+        }
+      }
     }
   });
+  return chart;
+}
+
+function handleChartClick(chartType, label) {
+  // Convert display label back to status/role key
+  const key = label.toUpperCase().replace(/\s+/g, '_');
+  
+  switch (chartType) {
+    case 'myStatus':
+      // For My Ticket Status chart, navigate based on user role
+      const isVendor = /*[[${currentRoles.contains('ROLE_VENDOR')}]]*/ false;
+      if (isVendor) {
+        // For vendor users, filter by status AND created by user
+        window.location.href = `/tickets?statuses=${key}&createdOnly=true`;
+      } else {
+        // For admin, manager, agent users, filter by status AND assigned to logged-in user
+        window.location.href = `/tickets?statuses=${key}&assignedOnly=true`;
+      }
+      return; // Important: prevent fall-through to default navigation
+      break;
+      
+    case 'allStatus':
+      // For All Ticket Status chart, redirect to All Tickets page with status filter
+      window.location.href = `/tickets/all?statuses=${key}`;
+      return; // Important: prevent fall-through to default navigation
+      break;
+      
+    case 'userCount':
+      // For User Count chart, navigate to user management page with role filter
+      const userRoleKey = label.toUpperCase().replace(/\s+/g, '_');
+      window.location.href = `/admin/users?role=ROLE_${userRoleKey}`;
+      return; // Important: prevent fall-through to default navigation
+      break;
+      
+    default:
+      return; // Don't navigate if chart type is unknown
+  }
 }
 
 let myStatusChart = null, allStatusChart = null, userCountChart = null;
@@ -259,7 +303,7 @@ async function loadMyTicketStatus() {
       myStatusChart.data.datasets[0].backgroundColor = colors;
       myStatusChart.update();
     } else {
-      myStatusChart = makeDoughnut(canvas, labels, values, colors);
+      myStatusChart = makeDoughnut(canvas, labels, values, colors, 'myStatus');
     }
   } catch (e) { console.warn('My ticket status load failed', e); }
 }
@@ -281,7 +325,7 @@ async function loadAllTicketStatus() {
       allStatusChart.data.datasets[0].backgroundColor = colors;
       allStatusChart.update();
     } else {
-      allStatusChart = makeDoughnut(canvas, labels, values, colors);
+      allStatusChart = makeDoughnut(canvas, labels, values, colors, 'allStatus');
     }
   } catch (e) { console.warn('All ticket status load failed', e); }
 }
@@ -305,7 +349,7 @@ async function loadUserCount() {
       userCountChart.data.datasets[0].backgroundColor = colors;
       userCountChart.update();
     } else {
-      userCountChart = makeDoughnut(canvas, labels, values, colors);
+      userCountChart = makeDoughnut(canvas, labels, values, colors, 'userCount');
     }
   } catch (e) { console.warn('User count load failed', e); }
 }

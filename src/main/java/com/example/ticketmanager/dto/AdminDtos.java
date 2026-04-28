@@ -30,6 +30,7 @@ public final class AdminDtos {
             String username,
             String email,
             String phone,
+            String companyName,
             boolean enabled,
             boolean emailVerified,
             Set<String> roles,

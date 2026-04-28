@@ -124,14 +124,61 @@
 <script th:inline="javascript">
 const forcedStatuses = /*[[${forcedStatuses}]]*/ [];
 const canEditTickets = /*[[${currentFeatures.contains('FEATURE_TICKETS_MANAGE') or currentFeatures.contains('FEATURE_SITE_VISIT_EDIT')}]]*/ false;
-const assignedOnly = /*[[${assignedOnly}]]*/ true;
-const createdOnly = /*[[${createdOnly}]]*/ false;
-const adminScope = /*[[${adminScope}]]*/ false;
+let assignedOnly = /*[[${assignedOnly}]]*/ true;
+let createdOnly = /*[[${createdOnly}]]*/ false;
+let adminScope = /*[[${adminScope}]]*/ false;
 const canViewAllTickets = /*[[${currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW')}]]*/ false;
 let currentPage = 0;
 let pageSize = 100;
 const refreshTicketsDebounced = debounce(() => loadTickets(), 400);
 let lastTicketRefreshToastAt = 0;
+
+// Read URL parameters on page load
+function initializeFromUrlParams() {
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  // Set status filter if provided
+  if (urlParams.has('statuses')) {
+    const statusValue = urlParams.get('statuses');
+    const statusSelect = document.getElementById('status');
+    if (statusSelect) {
+      statusSelect.value = statusValue;
+    }
+  }
+  
+  // Update assignedOnly variable if provided
+  if (urlParams.has('assignedOnly')) {
+    assignedOnly = urlParams.get('assignedOnly') === 'true';
+  }
+  
+  // Update createdOnly variable if provided
+  if (urlParams.has('createdOnly')) {
+    createdOnly = urlParams.get('createdOnly') === 'true';
+  }
+  
+  // Update adminScope variable if provided
+  if (urlParams.has('adminScope')) {
+    adminScope = urlParams.get('adminScope') === 'true';
+  }
+  
+  // Set search filter if provided
+  if (urlParams.has('search')) {
+    const searchValue = urlParams.get('search');
+    const searchInput = document.getElementById('search');
+    if (searchInput) {
+      searchInput.value = searchValue;
+    }
+  }
+  
+  // Set priority filter if provided
+  if (urlParams.has('priority')) {
+    const priorityValue = urlParams.get('priority');
+    const prioritySelect = document.getElementById('priority');
+    if (prioritySelect) {
+      prioritySelect.value = priorityValue;
+    }
+  }
+}
 
 function escapeHtml(value) {
   return (value || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
@@ -337,6 +384,9 @@ document.getElementById('vendorSearch').addEventListener('input', debounce(event
   }
 ), 220));
 loadTickets();
+
+// Initialize URL parameters after page load
+initializeFromUrlParams();
 
 if (typeof SockJS !== 'undefined' && typeof Stomp !== 'undefined') {
   const socket = new SockJS('/ws');

@@ -45,9 +45,11 @@ public class AdminRestController {
     @GetMapping("/users")
     @PreAuthorize("hasAuthority('FEATURE_ADMIN_USER_MANAGEMENT')")
     public Page<AdminDtos.UserSummary> listUsers(@RequestParam(required = false) String query,
+                                                 @RequestParam(required = false) String role,
+                                                 @RequestParam(required = false) String enabled,
                                                  @RequestParam(defaultValue = "0") int page,
                                                  @RequestParam(defaultValue = "10") int size) {
-        return userService.listUsers(query, page, size);
+        return userService.listUsers(query, role, enabled, page, size);
     }
 
     @PutMapping("/users/{userId}")

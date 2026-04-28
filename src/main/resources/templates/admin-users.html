@@ -14,8 +14,23 @@
                 <p class="mb-0">Update user details, role assignments, and activation status without leaving the admin area.</p>
             </section>
             <section class="toolbar-card glass-card mb-4">
-                <div class="toolbar-grid">
-                    <input id="userSearch" class="form-control" placeholder="Search by username, email, or mobile number">
+                <div class="toolbar-filters-section">
+                    <h6 class="toolbar-section-title">Filters</h6>
+                    <div class="toolbar-grid">
+                        <input id="userSearch" class="form-control" placeholder="Search by username, email, or mobile number">
+                        <select id="roleFilter" class="form-select">
+                            <option value="">All roles</option>
+                            <option value="ROLE_ADMIN">Admin</option>
+                            <option value="ROLE_MANAGER">Manager</option>
+                            <option value="ROLE_AGENT">Agent</option>
+                            <option value="ROLE_VENDOR">Vendor</option>
+                        </select>
+                        <select id="statusFilter" class="form-select">
+                            <option value="">All status</option>
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                    </div>
                 </div>
             </section>
             <section class="table-card glass-card">
@@ -24,7 +39,7 @@
                     <table class="table align-middle">
                         <thead>
                         <tr>
-                            <th>S.No</th><th>Username</th><th>Mobile</th><th>Email</th><th>Role</th><th>Account Status</th><th class="text-end">Actions</th>
+                            <th>S.No</th><th>Username</th><th>Mobile</th><th>Email</th><th>Company</th><th>Role</th><th>Account Status</th><th class="text-end">Actions</th>
                         </tr>
                         </thead>
                         <tbody id="userTable"></tbody>
@@ -83,6 +98,38 @@ const refreshUsersDebounced = debounce(() => loadUsers(), 400);
 let lastUserRefreshToastAt = 0;
 const userModal = new bootstrap.Modal(document.getElementById('userModal'));
 
+// Read URL parameters on page load
+function initializeFromUrlParams() {
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  // Set search filter if provided
+  if (urlParams.has('query')) {
+    const searchValue = urlParams.get('query');
+    const searchInput = document.getElementById('userSearch');
+    if (searchInput) {
+      searchInput.value = searchValue;
+    }
+  }
+  
+  // Set role filter if provided
+  if (urlParams.has('role')) {
+    const roleValue = urlParams.get('role');
+    const roleSelect = document.getElementById('roleFilter');
+    if (roleSelect) {
+      roleSelect.value = roleValue;
+    }
+  }
+  
+  // Set status filter if provided
+  if (urlParams.has('enabled')) {
+    const statusValue = urlParams.get('enabled');
+    const statusSelect = document.getElementById('statusFilter');
+    if (statusSelect) {
+      statusSelect.value = statusValue;
+    }
+  }
+}
+
 function renderUserPagination(data) {
   const list = document.getElementById('userPaginationList');
   const summary = document.getElementById('userPaginationSummary');
@@ -117,6 +164,7 @@ function renderUsers() {
         <td><div class="fw-semibold">${user.username}</div></td>
         <td>${user.phone || '-'}</td>
         <td>${user.email}</td>
+        <td>${user.companyName || '-'}</td>
         <td>${(user.roleLabels || []).join(', ') || '-'}</td>
         <td>${activeBadge}</td>
         <td class="text-end">
@@ -192,6 +240,8 @@ window.viewUserDetails = (userId) => {
 async function loadUsers() {
   const params = new URLSearchParams({
     query: document.getElementById('userSearch').value,
+    role: document.getElementById('roleFilter').value,
+    enabled: document.getElementById('statusFilter').value,
     page: String(userPage),
     size: String(userPageSize)
   });
@@ -225,6 +275,16 @@ document.getElementById('userSearch').addEventListener('input', () => {
   }, 250);
 });
 
+document.getElementById('roleFilter').addEventListener('change', () => {
+  userPage = 0;
+  loadUsers();
+});
+
+document.getElementById('statusFilter').addEventListener('change', () => {
+  userPage = 0;
+  loadUsers();
+});
+
 document.getElementById('userForm').addEventListener('submit', async event => {
   event.preventDefault();
   const userId = document.getElementById('userId').value;
@@ -249,6 +309,9 @@ document.getElementById('userForm').addEventListener('submit', async event => {
   showAppAlert('User details updated successfully.', 'success', 'Saved');
   await loadUsers();
 });
+
+// Initialize URL parameters after page load
+initializeFromUrlParams();
 
 loadUsers();
 
