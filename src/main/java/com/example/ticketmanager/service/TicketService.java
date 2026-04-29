@@ -504,8 +504,7 @@ public class TicketService {
         // Handle address logic
         if (request.customerAddressId() != null) {
             // Use existing customer address
-            ticket.setCustomerAddressId(request.customerAddressId());
-            ticket.setCustomerAddressReferenceId(null);
+            ticket.setCustomerAddressReferenceId(request.customerAddressId());
             
             // Copy address fields from customer address
             var customerAddress = customerAddressService.getAddressById(request.customerAddressId(), actorUsername)
@@ -523,7 +522,6 @@ public class TicketService {
             
             // Store the reference ID
             ticket.setCustomerAddressReferenceId(request.customerAddressReferenceId());
-            ticket.setCustomerAddressId(null);
             
             // Copy address fields from referenced ticket
             ticket.setCustomerFlat(referenceTicket.getCustomerFlat());
@@ -535,7 +533,6 @@ public class TicketService {
         } else {
             // New address - no reference, save as new address
             ticket.setCustomerAddressReferenceId(null);
-            ticket.setCustomerAddressId(null);
             
             ticket.setCustomerFlat(request.customerFlat() == null || request.customerFlat().isBlank() ? null : request.customerFlat().trim());
             ticket.setCustomerStreet(request.customerStreet() == null || request.customerStreet().isBlank() ? null : request.customerStreet().trim());

@@ -17,6 +17,9 @@ import java.time.Duration;
  *                      Short TTL so security-sensitive changes (disable, role update)
  *                      propagate within a reasonable time window.
  *                      Evicted explicitly by UserService on every mutation.
+ *   "tickets"        – Ticket entities to reduce database load on list views.
+ *   "customerAddresses" – Customer address data for auto-population.
+ *   "ticketComments" – Recent ticket comments to reduce query overhead.
  */
 @Configuration
 @EnableCaching
@@ -26,8 +29,8 @@ public class CacheConfig {
     public CacheManager cacheManager() {
         CaffeineCacheManager manager = new CaffeineCacheManager();
         manager.setCaffeine(Caffeine.newBuilder()
-                .expireAfterWrite(Duration.ofMinutes(5))
-                .maximumSize(1_000));
+                .expireAfterWrite(Duration.ofMinutes(10))
+                .maximumSize(5_000));
         return manager;
     }
 }

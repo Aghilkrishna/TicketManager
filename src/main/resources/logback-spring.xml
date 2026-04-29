@@ -52,56 +52,86 @@
 
     <!-- Application-specific loggers -->
     <logger name="com.example.ticketmanager" level="INFO" additivity="false">
+        <springProfile name="!prod">
+            <appender-ref ref="CONSOLE"/>
+        </springProfile>
         <appender-ref ref="FILE-ROLLING"/>
         <appender-ref ref="ERROR-FILE"/>
     </logger>
 
     <!-- Specific service loggers with DEBUG level -->
     <logger name="com.example.ticketmanager.service.AuthService" level="DEBUG" additivity="false">
+        <springProfile name="!prod">
+            <appender-ref ref="CONSOLE"/>
+        </springProfile>
         <appender-ref ref="FILE-ROLLING"/>
         <appender-ref ref="ERROR-FILE"/>
     </logger>
     
     <logger name="com.example.ticketmanager.service.MobileVerificationService" level="DEBUG" additivity="false">
+        <springProfile name="!prod">
+            <appender-ref ref="CONSOLE"/>
+        </springProfile>
         <appender-ref ref="FILE-ROLLING"/>
         <appender-ref ref="ERROR-FILE"/>
     </logger>
     
     <logger name="com.example.ticketmanager.service.SmsService" level="DEBUG" additivity="false">
+        <springProfile name="!prod">
+            <appender-ref ref="CONSOLE"/>
+        </springProfile>
         <appender-ref ref="FILE-ROLLING"/>
         <appender-ref ref="ERROR-FILE"/>
     </logger>
     
     <logger name="com.example.ticketmanager.service.UserService" level="DEBUG" additivity="false">
+        <springProfile name="!prod">
+            <appender-ref ref="CONSOLE"/>
+        </springProfile>
         <appender-ref ref="FILE-ROLLING"/>
         <appender-ref ref="ERROR-FILE"/>
     </logger>
     
     <logger name="com.example.ticketmanager.service.TicketService" level="DEBUG" additivity="false">
+        <springProfile name="!prod">
+            <appender-ref ref="CONSOLE"/>
+        </springProfile>
         <appender-ref ref="FILE-ROLLING"/>
         <appender-ref ref="ERROR-FILE"/>
     </logger>
 
     <!-- Security and authentication logging -->
     <logger name="com.example.ticketmanager.security" level="DEBUG" additivity="false">
+        <springProfile name="!prod">
+            <appender-ref ref="CONSOLE"/>
+        </springProfile>
         <appender-ref ref="FILE-ROLLING"/>
         <appender-ref ref="ERROR-FILE"/>
     </logger>
 
     <!-- Repository layer logging -->
     <logger name="com.example.ticketmanager.repository" level="DEBUG" additivity="false">
+        <springProfile name="!prod">
+            <appender-ref ref="CONSOLE"/>
+        </springProfile>
         <appender-ref ref="FILE-ROLLING"/>
         <appender-ref ref="ERROR-FILE"/>
     </logger>
 
     <!-- Controller layer logging -->
     <logger name="com.example.ticketmanager.controller" level="DEBUG" additivity="false">
+        <springProfile name="!prod">
+            <appender-ref ref="CONSOLE"/>
+        </springProfile>
         <appender-ref ref="FILE-ROLLING"/>
         <appender-ref ref="ERROR-FILE"/>
     </logger>
 
     <!-- Third-party API logging -->
     <logger name="org.springframework.web.client.RestTemplate" level="DEBUG" additivity="false">
+        <springProfile name="!prod">
+            <appender-ref ref="CONSOLE"/>
+        </springProfile>
         <appender-ref ref="FILE-ROLLING"/>
         <appender-ref ref="ERROR-FILE"/>
     </logger>

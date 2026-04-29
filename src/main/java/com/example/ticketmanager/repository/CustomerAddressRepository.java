@@ -1,6 +1,7 @@
 package com.example.ticketmanager.repository;
 
 import com.example.ticketmanager.entity.CustomerAddress;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,6 +13,7 @@ import java.util.Optional;
 @Repository
 public interface CustomerAddressRepository extends JpaRepository<CustomerAddress, Long> {
 
+    @Cacheable("customerAddresses")
     @Query("SELECT ca FROM CustomerAddress ca WHERE " +
            "(LOWER(ca.customerEmail) = LOWER(:email) OR LOWER(ca.customerPhone) = LOWER(:phone)) " +
            "ORDER BY ca.updatedAt DESC")

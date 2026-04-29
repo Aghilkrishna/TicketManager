@@ -581,8 +581,8 @@ async function searchCustomers(query, targetId) {
       const customer = customers.find(item => item.email === button.dataset.customer || item.phone === button.dataset.customer);
       if (customer) {
         populateCustomerFields(customer);
-        // Search for customer addresses using the new API
-        searchCustomerAddresses(customer.email, customer.phone);
+        // Search for customer addresses using the new API, passing the target container
+        searchCustomerAddresses(customer.email, customer.phone, targetId);
       }
       showSuggestionState(target, '', false);
     }));
@@ -591,7 +591,7 @@ async function searchCustomers(query, targetId) {
   }
 }
 
-async function searchCustomerAddresses(email, phone) {
+async function searchCustomerAddresses(email, phone, targetId) {
   if (!email && !phone) {
     return;
   }
@@ -609,9 +609,8 @@ async function searchCustomerAddresses(email, phone) {
         // Auto-fill if only one address
         selectNewAddress(addresses[0]);
       } else {
-        // Show dropdown for multiple addresses
-        showNewAddressSelection(addresses, 'customerAddressSuggestions');
-        showNewAddressSelection(addresses, 'customerAddressSuggestionsMobile');
+        // Show dropdown for multiple addresses only in the target container
+        showNewAddressSelection(addresses, targetId);
       }
     }
   } catch (error) {

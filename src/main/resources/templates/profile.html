@@ -328,10 +328,14 @@
         return await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 0.92));
     }
 
-    document.getElementById('profileImageForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const input = document.getElementById('profileImageInput');
-        const message = document.getElementById('profileMessage');
+    // Initialize event listeners when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        const profileImageForm = document.getElementById('profileImageForm');
+        if (profileImageForm) {
+            profileImageForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const input = document.getElementById('profileImageInput');
+                const message = document.getElementById('profileMessage');
         if (!input.files.length) {
             showInlineAlert(message, 'Select an image to upload.', 'danger', 'Upload Failed');
             return;
@@ -349,7 +353,9 @@
         if (res.ok) {
             const avatarUrl = `/api/users/avatar/[[${profile.id}]]?v=${Date.now()}`;
             const existingImage = document.getElementById('profileAvatarPreview');
-            existingImage.src = avatarUrl;
+            if (existingImage) {
+                existingImage.src = avatarUrl;
+            }
             const topbarImage = document.querySelector('.profile-button img');
             const topbarFallback = document.querySelector('.profile-button span.rounded-circle');
             if (topbarImage) {
@@ -359,9 +365,12 @@
             }
             input.value = '';
         }
-    });
+            });
+        }
 
-    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+        const profileForm = document.getElementById('profileForm');
+        if (profileForm) {
+            profileForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const button = e.target.querySelector('button[type="submit"]');
         const payload = Object.fromEntries(new FormData(e.target).entries());
@@ -376,9 +385,12 @@
         const data = await res.json().catch(() => ({}));
         setButtonLoading(button, false);
         showInlineAlert(message, res.ok ? 'Profile updated successfully.' : (data.message || 'Update failed'), res.ok ? 'success' : 'danger', res.ok ? 'Profile Saved' : 'Update Failed');
-    });
+            });
+        }
 
-    document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+        const passwordForm = document.getElementById('passwordForm');
+        if (passwordForm) {
+            passwordForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const button = e.target.querySelector('button[type="submit"]');
         const payload = Object.fromEntries(new FormData(e.target).entries());
@@ -396,7 +408,8 @@
         if (res.ok) {
             e.target.reset();
         }
-    });
+            });
+        }
 
     let phoneVerificationModal;
     let currentPhoneNumber = '';
@@ -489,17 +502,30 @@
         }
     }
 
-    // Event listeners
-    document.getElementById('resendOtpBtn').addEventListener('click', sendOtp);
-    document.getElementById('verifyOtpBtn').addEventListener('click', verifyOtp);
-    document.getElementById('otpInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            verifyOtp();
+        // Event listeners
+        const resendOtpBtn = document.getElementById('resendOtpBtn');
+        if (resendOtpBtn) {
+            resendOtpBtn.addEventListener('click', sendOtp);
         }
-    });
 
-    // ID Proof Document Functions
-    document.getElementById('uploadIdProofBtn').addEventListener('click', async () => {
+        const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+        if (verifyOtpBtn) {
+            verifyOtpBtn.addEventListener('click', verifyOtp);
+        }
+
+        const otpInput = document.getElementById('otpInput');
+        if (otpInput) {
+            otpInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    verifyOtp();
+                }
+            });
+        }
+
+        // ID Proof Document Functions
+        const uploadIdProofBtn = document.getElementById('uploadIdProofBtn');
+        if (uploadIdProofBtn) {
+            uploadIdProofBtn.addEventListener('click', async () => {
         const typeSelect = document.getElementById('idProofType');
         const fileInput = document.getElementById('idProofFile');
         const message = document.getElementById('idProofMessage');
@@ -549,7 +575,8 @@
             setButtonLoading(button, false);
             showInlineAlert(message, 'Upload failed', 'danger', 'Upload Failed');
         }
-    });
+            });
+        }
 
     async function updateIdProofList() {
         try {
@@ -658,26 +685,26 @@
         }, 30000); // 30 seconds
     }
 
-    // Stop polling when page is hidden or unloaded
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
+        // Stop polling when page is hidden or unloaded
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                clearInterval(statusUpdateInterval);
+            } else {
+                startStatusPolling();
+            }
+        });
+
+        window.addEventListener('beforeunload', () => {
             clearInterval(statusUpdateInterval);
-        } else {
+        });
+
+        // Initialize polling on page load if there are ID proofs
+        const initialDocuments = /*[[${userIdProofs != null ? userIdProofs : '[]'}]]*/ [];
+        if (initialDocuments && initialDocuments.length > 0) {
             startStatusPolling();
         }
-    });
 
-    window.addEventListener('beforeunload', () => {
-        clearInterval(statusUpdateInterval);
-    });
-
-    // Initialize polling on page load if there are ID proofs
-    const initialDocuments = /*[[${userIdProofs != null ? userIdProofs : '[]'}]]*/ [];
-    if (initialDocuments && initialDocuments.length > 0) {
-        startStatusPolling();
-    }
-
-    window.viewDocument = async (docId) => {
+        window.viewDocument = async (docId) => {
         try {
             const res = await fetch(`/api/users/id-proof/${docId}/view`);
             if (res.ok) {
@@ -699,7 +726,7 @@
         }
     };
 
-    window.reuploadDocument = (docId) => {
+        window.reuploadDocument = (docId) => {
         const typeSelect = document.getElementById('idProofType');
         const fileInput = document.getElementById('idProofFile');
 
@@ -716,6 +743,7 @@
         fileInput.focus();
         fileInput.scrollIntoView({ behavior: 'smooth' });
     };
+    });
 </script>
 </body>
 </html>
