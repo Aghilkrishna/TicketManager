@@ -99,6 +99,9 @@ public class Ticket {
     @Column(name = "customer_address_reference_id")
     private Long customerAddressReferenceId;
 
+    @Column(name = "customer_address_id")
+    private Long customerAddressId;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 30)
     private TicketPricingModel pricingModel;

@@ -190,7 +190,7 @@ function hasRole(user, roleName) {
 
 function userSuggestionMarkup(user) {
   const company = user.companyName ? escapeHtml(user.companyName) : escapeHtml(user.username || 'Vendor');
-  const subtitle = escapeHtml(user.email || user.phone || '');
+  const subtitle = escapeHtml(`${user.username || ''} · ${user.city || ''}`);
   return `
     <button type="button" class="autosuggest-item" data-id="${user.id}">
       <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${company}" loading="lazy" decoding="async">

@@ -2,6 +2,75 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:replace="~{fragments/layout :: head('Create Ticket')}"></th:block>
+    <style>
+/* Address Suggestions Styles */
+.address-suggestions-container {
+    position: absolute;
+    top: 100%;
+    /*left: 0;*/
+    right: 0;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 4px;
+    width: 400px;
+}
+
+.address-suggestion-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f3f4;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.address-suggestion-item:hover {
+    background-color: #f8f9fa;
+}
+
+.address-suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.address-suggestion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.address-suggestion-title {
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 0.95rem;
+}
+
+.address-suggestion-subtitle {
+    color: #6c757d;
+    font-size: 0.85rem;
+}
+
+.address-suggestion-address {
+    color: #495057;
+    font-size: 0.8rem;
+    margin-top: 2px;
+}
+
+.address-suggestion-badge {
+    background-color: #e3f2fd;
+    color: #0f6cbd;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+    </style>
 </head>
 <body th:with="vendorOnlyCreator=${currentFeatures.contains('FEATURE_TICKETS_CREATE_VENDOR') and !currentFeatures.contains('FEATURE_TICKETS_CREATE_STANDARD') and !currentFeatures.contains('FEATURE_TICKETS_MANAGE') and !currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW') and !currentFeatures.contains('FEATURE_TICKETS_REVIEW')},adminTicketScope=${currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW') or currentFeatures.contains('FEATURE_TICKETS_REVIEW')}">
 <div class="app-shell">
@@ -120,11 +189,17 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Email ID</label>
-                                <input class="form-control" name="customerEmail" type="email" placeholder="Email address" maxlength="100">
+                                <div class="position-relative">
+                                    <input class="form-control" name="customerEmail" type="email" placeholder="Email address" maxlength="100">
+                                    <div id="customerAddressSuggestions" class="address-suggestions-container" hidden></div>
+                                </div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Mobile Number</label>
-                                <input class="form-control" name="customerPhone" placeholder="Mobile number" maxlength="20">
+                                <div class="position-relative">
+                                    <input class="form-control" name="customerPhone" placeholder="Mobile number" maxlength="20">
+                                    <div id="customerAddressSuggestionsMobile" class="address-suggestions-container" hidden></div>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Flat / House No.</label>
@@ -136,13 +211,13 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">City</label>
-                                <input class="form-control address-part" name="customerCity" placeholder="City" maxlength="80">
+                                <input class="form-control address-part" name="customerCity" placeholder="City" maxlength="80" value="Chennai">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">State</label>
                                 <select class="form-select address-part" name="customerState">
                                     <option value="">Select state</option>
-                                    <option th:each="state : ${indiaStates}" th:value="${state}" th:text="${state}"></option>
+                                    <option th:each="state : ${indiaStates}" th:value="${state}" th:text="${state}" th:selected="${state == 'Tamil Nadu'}"></option>
                                 </select>
                             </div>
                             <div class="col-md-4">
@@ -254,6 +329,17 @@ function mirrorLocationLink() {
   document.getElementById('locationLinkMirror').value = document.getElementById('customerLocationLink').value.trim();
 }
 
+// Global variables to track original autofilled data
+let originalCustomerData = {
+  addressId: null,
+  flat: '',
+  street: '',
+  city: '',
+  state: '',
+  pincode: '',
+  locationLink: ''
+};
+
 function escapeHtml(value) {
   return (value || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
 }
@@ -271,7 +357,7 @@ function formatRoleLabel(roleName) {
 
 function userSuggestionMarkup(user) {
   const title = escapeHtml(user.companyName || user.username || 'Unknown User');
-  const subtitle = escapeHtml(user.companyName ? `${user.username || ''} · ${user.email || ''}` : `${user.username || ''} ${user.email || ''}`);
+  const subtitle = escapeHtml(user.companyName ? `${user.username || ''} · ${user.city || ''}` : `${user.username || ''} · ${user.city || ''}`);
   return `
     <button type="button" class="autosuggest-item" data-id="${user.id}">
       <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${escapeHtml(user.username || 'User')}" loading="lazy" decoding="async">
@@ -343,6 +429,46 @@ function showSuggestionState(target, content, visible = true) {
   
   target.innerHTML = content;
   target.hidden = !visible;
+  
+  // Add mouse-out hiding logic for customer search suggestion containers
+  if (visible && (target.id === 'customerAddressSuggestions' || target.id === 'customerAddressSuggestionsMobile')) {
+    // Remove any existing event listeners first
+    if (target._cleanupEventListeners) {
+      target._cleanupEventListeners();
+    }
+    
+    // Hide suggestions when clicking outside
+    const hideSuggestions = (event) => {
+      if (!target.contains(event.target)) {
+        target.hidden = true;
+        cleanupEventListeners();
+      }
+    };
+    
+    // Mouse leave handler
+    const handleMouseLeave = () => {
+      setTimeout(() => {
+        if (!target.matches(':hover')) {
+          target.hidden = true;
+          cleanupEventListeners();
+        }
+      }, 200);
+    };
+    
+    // Cleanup function to remove event listeners
+    const cleanupEventListeners = () => {
+      document.removeEventListener('click', hideSuggestions);
+      target.removeEventListener('mouseleave', handleMouseLeave);
+      target._cleanupEventListeners = null;
+    };
+    
+    // Store cleanup function for later removal
+    target._cleanupEventListeners = cleanupEventListeners;
+    
+    // Add event listeners for hiding suggestions
+    document.addEventListener('click', hideSuggestions);
+    target.addEventListener('mouseleave', handleMouseLeave);
+  }
 }
 
 async function searchUsers(query, target, filterFn, onSelect) {
@@ -440,8 +566,8 @@ if (fileInput) {
     container.innerHTML = files.map(file => selectedFileMarkup(file, URL.createObjectURL(file))).join('');
   });
 }
-async function searchCustomers(query) {
-  const target = document.getElementById('customerResults');
+async function searchCustomers(query, targetId) {
+  const target = document.getElementById(targetId);
   if (!query || query.length < 3) {
     showSuggestionState(target, '', false);
     return;
@@ -455,14 +581,41 @@ async function searchCustomers(query) {
       const customer = customers.find(item => item.email === button.dataset.customer || item.phone === button.dataset.customer);
       if (customer) {
         populateCustomerFields(customer);
-        if (customer.addresses && customer.addresses.length > 0) {
-          showAddressSelection(customer.addresses);
-        }
+        // Search for customer addresses using the new API
+        searchCustomerAddresses(customer.email, customer.phone);
       }
       showSuggestionState(target, '', false);
     }));
   } catch (error) {
     showSuggestionState(target, '<div class="autosuggest-empty">Error searching customers.</div>', true);
+  }
+}
+
+async function searchCustomerAddresses(email, phone) {
+  if (!email && !phone) {
+    return;
+  }
+  
+  try {
+    const params = new URLSearchParams();
+    if (email) params.append('email', email);
+    if (phone) params.append('phone', phone);
+    
+    const res = await fetch('/api/customers/addresses?' + params.toString());
+    const addresses = await res.json();
+    
+    if (addresses && addresses.length > 0) {
+      if (addresses.length === 1) {
+        // Auto-fill if only one address
+        selectNewAddress(addresses[0]);
+      } else {
+        // Show dropdown for multiple addresses
+        showNewAddressSelection(addresses, 'customerAddressSuggestions');
+        showNewAddressSelection(addresses, 'customerAddressSuggestionsMobile');
+      }
+    }
+  } catch (error) {
+    console.error('Error searching customer addresses:', error);
   }
 }
 
@@ -481,7 +634,7 @@ function populateCustomerFields(customer) {
   document.querySelector('input[name="customerPhone"]').value = customer.phone || '';
 }
 
-function showAddressSelection(addresses) {
+function showAddressSelection(addresses, targetFieldId) {
   
   if (addresses.length === 1) {
     selectAddress(addresses[0]);
@@ -489,113 +642,160 @@ function showAddressSelection(addresses) {
   }
   
   try {
-    // Create modal for address selection
-    const modal = document.createElement('div');
-    modal.className = 'modal fade';
-    modal.id = 'addressSelectionModal';
+    // Find the target suggestion container
+    const targetContainer = document.getElementById(targetFieldId);
+    if (!targetContainer) {
+      console.error('Target container not found:', targetFieldId);
+      return;
+    }
     
-    // Build address list HTML safely
+    // Build address list HTML
     const addressListHtml = addresses.map((addr, index) => {
       const locationHtml = addr.locationLink ? 
-        `<div class="small text-muted"><a href="${addr.locationLink}" target="_blank">View Location</a></div>` : '';
+        `<div class="address-suggestion-badge">View Location</div>` : '';
       return `
-        <button type="button" class="list-group-item list-group-item-action" data-address-index="${index}">
-          <div class="fw-semibold">Address ${index + 1}</div>
-          <div class="small">${addr.fullAddress || 'No address details'}</div>
-          ${locationHtml}
-        </button>`;
+        <div class="address-suggestion-item" data-address-index="${index}">
+          <div class="address-suggestion-header">
+            <div class="address-suggestion-title">Address ${index + 1}</div>
+            ${locationHtml}
+          </div>
+          <div class="address-suggestion-address">${addr.fullAddress || 'No address details'}</div>
+        </div>`;
     }).join('');
     
-    modal.innerHTML = `
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Select Customer Address</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <div class="list-group">
-              ${addressListHtml}
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="useNewAddress">Use New Address</button>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Try to use Bootstrap modal, fallback to simple display
-    let bsModal;
-    try {
-      if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-        bsModal = new bootstrap.Modal(modal);
-        bsModal.show();
-      } else {
-        // Fallback: show modal manually
-        modal.style.display = 'block';
-        modal.classList.add('show');
-        modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
-      }
-    } catch (error) {
-      console.error('Bootstrap modal error:', error);
-      // Fallback display
-      modal.style.display = 'block';
-      modal.classList.add('show');
-      modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
-    }
+    // Show suggestions
+    targetContainer.innerHTML = addressListHtml;
+    targetContainer.classList.remove('hidden');
     
     // Handle address selection
-    modal.querySelectorAll('[data-address-index]').forEach(button => {
-      button.addEventListener('click', () => {
-        const index = parseInt(button.dataset.addressIndex);
+    targetContainer.querySelectorAll('.address-suggestion-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const index = parseInt(item.dataset.addressIndex);
         selectAddress(addresses[index]);
-        if (bsModal) {
-          bsModal.hide();
-        } else {
-          document.body.removeChild(modal);
-        }
+        // Hide suggestions after selection
+        targetContainer.classList.add('hidden');
+        cleanupEventListeners();
       });
     });
     
-    // Handle new address option
-    const newAddressBtn = modal.querySelector('#useNewAddress');
-    if (newAddressBtn) {
-      newAddressBtn.addEventListener('click', () => {
-        clearAddressFields();
-        if (bsModal) {
-          bsModal.hide();
-        } else {
-          document.body.removeChild(modal);
-        }
-      });
-    }
-    
-    // Handle close button
-    const closeBtn = modal.querySelector('.btn-close');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', () => {
-        if (bsModal) {
-          bsModal.hide();
-        } else {
-          document.body.removeChild(modal);
-        }
-      });
-    }
-    
-    // Clean up modal after hidden
-    modal.addEventListener('hidden.bs.modal', () => {
-      if (document.body.contains(modal)) {
-        document.body.removeChild(modal);
+    // Hide suggestions when clicking outside
+    const hideSuggestions = (event) => {
+      if (!targetContainer.contains(event.target)) {
+        targetContainer.classList.add('hidden');
+        cleanupEventListeners();
       }
-    });
+    };
+    
+    // Mouse leave handler
+    const handleMouseLeave = () => {
+      setTimeout(() => {
+        if (!targetContainer.matches(':hover')) {
+          targetContainer.classList.add('hidden');
+          cleanupEventListeners();
+        }
+      }, 200);
+    };
+    
+    // Cleanup function to remove event listeners
+    const cleanupEventListeners = () => {
+      document.removeEventListener('click', hideSuggestions);
+      targetContainer.removeEventListener('mouseleave', handleMouseLeave);
+    };
+    
+    // Add event listeners for hiding suggestions
+    document.addEventListener('click', hideSuggestions);
+    targetContainer.addEventListener('mouseleave', handleMouseLeave);
     
   } catch (error) {
     console.error('Error in showAddressSelection:', error);
-    alert('Error showing address selection. Please try again.');
+  }
+}
+
+function showNewAddressSelection(addresses, targetFieldId) {
+  try {
+    // Find the target suggestion container
+    const targetContainer = document.getElementById(targetFieldId);
+    if (!targetContainer) {
+      console.error('Target container not found:', targetFieldId);
+      return;
+    }
+    
+    // Cleanup any existing event listeners first
+    if (targetContainer._cleanupEventListeners) {
+      targetContainer._cleanupEventListeners();
+    }
+    
+    // Build address list HTML
+    const addressListHtml = addresses.map((addr) => {
+      const locationHtml = addr.locationLink ? 
+        `<div class="address-suggestion-badge">View Location</div>` : '';
+      return `
+        <div class="address-suggestion-item" data-address-id="${addr.id}">
+          <div class="address-suggestion-header">
+            <div class="address-suggestion-title">Saved Address</div>
+            ${locationHtml}
+          </div>
+          <div class="address-suggestion-address">${addr.fullAddress || 'No address details'}</div>
+        </div>`;
+    }).join('');
+    
+    // Show suggestions
+    targetContainer.innerHTML = addressListHtml;
+    targetContainer.classList.remove('hidden');
+    targetContainer.hidden = false;
+    
+    // Handle address selection
+    targetContainer.querySelectorAll('.address-suggestion-item').forEach(item => {
+      item.addEventListener('click', (event) => {
+        event.stopPropagation(); // Prevent event bubbling
+        const addressId = item.dataset.addressId;
+        const address = addresses.find(addr => addr.id == addressId);
+        if (address) {
+          selectNewAddress(address);
+        }
+        // Hide suggestions after selection
+        targetContainer.classList.add('hidden');
+        targetContainer.hidden = true;
+        cleanupEventListeners();
+      });
+    });
+    
+    // Hide suggestions when clicking outside
+    const hideSuggestions = (event) => {
+      if (!targetContainer.contains(event.target)) {
+        targetContainer.classList.add('hidden');
+        targetContainer.hidden = true;
+        cleanupEventListeners();
+      }
+    };
+    
+    // Mouse leave handler
+    const handleMouseLeave = () => {
+      setTimeout(() => {
+        if (!targetContainer.matches(':hover')) {
+          targetContainer.classList.add('hidden');
+          targetContainer.hidden = true;
+          cleanupEventListeners();
+        }
+      }, 200);
+    };
+    
+    // Cleanup function to remove event listeners
+    const cleanupEventListeners = () => {
+      document.removeEventListener('click', hideSuggestions);
+      targetContainer.removeEventListener('mouseleave', handleMouseLeave);
+      targetContainer._cleanupEventListeners = null;
+    };
+    
+    // Store cleanup function for later removal
+    targetContainer._cleanupEventListeners = cleanupEventListeners;
+    
+    // Add event listeners for hiding suggestions
+    document.addEventListener('click', hideSuggestions);
+    targetContainer.addEventListener('mouseleave', handleMouseLeave);
+    
+  } catch (error) {
+    console.error('Error in showNewAddressSelection:', error);
   }
 }
 
@@ -646,6 +846,90 @@ function selectAddress(address) {
   }
 }
 
+function selectNewAddress(address) {
+  
+  if (!address) {
+    console.error('Address is null or undefined');
+    return;
+  }
+  
+  try {
+    // Find all address fields
+    const flatField = document.querySelector('input[name="customerFlat"]');
+    const streetField = document.querySelector('input[name="customerStreet"]');
+    const cityField = document.querySelector('input[name="customerCity"]');
+    const stateField = document.querySelector('select[name="customerState"]');
+    const pincodeField = document.querySelector('input[name="customerPincode"]');
+    const locationLinkField = document.querySelector('input[name="customerLocationLink"]');
+    
+    // Set field values
+    if (flatField) flatField.value = address.flat || '';
+    if (streetField) streetField.value = address.street || '';
+    if (cityField) cityField.value = address.city || '';
+    if (stateField) stateField.value = address.state || '';
+    if (pincodeField) pincodeField.value = address.pincode || '';
+    if (locationLinkField) locationLinkField.value = address.locationLink || '';
+    
+    // Store the address ID to reference the existing address
+    let addressIdField = document.getElementById('customerAddressId');
+    if (!addressIdField) {
+      addressIdField = document.createElement('input');
+      addressIdField.type = 'hidden';
+      addressIdField.id = 'customerAddressId';
+      addressIdField.name = 'customerAddressId';
+      document.getElementById('ticketForm').appendChild(addressIdField);
+    }
+    addressIdField.value = address.id;
+    
+    // Store original autofilled data for change detection
+    originalCustomerData = {
+      addressId: address.id,
+      flat: address.flat || '',
+      street: address.street || '',
+      city: address.city || '',
+      state: address.state || '',
+      pincode: address.pincode || '',
+      locationLink: address.locationLink || ''
+    };
+    
+    // Remove any existing reference to old ticket-based address
+    const addressRefField = document.getElementById('customerAddressReferenceId');
+    if (addressRefField) {
+      addressRefField.remove();
+    }
+    
+    // Update address preview
+    updateAddressPreview();
+    
+  } catch (error) {
+    console.error('Error in selectNewAddress:', error);
+    alert('Error selecting address. Please try again.');
+  }
+}
+
+function hasCustomerAddressChanged() {
+  // If no original data (manually entered), return false
+  if (!originalCustomerData.addressId) {
+    return false;
+  }
+  
+  // Get current field values
+  const currentFlat = document.querySelector('input[name="customerFlat"]')?.value || '';
+  const currentStreet = document.querySelector('input[name="customerStreet"]')?.value || '';
+  const currentCity = document.querySelector('input[name="customerCity"]')?.value || '';
+  const currentState = document.querySelector('select[name="customerState"]')?.value || '';
+  const currentPincode = document.querySelector('input[name="customerPincode"]')?.value || '';
+  const currentLocationLink = document.querySelector('input[name="customerLocationLink"]')?.value || '';
+  
+  // Compare with original data
+  return originalCustomerData.flat !== currentFlat ||
+         originalCustomerData.street !== currentStreet ||
+         originalCustomerData.city !== currentCity ||
+         originalCustomerData.state !== currentState ||
+         originalCustomerData.pincode !== currentPincode ||
+         originalCustomerData.locationLink !== currentLocationLink;
+}
+
 function clearAddressFields() {
   try {
     document.querySelectorAll('.address-part').forEach(field => {
@@ -662,10 +946,37 @@ function clearAddressFields() {
       locationLinkField.value = '';
     }
     
+    // Hide address suggestion containers
+    const emailSuggestions = document.getElementById('customerAddressSuggestions');
+    const mobileSuggestions = document.getElementById('customerAddressSuggestionsMobile');
+    if (emailSuggestions) {
+      emailSuggestions.classList.add('hidden');
+    }
+    if (mobileSuggestions) {
+      mobileSuggestions.classList.add('hidden');
+    }
+    
+    // Reset original data tracking
+    originalCustomerData = {
+      addressId: null,
+      flat: '',
+      street: '',
+      city: '',
+      state: '',
+      pincode: '',
+      locationLink: ''
+    };
+    
     // Remove the address reference if it exists (user is choosing new address)
     const addressRefField = document.getElementById('customerAddressReferenceId');
     if (addressRefField) {
       addressRefField.remove();
+    }
+    
+    // Remove the address ID if it exists
+    const addressIdField = document.getElementById('customerAddressId');
+    if (addressIdField) {
+      addressIdField.remove();
     }
     
     updateAddressPreview();
@@ -676,19 +987,29 @@ function clearAddressFields() {
 
 // Add customer search event listeners
 document.querySelector('input[name="customerPhone"]').addEventListener('input', debounce(event => {
-  searchCustomers(event.target.value);
+  searchCustomers(event.target.value, 'customerAddressSuggestionsMobile');
 }, 400));
 
 document.querySelector('input[name="customerEmail"]').addEventListener('input', debounce(event => {
-  searchCustomers(event.target.value);
+  searchCustomers(event.target.value, 'customerAddressSuggestions');
 }, 400));
 
-// Add customer results container to the customer section
-const customerSection = document.querySelector('input[name="customerPhone"]').closest('.row');
-const customerResultsDiv = document.createElement('div');
-customerResultsDiv.className = 'col-12';
-customerResultsDiv.innerHTML = '<div id="customerResults" class="autosuggest-panel mt-2" hidden></div>';
-customerSection.appendChild(customerResultsDiv);
+// Add event listeners to address fields to hide customer suggestions when user starts typing new address
+document.querySelectorAll('.address-part').forEach(field => {
+  field.addEventListener('input', () => {
+    // Hide customer suggestion containers when user starts entering new address
+    const emailSuggestions = document.getElementById('customerAddressSuggestions');
+    const mobileSuggestions = document.getElementById('customerAddressSuggestionsMobile');
+    
+    if (emailSuggestions) {
+      emailSuggestions.classList.add('hidden');
+    }
+    if (mobileSuggestions) {
+      mobileSuggestions.classList.add('hidden');
+    }
+  });
+});
+
 
 document.getElementById('parentTicketSearch').addEventListener('input', debounce(event => searchParentTickets(event.target.value), 220));
 
@@ -702,6 +1023,16 @@ document.getElementById('ticketForm').addEventListener('submit', async event => 
   const button = form.querySelector('button[type="submit"]');
   clearInlineAlert(message);
   setButtonLoading(button, true, 'Creating ticket...');
+  
+  // Check if customer address has changed from autofilled data
+  if (hasCustomerAddressChanged()) {
+    // Remove the existing address ID to force creation of new address
+    const addressIdField = document.getElementById('customerAddressId');
+    if (addressIdField) {
+      addressIdField.remove();
+    }
+  }
+  
   const data = new FormData(form);
   const res = await fetch('/api/tickets', {method: 'POST', body: data});
   const payload = await res.json().catch(() => ({}));

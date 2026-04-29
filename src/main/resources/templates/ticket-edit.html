@@ -185,13 +185,13 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">City</label>
-                                <input class="form-control address-part" name="customerCity" th:value="${ticket.customerCity}" maxlength="80">
+                                <input class="form-control address-part" name="customerCity" th:value="${ticket.customerCity != null ? ticket.customerCity : 'Chennai'}" maxlength="80">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">State</label>
                                 <select class="form-select address-part" name="customerState">
                                     <option value="">Select state</option>
-                                    <option th:each="state : ${indiaStates}" th:value="${state}" th:text="${state}" th:selected="${ticket.customerState == state}"></option>
+                                    <option th:each="state : ${indiaStates}" th:value="${state}" th:text="${state}" th:selected="${ticket.customerState != null ? ticket.customerState == state : state == 'Tamil Nadu'}"></option>
                                 </select>
                             </div>
                             <div class="col-md-4">
@@ -322,7 +322,7 @@ function formatRoleLabel(roleName) {
 
 function userSuggestionMarkup(user) {
   const title = escapeHtml(user.companyName || user.username || 'Unknown User');
-  const subtitle = escapeHtml(user.companyName ? `${user.username || ''} · ${user.email || ''}` : `${user.username || ''} ${user.email || ''}`);
+  const subtitle = escapeHtml(user.companyName ? `${user.username || ''} · ${user.city || ''}` : `${user.username || ''} · ${user.city || ''}`);
   return `
     <button type="button" class="autosuggest-item" data-id="${user.id}">
       <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${escapeHtml(user.username || 'User')}" loading="lazy" decoding="async">

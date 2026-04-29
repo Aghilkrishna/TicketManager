@@ -143,11 +143,11 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">City</label>
-                                <input class="form-control form-control-lg" name="city" th:value="${profile.city}">
+                                <input class="form-control form-control-lg" name="city" th:value="${profile.city != null ? profile.city : 'Chennai'}">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">State</label>
-                                <input class="form-control form-control-lg" name="state" th:value="${profile.state}">
+                                <input class="form-control form-control-lg" name="state" th:value="${profile.state != null ? profile.state : 'Tamil Nadu'}">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Country</label>

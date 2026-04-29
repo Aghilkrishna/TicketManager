@@ -15,6 +15,7 @@ public class CustomerService {
 
     private final TicketRepository ticketRepository;
     private final UserService userService;
+    private final CustomerAddressService customerAddressService;
 
     public record CustomerInfo(
             String name,
@@ -59,7 +60,7 @@ public class CustomerService {
                 .collect(Collectors.groupingBy(this::getCustomerKey));
 
         return customerGroups.values().stream()
-                .map(this::createCustomerInfo)
+                .map(ticketList -> createCustomerInfo(ticketList, username))
                 .collect(Collectors.toList());
     }
 
@@ -78,33 +79,39 @@ public class CustomerService {
                (ticket.getCustomerEmail() != null ? ticket.getCustomerEmail() : "");
     }
 
-    private CustomerInfo createCustomerInfo(List<Ticket> tickets) {
+    private CustomerInfo createCustomerInfo(List<Ticket> tickets, String username) {
         if (tickets.isEmpty()) {
             return null;
         }
 
         Ticket firstTicket = tickets.get(0);
         
-        // Collect unique addresses from all tickets
-        Set<CustomerAddress> addresses = tickets.stream()
-                .filter(this::hasAddress)
-                .map(ticket -> new CustomerAddress(
-                        ticket.getCustomerFlat(),
-                        ticket.getCustomerStreet(),
-                        ticket.getCustomerCity(),
-                        ticket.getCustomerState(),
-                        ticket.getCustomerPincode(),
-                        ticket.getCustomerLocationLink(),
-                        buildFullAddress(ticket),
-                        ticket.getId()
+        // Get addresses from the customer_address table using the service
+        List<CustomerAddressService.AddressInfo> addressInfos = customerAddressService.getCustomerAddresses(
+                firstTicket.getCustomerEmail(), 
+                firstTicket.getCustomerPhone(), 
+                username
+        );
+        
+        // Convert AddressInfo to CustomerAddress records
+        List<CustomerAddress> addresses = addressInfos.stream()
+                .map(addressInfo -> new CustomerAddress(
+                        addressInfo.flat(),
+                        addressInfo.street(),
+                        addressInfo.city(),
+                        addressInfo.state(),
+                        addressInfo.pincode(),
+                        addressInfo.locationLink(),
+                        addressInfo.fullAddress(),
+                        null // ticketId is not needed for customer search display
                 ))
-                .collect(Collectors.toSet());
+                .collect(Collectors.toList());
 
         return new CustomerInfo(
                 firstTicket.getCustomerName(),
                 firstTicket.getCustomerEmail(),
                 firstTicket.getCustomerPhone(),
-                new ArrayList<>(addresses)
+                addresses
         );
     }
 
