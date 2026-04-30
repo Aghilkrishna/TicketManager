@@ -43,7 +43,7 @@
                 </div>
             </section>
 
-            <section class="table-card glass-card">
+            <section id="ticketsTable" class="table-card glass-card">
                 <div class="table-responsive">
                     <table class="table align-middle">
                         <thead>
@@ -205,6 +205,33 @@ function userSuggestionMarkup(user) {
 function showSuggestionState(target, content, visible = true) {
   target.innerHTML = content;
   target.hidden = !visible;
+  
+  // For assigned user dropdown, move to body to avoid clipping issues
+  if (target.id === 'vendorResults' && visible) {
+    // Move dropdown to body level
+    if (!target.dataset.movedToBody) {
+      document.body.appendChild(target);
+      target.dataset.movedToBody = 'true';
+    }
+    
+    // Position it relative to the input field
+    const inputField = document.getElementById('vendorSearch');
+    if (inputField) {
+      const rect = inputField.getBoundingClientRect();
+      target.style.position = 'fixed';
+      target.style.top = (rect.bottom + window.scrollY) + 'px';
+      target.style.left = rect.left + 'px';
+      target.style.width = rect.width + 'px';
+      target.style.zIndex = '999999';
+    }
+  } else if (target.id === 'vendorResults' && !visible) {
+    // Reset position when hidden
+    target.style.position = '';
+    target.style.top = '';
+    target.style.left = '';
+    target.style.width = '';
+    target.style.zIndex = '';
+  }
 }
 
 async function searchUsers(query, target, filterFn, onSelect) {
