@@ -78,6 +78,7 @@ public class UserService {
         user.setPhone(request.phone());
         user.setFirstName(normalize(request.firstName()));
         user.setLastName(normalize(request.lastName()));
+        user.setCompanyName(normalize(request.companyName()));
         user.setFlat(normalize(request.flat()));
         user.setBuilding(normalize(request.building()));
         user.setArea(normalize(request.area()));
@@ -405,6 +406,7 @@ public class UserService {
                 user.getPhone(),
                 user.getFirstName(),
                 user.getLastName(),
+                user.getCompanyName(),
                 user.getFlat(),
                 user.getBuilding(),
                 user.getArea(),

@@ -39,6 +39,10 @@
                                 <div class="fw-semibold mt-1" th:text="${profile.lastName != null && !profile.lastName.isEmpty() ? profile.lastName : 'Not provided'}"></div>
                             </div>
                             <div>
+                                <div class="small text-muted">Company Name</div>
+                                <div class="fw-semibold mt-1" th:text="${profile.companyName != null && !profile.companyName.isEmpty() ? profile.companyName : 'Not provided'}"></div>
+                            </div>
+                            <div>
                                 <div class="small text-muted">Email</div>
                                 <div class="fw-semibold mt-1 d-flex align-items-center gap-2">
                                     <span th:text="${profile.email}"></span>
@@ -118,6 +122,10 @@
                                 <input class="form-control form-control-lg" name="lastName" th:value="${profile.lastName}">
                             </div>
                             <div class="col-md-6">
+                                <label class="form-label">Company Name</label>
+                                <input class="form-control form-control-lg" name="companyName" th:value="${profile.companyName}">
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label">Email</label>
                                 <input class="form-control form-control-lg" type="email" name="email" th:value="${profile.email}" required>
                             </div>
@@ -147,7 +155,10 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">State</label>
-                                <input class="form-control form-control-lg" name="state" th:value="${profile.state != null ? profile.state : 'Tamil Nadu'}">
+                                <select class="form-select form-select-lg" name="state">
+                                    <option value="">Select state</option>
+                                    <option th:each="state : ${indiaStates}" th:value="${state}" th:text="${state}" th:selected="${profile.state != null ? profile.state == state : state == 'Tamil Nadu'}"></option>
+                                </select>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Country</label>
