@@ -16,7 +16,7 @@
             <section class="toolbar-card glass-card mb-4">
                 <div class="toolbar-grid">
                     <input id="adminSearch" class="form-control" placeholder="Search title or description">
-                    <select id="adminStatus" class="form-select"><option value="">All status</option><option>LEADS</option><option>OPEN</option><option>SITE_VISITED</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>RESOLVED</option><option>CLOSED</option><option>CANCELLED</option></select>
+                    <select id="adminStatus" class="form-select"><option value="">All status</option><option>LEADS</option><option>OPEN</option><option>SITE_VISITED</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>QUOTED</option><option>RESOLVED</option><option>CLOSED</option><option>CANCELLED</option></select>
                     <select id="adminPriority" class="form-select"><option value="">All priority</option><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select>
                     <div>
                         <input id="adminVendorSearch" class="form-control" placeholder="Vendor company">
@@ -80,13 +80,13 @@ function hasAdminRole(user, roleName) {
 }
 
 function vendorSuggestionMarkup(user) {
-  const company = user.companyName ? escapeAdminHtml(user.companyName) : escapeAdminHtml(user.username || 'Vendor');
-  const subtitle = escapeAdminHtml(user.email || user.phone || '');
+  const title = escapeAdminHtml(user.username || user.firstName || 'Vendor');
+  const subtitle = escapeAdminHtml(user.companyName ? `${user.companyName} · ${user.city || ''}` : `${user.city || ''}`);
   return `
     <button type="button" class="autosuggest-item" data-id="${user.id}">
-      <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${company}" loading="lazy" decoding="async">
+      <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${title}" loading="lazy" decoding="async">
       <div class="autosuggest-body">
-        <div class="autosuggest-title-row"><span class="autosuggest-title">${company}</span></div>
+        <div class="autosuggest-title-row"><span class="autosuggest-title">${title}</span></div>
         <div class="autosuggest-subtitle">${subtitle}</div>
       </div>
       <span class="autosuggest-action" aria-hidden="true"><i class="bi bi-building"></i></span>

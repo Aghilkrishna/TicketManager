@@ -27,7 +27,7 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class StaffBillingService {
-    private static final Set<TicketStatus> BILLING_RELEVANT_STATUSES = EnumSet.of(TicketStatus.RESOLVED, TicketStatus.CLOSED);
+    private static final Set<TicketStatus> BILLING_RELEVANT_STATUSES = EnumSet.of(TicketStatus.QUOTED, TicketStatus.RESOLVED, TicketStatus.CLOSED);
     private static final Set<String> BILLABLE_ROLES = Set.of("ROLE_ADMIN", "ROLE_MANAGER", "ROLE_AGENT");
 
     private final TicketRepository ticketRepository;
@@ -106,6 +106,8 @@ public class StaffBillingService {
                 roleLabels(user),
                 accumulator.resolvedCount,
                 accumulator.resolvedAmount,
+                accumulator.quotedCount,
+                accumulator.quotedAmount,
                 unpaidClosedCount,
                 unpaidClosedAmount,
                 unpaidClosedAmount,
@@ -188,6 +190,8 @@ public class StaffBillingService {
         private final AppUser user;
         private long resolvedCount;
         private BigDecimal resolvedAmount = BigDecimal.ZERO;
+        private long quotedCount;
+        private BigDecimal quotedAmount = BigDecimal.ZERO;
         private long closedCount;
         private BigDecimal closedAmount = BigDecimal.ZERO;
         private BigDecimal paidAmount = BigDecimal.ZERO;
@@ -202,6 +206,11 @@ public class StaffBillingService {
             if (ticket.getStatus() == TicketStatus.RESOLVED) {
                 resolvedCount++;
                 resolvedAmount = resolvedAmount.add(amount);
+                return;
+            }
+            if (ticket.getStatus() == TicketStatus.QUOTED) {
+                quotedCount++;
+                quotedAmount = quotedAmount.add(amount);
                 return;
             }
             if (ticket.getStatus() == TicketStatus.CLOSED) {
@@ -238,6 +247,8 @@ public class StaffBillingService {
                     roleLabels(user),
                     resolvedCount,
                     resolvedAmount,
+                    quotedCount,
+                    quotedAmount,
                     unpaidClosedCount,
                     unpaidClosedAmount,
                     billingStatusLabel()

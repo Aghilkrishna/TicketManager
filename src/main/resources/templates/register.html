@@ -10,10 +10,11 @@
             <div class="brand-mark">TM</div>
             <div>
                 <div class="fw-bold" style="font-size: 1.8rem; line-height: 1.1;">Ticket Manager</div>
-                <div style="font-size: 0.88rem; opacity: 0.78;">Secure account access and support operations</div>
+                <div style="font-size: 0.88rem; opacity: 0.78;">Unified account onboarding for all users</div>
             </div>
         </div>
-        <h1 class="display-5 fw-bold">Create an account and join the service workspace.</h1>
+        <h1 class="display-5 fw-bold">Create your account with role-specific details.</h1>
+        <p class="lead mt-3">Use one signup flow for agent and vendor users.</p>
     </section>
     <section class="d-flex align-items-center justify-content-center">
         <div class="auth-panel">
@@ -22,19 +23,87 @@
                 <div class="fw-bold" style="font-size: 1.1rem; line-height: 1.2;">Ticket Manager</div>
             </div>
             <h2 class="fw-bold mb-2">Register</h2>
-            <p class="text-muted mb-4">Enter valid details to create your account.</p>
+            <p class="text-muted mb-4">Select account type and complete your details.</p>
             <form id="registerForm" class="vstack gap-3">
-                <input class="form-control form-control-lg" name="firstName" placeholder="First Name" required minlength="2">
-                <input class="form-control form-control-lg" name="lastName" placeholder="Last Name" required minlength="1">
-                <input class="form-control form-control-lg" type="email" name="email" placeholder="Email" required>
-                <input class="form-control form-control-lg" name="phone" placeholder="Phone">
-                <input class="form-control form-control-lg" type="password" name="password" placeholder="Password" required minlength="8">
-                <button class="btn btn-success btn-lg" type="submit">Create account</button>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <input class="form-control form-control-lg" name="firstName" placeholder="First Name" required minlength="2" maxlength="80">
+                    </div>
+                    <div class="col-md-6">
+                        <input class="form-control form-control-lg" name="lastName" placeholder="Last Name" required minlength="1" maxlength="80">
+                    </div>
+                    <div class="col-md-12">
+                        <input class="form-control form-control-lg" type="email" name="email" placeholder="Email" required>
+                    </div>
+                    <div class="col-md-6">
+                        <select class="form-select form-select-lg" name="type" id="accountType" required>
+                            <option value="">Select user type</option>
+                            <option value="agent">Agent</option>
+                            <option value="vendor">Vendor</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <input class="form-control form-control-lg" name="phone" id="phone" placeholder="Phone number" pattern="^[0-9+\-() ]{7,20}$" title="Phone number should be 7-20 digits and may include +, -, (), spaces">
+                    </div>
+                    <div class="col-12">
+                        <input class="form-control form-control-lg" type="password" name="password" placeholder="Password" required minlength="8" maxlength="100">
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <div class="fw-semibold mb-2">Vendor details</div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <input class="form-control form-control-lg" name="companyName" placeholder="Company name" maxlength="150">
+                        </div>
+                        <div class="col-md-6">
+                            <input class="form-control form-control-lg" name="contactPerson" placeholder="Contact person" maxlength="120">
+                        </div>
+                        <div class="col-md-6">
+                            <input class="form-control form-control-lg" name="gstNumber" placeholder="GST number" maxlength="30" pattern="^[0-9A-Z]{15}$" title="GST number should be 15 characters (numbers and uppercase letters)">
+                        </div>
+                        <div class="col-md-6">
+                            <input class="form-control form-control-lg" name="vendorPhone" placeholder="Phone number (vendor specific)" pattern="^[0-9+\-() ]{7,20}$" title="Phone number should be 7-20 digits and may include +, -, (), spaces">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-3">
+                    <div class="fw-semibold mb-2">Business address</div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <input class="form-control form-control-lg" name="flat" placeholder="Flat / Unit" maxlength="120">
+                        </div>
+                        <div class="col-md-6">
+                            <input class="form-control form-control-lg" name="building" placeholder="Building / Company block" maxlength="120">
+                        </div>
+                        <div class="col-12">
+                            <input class="form-control form-control-lg" name="area" placeholder="Area / Street" maxlength="120">
+                        </div>
+                        <div class="col-md-4">
+                            <input class="form-control form-control-lg" name="city" placeholder="City" value="Chennai" maxlength="80">
+                        </div>
+                        <div class="col-md-4">
+                            <select class="form-select form-select-lg" name="state">
+                                <option value="">Select state</option>
+                                <option th:each="state : ${indiaStates}" th:value="${state}" th:text="${state}" th:selected="${state == 'Tamil Nadu'}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <input class="form-control form-control-lg" name="pincode" placeholder="Pincode" maxlength="20" pattern="^[0-9]{6}$" title="Pincode should be 6 digits">
+                        </div>
+                        <div class="col-12" hidden>
+                            <input class="form-control form-control-lg" name="country" value="India" maxlength="80">
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-success btn-lg mt-2" type="submit">Create account</button>
             </form>
             <div id="message" hidden></div>
             <div class="mt-4 d-flex justify-content-between align-items-center">
                 <a th:href="@{/login}">Back to login</a>
-                <a th:href="@{/vendor/register}">Vendor sign up</a>
+                <a th:href="@{/reset-password}">Forgot password?</a>
             </div>
         </div>
     </section>
@@ -46,17 +115,51 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
   const form = e.target;
   const button = form.querySelector('button[type="submit"]');
   const message = document.getElementById('message');
+  
   clearInlineAlert(message);
   setButtonLoading(button, true, 'Creating account...');
-  const payload = Object.fromEntries(new FormData(e.target).entries());
-  const res = await fetch('/api/auth/register', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(payload)
-  });
-  const data = await res.json().catch(() => ({}));
-  setButtonLoading(button, false);
-  showInlineAlert(message, data.message || (res.ok ? 'Registration successful' : 'Registration failed'), res.ok ? 'success' : 'danger', res.ok ? 'Account Created' : 'Registration Failed');
+  
+  // Get form data
+  const formData = new FormData(e.target);
+  const payload = Object.fromEntries(formData.entries());
+  
+  // Handle phone field logic
+  if (payload.type === 'vendor' && payload.vendorPhone) {
+    // Use vendor-specific phone if vendor type and vendor phone is provided
+    payload.phone = payload.vendorPhone;
+  }
+  // Remove vendorPhone from payload as it's not expected by backend
+  delete payload.vendorPhone;
+  
+  // Validate vendor-specific fields if vendor type
+  if (payload.type === 'vendor') {
+    if (!payload.companyName || !payload.contactPerson || !payload.gstNumber || !payload.phone) {
+      setButtonLoading(button, false);
+      showInlineAlert(message, 'Company name, contact person, GST number, and phone are required for vendor registration', 'danger', 'Validation Error');
+      return;
+    }
+  }
+  
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    
+    const data = await res.json().catch(() => ({}));
+    setButtonLoading(button, false);
+    
+    if (res.ok) {
+      showInlineAlert(message, data.message || 'Registration successful! Please check your email to verify your account.', 'success', 'Account Created');
+      form.reset();
+    } else {
+      showInlineAlert(message, data.message || 'Registration failed', 'danger', 'Registration Failed');
+    }
+  } catch (error) {
+    setButtonLoading(button, false);
+    showInlineAlert(message, 'Network error. Please try again.', 'danger', 'Network Error');
+  }
 });
 </script>
 </body>

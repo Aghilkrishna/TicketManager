@@ -90,7 +90,9 @@ public class UserRestController {
         ).stream().map(user -> Map.of(
                 "id", user.getId(),
                 "username", user.getUsername() != null ? user.getUsername() : "",
+                "firstName", user.getFirstName() != null ? user.getFirstName() : "",
                 "companyName", user.getCompanyName() != null ? user.getCompanyName() : "",
+                "city", user.getCity() != null ? user.getCity() : "",
                 "email", user.getEmail() != null ? user.getEmail() : "",
                 "phone", user.getPhone() != null ? user.getPhone() : "",
                 "roles", user.getRoles() != null ? user.getRoles().stream()

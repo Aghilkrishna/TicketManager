@@ -28,7 +28,7 @@
                         <input id="search" class="form-control" placeholder="Search by Ticket ID, Type, Title, Priority, Status, Vendor, Created By, Created Date, Scheduled Date, Updated Date, Assigned To, Customer name, Customer mobile">
                         <select id="status" class="form-select">
                             <option value="">All status</option>
-                            <option>LEADS</option><option>OPEN</option><option>SITE_VISITED</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>RESOLVED</option><option>CLOSED</option><option>CANCELLED</option>
+                            <option>LEADS</option><option>OPEN</option><option>SITE_VISITED</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>QUOTED</option><option>RESOLVED</option><option>CLOSED</option><option>CANCELLED</option>
                         </select>
                         <select id="priority" class="form-select">
                             <option value="">All priority</option>
@@ -189,13 +189,13 @@ function hasRole(user, roleName) {
 }
 
 function userSuggestionMarkup(user) {
-  const company = user.companyName ? escapeHtml(user.companyName) : escapeHtml(user.username || 'Vendor');
-  const subtitle = escapeHtml(`${user.username || ''} · ${user.city || ''}`);
+  const title = escapeHtml(user.username || user.firstName || 'Vendor');
+  const subtitle = escapeHtml(user.companyName ? `${user.companyName} · ${user.city || ''}` : `${user.city || ''}`);
   return `
     <button type="button" class="autosuggest-item" data-id="${user.id}">
-      <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${company}" loading="lazy" decoding="async">
+      <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${title}" loading="lazy" decoding="async">
       <div class="autosuggest-body">
-        <div class="autosuggest-title-row"><span class="autosuggest-title">${company}</span></div>
+        <div class="autosuggest-title-row"><span class="autosuggest-title">${title}</span></div>
         <div class="autosuggest-subtitle">${subtitle}</div>
       </div>
       <span class="autosuggest-action" aria-hidden="true"><i class="bi bi-building"></i></span>

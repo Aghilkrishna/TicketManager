@@ -26,7 +26,18 @@ public final class AuthDtos {
             @NotBlank @Size(max = 80) String lastName,
             @NotBlank @Email String email,
             @NotBlank @Size(min = 8, max = 100) String password,
-            @Pattern(regexp = "^$|^[0-9+\\-() ]{7,20}$", message = "Invalid phone number") String phone
+            @Pattern(regexp = "^(agent|vendor)$", message = "Type must be agent or vendor") String type,
+            @Pattern(regexp = "^$|^[0-9+\\-() ]{7,20}$", message = "Invalid phone number") String phone,
+            @Size(max = 150) String companyName,
+            @Size(max = 120) String contactPerson,
+            @Size(max = 30) String gstNumber,
+            @Size(max = 120) String flat,
+            @Size(max = 120) String building,
+            @Size(max = 120) String area,
+            @Size(max = 80) String city,
+            @Size(max = 80) String state,
+            @Size(max = 80) String country,
+            @Size(max = 20) String pincode
     ) {
     }
 

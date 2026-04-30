@@ -398,6 +398,7 @@ textarea.form-control[readonly]::placeholder {
 .metric-tone-open .dashboard-metric-icon { background: #dbeafe; color: #1d4ed8; }
 .metric-tone-progress .dashboard-metric-icon { background: #ffedd5; color: #c2410c; }
 .metric-tone-hold .dashboard-metric-icon { background: #fef3c7; color: #b45309; }
+.metric-tone-quoted .dashboard-metric-icon { background: #e0f2fe; color: #0284c7; }
 .metric-tone-resolved .dashboard-metric-icon { background: #dcfce7; color: #15803d; }
 .metric-tone-closed .dashboard-metric-icon { background: #e5e7eb; color: #374151; }
 .metric-tone-cancelled .dashboard-metric-icon { background: #fee2e2; color: #b91c1c; }
@@ -749,6 +750,13 @@ textarea.form-control[readonly]::placeholder {
     position: absolute !important;
 }
 
+/* Ensure vendorResults displays first in all pages */
+#vendorResults,
+#adminVendorResults {
+    z-index: 1000000 !important;
+    position: absolute !important;
+}
+
 /* Add relative positioning to form input containers for autosuggest */
 .form-control ~ .autosuggest-panel {
     position: absolute;
@@ -1071,6 +1079,7 @@ textarea.form-control[readonly]::placeholder {
 .status-pill.SITE_VISITED { background: #cffafe; color: #0f766e; }
 .status-pill.OPEN, .status-pill.IN_PROGRESS { background: #dbeafe; color: #1d4ed8; }
 .status-pill.ON_HOLD { background: #fef3c7; color: #b45309; }
+.status-pill.QUOTED { background: #e0f2fe; color: #0284c7; }
 .status-pill.RESOLVED, .status-pill.CLOSED { background: #dcfce7; color: #15803d; }
 .status-pill.CANCELLED { background: #f3f4f6; color: #6b7280; }
 

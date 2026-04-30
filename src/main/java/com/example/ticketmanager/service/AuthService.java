@@ -51,8 +51,16 @@ public class AuthService {
     public AuthDtos.AuthResponse register(AuthDtos.RegisterRequest request) {
         log.info("Starting user registration for email: {}", request.email());
         validateUniqueEmailAndPhone(request.email(), request.phone());
-        Role defaultRole = roleRepository.findByName("ROLE_USER")
-                .orElseThrow(() -> new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "Default role missing"));
+        String type = normalize(request.type());
+        if (type == null || (!"agent".equalsIgnoreCase(type) && !"vendor".equalsIgnoreCase(type))) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Type must be agent or vendor");
+        }
+
+        boolean vendorRegistration = "vendor".equalsIgnoreCase(type);
+        String roleName = vendorRegistration ? "ROLE_VENDOR" : "ROLE_AGENT";
+        Role selectedRole = roleRepository.findByName(roleName)
+                .orElseThrow(() -> new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "Selected role missing"));
+
         AppUser user = new AppUser();
         user.setUsername(request.firstName() + " " + request.lastName());
         user.setFirstName(request.firstName());
@@ -60,12 +68,34 @@ public class AuthService {
         user.setEmail(request.email());
         user.setPhone(normalize(request.phone()));
         user.setPassword(passwordEncoder.encode(request.password()));
-        user.getRoles().add(defaultRole);
+
+        if (vendorRegistration) {
+            if (normalize(request.companyName()) == null
+                    || normalize(request.contactPerson()) == null
+                    || normalize(request.gstNumber()) == null
+                    || normalize(request.phone()) == null) {
+                throw new AppException(HttpStatus.BAD_REQUEST, "Company name, contact person, GST number, and phone are required for vendor type");
+            }
+            user.setCompanyName(normalize(request.companyName()));
+            user.setContactPerson(normalize(request.contactPerson()));
+            user.setGstNumber(normalize(request.gstNumber()));
+            user.setFlat(normalize(request.flat()));
+            user.setBuilding(normalize(request.building()));
+            user.setArea(normalize(request.area()));
+            user.setCity(normalize(request.city()));
+            user.setState(normalize(request.state()));
+            user.setCountry(normalize(request.country()));
+            user.setPincode(normalize(request.pincode()));
+        }
+
+        user.getRoles().add(selectedRole);
         userRepository.save(user);
         log.info("User registered successfully with ID: {} for email: {}", user.getId(), user.getEmail());
         sendVerificationEmail(user);
-        return new AuthDtos.AuthResponse(user.getId(), user.getUsername(), user.getEmail(), Set.of("ROLE_USER"),
-                "Registration successful. Verify your email to activate your account.");
+        return new AuthDtos.AuthResponse(user.getId(), user.getUsername(), user.getEmail(), Set.of(roleName),
+                vendorRegistration
+                        ? "Vendor registration successful. Verify your email to activate your account."
+                        : "Agent registration successful. Verify your email to activate your account.");
     }
 
     @Transactional
@@ -98,28 +128,19 @@ public class AuthService {
     }
 
     public AuthDtos.AuthResponse login(AuthDtos.LoginRequest request, HttpServletResponse response) {
-        return login(request, response, false);
+        return doLogin(request, response);
     }
 
     public AuthDtos.AuthResponse vendorLogin(AuthDtos.LoginRequest request, HttpServletResponse response) {
-        return login(request, response, true);
+        return doLogin(request, response);
     }
 
-    private AuthDtos.AuthResponse login(AuthDtos.LoginRequest request, HttpServletResponse response, boolean vendorPortal) {
+    private AuthDtos.AuthResponse doLogin(AuthDtos.LoginRequest request, HttpServletResponse response) {
         String identifier = normalize(request.email());
-        log.info("Login attempt for identifier: {} from vendor portal: {}", identifier, vendorPortal);
+        log.info("Login attempt for identifier: {}", identifier);
         authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(identifier, request.password()));
         AppUser user = findByLoginIdentifier(identifier)
                 .orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
-        boolean vendorUser = user.getRoles().stream().filter(Role::isActive).anyMatch(role -> "ROLE_VENDOR".equals(role.getName()));
-        if (vendorPortal && !vendorUser) {
-            log.warn("Non-vendor user {} attempted vendor portal login", user.getEmail());
-            throw new AppException(HttpStatus.FORBIDDEN, "This account must use the regular login page.");
-        }
-        if (!vendorPortal && vendorUser) {
-            log.warn("Vendor user {} attempted regular login", user.getEmail());
-            throw new AppException(HttpStatus.FORBIDDEN, "Vendor users must sign in from the vendor login page.");
-        }
         if (!user.isEmailVerified()) {
             log.warn("Login attempt for unverified email: {}", user.getEmail());
             throw new AppException(HttpStatus.FORBIDDEN, "Verify your email before logging in");

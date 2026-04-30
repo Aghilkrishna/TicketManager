@@ -125,6 +125,7 @@
                                             <option value="SITE_VISITED">Site Visited</option>
                                             <option value="IN_PROGRESS">In Progress</option>
                                             <option value="ON_HOLD">On Hold</option>
+                                            <option value="QUOTED">Quoted</option>
                                             <option value="RESOLVED">Resolved</option>
                                             <option value="CLOSED">Closed</option>
                                             <option value="CANCELLED">Cancelled</option>
@@ -356,8 +357,8 @@ function formatRoleLabel(roleName) {
 }
 
 function userSuggestionMarkup(user) {
-  const title = escapeHtml(user.companyName || user.username || 'Unknown User');
-  const subtitle = escapeHtml(user.companyName ? `${user.username || ''} · ${user.city || ''}` : `${user.username || ''} · ${user.city || ''}`);
+  const title = escapeHtml(user.username || user.firstName || 'Unknown User');
+  const subtitle = escapeHtml(user.companyName ? `${user.companyName} · ${user.city || ''}` : `${user.city || ''}`);
   return `
     <button type="button" class="autosuggest-item" data-id="${user.id}">
       <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${escapeHtml(user.username || 'User')}" loading="lazy" decoding="async">

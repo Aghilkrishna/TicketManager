@@ -10,11 +10,11 @@
             <div class="brand-mark">TM</div>
             <div>
                 <div class="fw-bold" style="font-size: 1.8rem; line-height: 1.1;">Ticket Manager</div>
-                <div style="font-size: 0.88rem; opacity: 0.78;">Secure account access and support operations</div>
+                <div style="font-size: 0.88rem; opacity: 0.78;">Unified sign in for agent and vendor users</div>
             </div>
         </div>
-        <h1 class="display-5 fw-bold">Modern ticket operations for fast-moving support teams.</h1>
-        <p class="lead mt-3">Track service work, coordinate in realtime, and keep users informed from one responsive workspace.</p>
+        <h1 class="display-5 fw-bold">Sign in with your email or mobile number.</h1>
+        <p class="lead mt-3">You will be redirected to your dashboard based on your current role and permissions.</p>
     </section>
     <section class="d-flex align-items-center justify-content-center">
         <div class="auth-panel">
@@ -22,187 +22,23 @@
                 <div class="brand-mark" style="width: 40px; height: 40px; border-radius: 12px;">TM</div>
                 <div class="fw-bold" style="font-size: 1.1rem; line-height: 1.2;">Ticket Manager</div>
             </div>
-            <!-- Tab Navigation -->
-            <div class="auth-tabs-custom mb-4">
-                <div class="tab-buttons-container">
-                    <button class="tab-button active" id="agent-tab" data-tab="agent">
-                        <i class="bi bi-person-badge tab-icon"></i>
-                        <span class="tab-label">Agent</span>
-                    </button>
-                    <button class="tab-button non-active" id="vendor-tab" data-tab="vendor">
-                        <i class="bi bi-shop tab-icon"></i>
-                        <span class="tab-label">Vendor</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Tab Content -->
-            <div class="tab-panels">
-                <!-- Agent Login Panel -->
-                <div class="tab-panel active" id="agent-panel">
-                    <h2 class="fw-bold mb-2">Agent Sign in</h2>
-                    <p class="text-muted mb-4">Use your agent account credentials to access the dashboard.</p>
-                    <form id="loginForm" class="vstack gap-3">
-                        <input class="form-control form-control-lg" name="email" placeholder="Email or Mobile" type="text" required>
-                        <input type="password" class="form-control form-control-lg" name="password" placeholder="Password" required>
-                        <button class="btn btn-primary btn-lg" type="submit">Login as Agent</button>
-                    </form>
-                    <div id="message" hidden></div>
-                    <div class="mt-4 d-flex justify-content-between">
-                        <a th:href="@{/register}">Create account</a>
-                        <a th:href="@{/reset-password}">Forgot password?</a>
-                    </div>
-                </div>
-
-                <!-- Vendor Login Panel -->
-                <div class="tab-panel" id="vendor-panel">
-                    <h2 class="fw-bold mb-2">Vendor Sign in</h2>
-                    <p class="text-muted mb-4">Use your vendor account credentials to access your portal.</p>
-                    <form id="vendorLoginForm" class="vstack gap-3">
-                        <input class="form-control form-control-lg" name="email" placeholder="Email or Mobile" type="text" required>
-                        <input type="password" class="form-control form-control-lg" name="password" placeholder="Password" required>
-                        <button class="btn btn-primary btn-lg" type="submit">Login as Vendor</button>
-                    </form>
-                    <div id="vendorMessage" hidden></div>
-                    <div class="mt-4 d-flex justify-content-between">
-                        <a th:href="@{/vendor/register}">Create vendor account</a>
-                        <a th:href="@{/reset-password}">Forgot password?</a>
-                    </div>
-                </div>
+            <h2 class="fw-bold mb-2">Sign in</h2>
+            <p class="text-muted mb-4">Use your account credentials to continue.</p>
+            <form id="loginForm" class="vstack gap-3">
+                <input class="form-control form-control-lg" name="email" placeholder="Email or Mobile" type="text" required>
+                <input type="password" class="form-control form-control-lg" name="password" placeholder="Password" required>
+                <button class="btn btn-primary btn-lg" type="submit">Sign in</button>
+            </form>
+            <div id="message" hidden></div>
+            <div class="mt-4 d-flex justify-content-between">
+                <a th:href="@{/register}">Create account</a>
+                <a th:href="@{/reset-password}">Forgot password?</a>
             </div>
         </div>
     </section>
 </div>
-<!-- Custom CSS for improved tabs -->
-<style>
-/* Custom Tab Styles */
-.auth-tabs-custom {
-    margin-bottom: 2rem;
-}
-
-.tab-buttons-container {
-    display: flex;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    gap: 6px;
-}
-
-.tab-button {
-    flex: 1;
-    position: relative;
-    border-radius: 8px;
-    padding: 14px 20px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    outline: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    min-height: 50px;
-}
-
-/* Active Tab State */
-.tab-button.active {
-    background: #0f6cbd;
-    border: 1px solid #0f6cbd;
-    box-shadow: 0 2px 8px rgba(15, 108, 189, 0.3);
-}
-
-.tab-button.active:hover {
-    background: #0e5ba8;
-    border-color: #0e5ba8;
-}
-
-.tab-button.active .tab-icon {
-    color: white;
-}
-
-.tab-button.active .tab-label {
-    color: white;
-}
-
-/* Non-Active Tab State */
-.tab-button.non-active {
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(128, 128, 128, 0.3);
-}
-
-.tab-button.non-active:hover {
-    background: rgba(128, 128, 128, 0.25);
-    border-color: rgba(128, 128, 128, 0.4);
-}
-
-.tab-button.non-active .tab-icon {
-    /*color: rgba(255, 255, 255, 0.6);*/
-}
-
-.tab-button.non-active .tab-label {
-    /*color: rgba(255, 255, 255, 0.7);*/
-}
-
-.tab-icon {
-    font-size: 1.1rem;
-    transition: color 0.2s ease;
-}
-
-.tab-label {
-    font-size: 0.95rem;
-    font-weight: 600;
-    transition: color 0.2s ease;
-}
-
-/* Tab Panels */
-.tab-panels {
-    position: relative;
-    min-height: 320px;
-}
-
-.tab-panel {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    opacity: 0;
-    transform: translateY(10px);
-    transition: all 0.3s ease;
-    pointer-events: none;
-}
-
-.tab-panel.active {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: all;
-    position: relative;
-}
-
-/* Responsive adjustments */
-@media (max-width: 576px) {
-    .tab-button {
-        padding: 12px 16px;
-        min-height: 46px;
-    }
-    
-    .tab-icon {
-        font-size: 1rem;
-    }
-    
-    .tab-label {
-        font-size: 0.9rem;
-    }
-    
-    .tab-buttons-container {
-        padding: 4px;
-        gap: 4px;
-    }
-}
-</style>
 <script th:src="@{/js/app.js}"></script>
 <script>
-// Agent Login Form Handler
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const form = e.target;
@@ -220,65 +56,6 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   setButtonLoading(button, false);
   if (res.ok) window.location.href = '/tickets';
   else showInlineAlert(message, data.message || 'Login failed', 'danger', 'Sign-In Failed');
-});
-
-// Vendor Login Form Handler
-document.getElementById('vendorLoginForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const form = e.target;
-  const button = form.querySelector('button[type="submit"]');
-  const message = document.getElementById('vendorMessage');
-  clearInlineAlert(message);
-  setButtonLoading(button, true, 'Signing in...');
-  const payload = Object.fromEntries(new FormData(e.target).entries());
-  const res = await fetch('/api/auth/vendor/login', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(payload)
-  });
-  const data = await res.json().catch(() => ({}));
-  setButtonLoading(button, false);
-  if (res.ok) window.location.href = '/tickets';
-  else showInlineAlert(message, data.message || 'Vendor login failed', 'danger', 'Vendor Sign-In Failed');
-});
-
-// Tab switching functionality
-document.addEventListener('DOMContentLoaded', function() {
-  const tabButtons = document.querySelectorAll('.tab-button');
-  const tabPanels = document.querySelectorAll('.tab-panel');
-  
-  tabButtons.forEach(button => {
-    button.addEventListener('click', function(e) {
-      e.preventDefault();
-      
-      const targetTab = this.getAttribute('data-tab');
-      const targetPanel = document.getElementById(`${targetTab}-panel`);
-      
-      // Remove active and non-active classes from all tabs
-      tabButtons.forEach(btn => {
-        btn.classList.remove('active');
-        btn.classList.remove('non-active');
-      });
-      
-      // Remove active class from all panels
-      tabPanels.forEach(panel => panel.classList.remove('active'));
-      
-      // Add active class to clicked tab and non-active to others
-      this.classList.add('active');
-      
-      // Add non-active class to all other tabs
-      tabButtons.forEach(btn => {
-        if (btn !== this) {
-          btn.classList.add('non-active');
-        }
-      });
-      
-      // Add active class to corresponding panel
-      if (targetPanel) {
-        targetPanel.classList.add('active');
-      }
-    });
-  });
 });
 </script>
 </body>

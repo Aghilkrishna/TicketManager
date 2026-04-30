@@ -6,6 +6,7 @@ public enum TicketStatus {
     SITE_VISITED,
     IN_PROGRESS,
     ON_HOLD,
+    QUOTED,
     RESOLVED,
     CLOSED,
     CANCELLED

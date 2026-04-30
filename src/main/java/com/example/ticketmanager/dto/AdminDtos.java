@@ -133,6 +133,8 @@ public final class AdminDtos {
             Set<String> roleLabels,
             long resolvedTicketCount,
             BigDecimal resolvedAmount,
+            long quotedTicketCount,
+            BigDecimal quotedAmount,
             long closedTicketCount,
             BigDecimal closedAmount,
             String billingStatusLabel
@@ -157,6 +159,8 @@ public final class AdminDtos {
             Set<String> roleLabels,
             long resolvedTicketCount,
             BigDecimal resolvedAmount,
+            long quotedTicketCount,
+            BigDecimal quotedAmount,
             long closedTicketCount,
             BigDecimal closedAmount,
             BigDecimal totalClosedAmount,

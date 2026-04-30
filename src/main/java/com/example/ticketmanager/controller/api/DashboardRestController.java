@@ -117,15 +117,15 @@ public class DashboardRestController {
         // Determine visible cards based on user role
         Set<String> visibleCards;
         if (vendor) {
-            visibleCards = Set.of("enquiry", "open", "inProgress", "onHold", "resolved", "closed", "cancelled", "totalTickets");
+            visibleCards = Set.of("enquiry", "open", "inProgress", "onHold", "quoted", "resolved", "closed", "cancelled", "totalTickets");
         } else {
             boolean agent = userService.hasRole(user, "ROLE_AGENT");
             if (agent) {
                 // Agent users: exclude Active Users and Active Vendor cards
-                visibleCards = Set.of("enquiry", "open", "inProgress", "onHold", "resolved", "closed", "cancelled", "totalTickets");
+                visibleCards = Set.of("enquiry", "open", "inProgress", "onHold", "quoted", "resolved", "closed", "cancelled", "totalTickets");
             } else {
                 // Admin and Manager users: include all cards
-                visibleCards = Set.of("enquiry", "open", "inProgress", "onHold", "resolved", "closed", "cancelled", "totalTickets", "activeUsers", "activeVendors");
+                visibleCards = Set.of("enquiry", "open", "inProgress", "onHold", "quoted", "resolved", "closed", "cancelled", "totalTickets", "activeUsers", "activeVendors");
             }
         }
         result.put("visibleCards", visibleCards);
