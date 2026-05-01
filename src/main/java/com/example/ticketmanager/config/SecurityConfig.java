@@ -42,7 +42,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/login", "/register", "/vendor/login", "/vendor/register",
                                 "/verify-email", "/reset-password", "/css/**", "/js/**",
-                                "/api/auth/**", "/api/public/**", "/ws/**", "/access-denied", "/error").permitAll()
+                                "/api/auth/login", "/api/auth/register", "/api/auth/vendor/login", 
+                                "/api/auth/vendor/register", "/api/auth/password-reset", "/api/auth/verify",
+                                "/api/auth/mobile", "/api/public/**", "/ws/**", "/access-denied", "/error").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {

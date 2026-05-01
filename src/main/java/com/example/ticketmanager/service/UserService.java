@@ -9,6 +9,10 @@ import com.example.ticketmanager.repository.RoleRepository;
 import com.example.ticketmanager.repository.UserIdProofRepository;
 import com.example.ticketmanager.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +38,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class UserService {
+    private static final String USERS_BY_EMAIL_CACHE = "usersByEmail";
+
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
@@ -43,7 +49,9 @@ public class UserService {
     private final com.example.ticketmanager.config.AppProperties appProperties;
     private final EmailNotificationSettingsService emailNotificationSettingsService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final CacheManager cacheManager;
 
+    @Cacheable(value = "usersByEmail", key = "#email")
     public AppUser getByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
@@ -60,6 +68,7 @@ public class UserService {
     }
 
     @Transactional
+    @CacheEvict(value = "usersByEmail", key = "#email")
     public AuthDtos.ProfileResponse updateProfile(String email, AuthDtos.ProfileUpdateRequest request) {
         AppUser user = getByEmail(email);
         if (!user.getEmail().equals(request.email()) && userRepository.existsByEmail(request.email())) {
@@ -69,6 +78,7 @@ public class UserService {
         user.setPhone(request.phone());
         user.setFirstName(normalize(request.firstName()));
         user.setLastName(normalize(request.lastName()));
+        user.setCompanyName(normalize(request.companyName()));
         user.setFlat(normalize(request.flat()));
         user.setBuilding(normalize(request.building()));
         user.setArea(normalize(request.area()));
@@ -80,6 +90,7 @@ public class UserService {
     }
 
     @Transactional
+    @CacheEvict(value = "usersByEmail", key = "#email")
     public void changePassword(String email, AuthDtos.ProfilePasswordChangeRequest request) {
         AppUser user = getByEmail(email);
         if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
@@ -96,6 +107,7 @@ public class UserService {
     }
 
     @Transactional
+    @CacheEvict(value = "usersByEmail", key = "#email")
     public AuthDtos.ProfileResponse updateProfileImage(String email, MultipartFile file) {
         AppUser user = getByEmail(email);
         if (file == null || file.isEmpty()) {
@@ -224,21 +236,26 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AdminDtos.UserSummary> listUsers(String query, int page, int size) {
+    public List<AppUser> getAdmins() {
+        return userRepository.findEnabledUsersByActiveRoleNames(List.of("ROLE_ADMIN"));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AdminDtos.UserSummary> listUsers(String query, String role, String enabled, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "username"));
         String search = query == null ? "" : query.trim();
-        if (search.isBlank()) {
-            return userRepository.findAll(pageable).map(this::toUserSummary);
-        }
-        return userRepository.findByUsernameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrPhoneContainingIgnoreCase(
-                search, search, search, pageable
-        ).map(this::toUserSummary);
+        String roleName = role == null ? "" : role.trim();
+        Boolean enabledFilter = (enabled == null || enabled.isBlank()) ? null : Boolean.valueOf(enabled);
+
+        return userRepository.findByFilters(search, roleName, enabledFilter, pageable)
+                .map(this::toUserSummary);
     }
 
     @Transactional
     public AdminDtos.UserSummary updateUser(Long userId, AdminDtos.UserUpdateRequest request, String actorEmail) {
         AppUser user = getById(userId);
         AppUser actor = getByEmail(actorEmail);
+        String oldEmail = user.getEmail();
         boolean previousEnabled = user.isEnabled();
         Set<String> previousRoles = user.getRoles().stream().map(Role::getName).collect(Collectors.toSet());
         validateUniqueFields(user, request.username(), request.email());
@@ -250,6 +267,12 @@ public class UserService {
         user.setEnabled(request.enabled());
         user.setRoles(roles);
         AppUser saved = userRepository.save(user);
+
+        // Evict both the old and new email so getByEmail always returns fresh data
+        evictUserCache(oldEmail);
+        if (!oldEmail.equals(saved.getEmail())) {
+            evictUserCache(saved.getEmail());
+        }
 
         Set<String> updatedRoles = saved.getRoles().stream().map(Role::getName).collect(Collectors.toSet());
         boolean statusChanged = previousEnabled != saved.isEnabled();
@@ -264,6 +287,13 @@ public class UserService {
         }
 
         return toUserSummary(saved);
+    }
+
+    public void evictUserCache(String email) {
+        Cache cache = cacheManager.getCache(USERS_BY_EMAIL_CACHE);
+        if (cache != null && email != null && !email.isBlank()) {
+            cache.evict(email);
+        }
     }
 
     private void validateUniqueFields(AppUser user, String username, String email) {
@@ -304,6 +334,7 @@ public class UserService {
                 user.getUsername(),
                 user.getEmail(),
                 user.getPhone(),
+                user.getCompanyName(), // Add company name
                 user.isEnabled(),
                 user.isEmailVerified(),
                 user.getRoles().stream().map(Role::getName).collect(Collectors.toCollection(LinkedHashSet::new)),
@@ -375,6 +406,7 @@ public class UserService {
                 user.getPhone(),
                 user.getFirstName(),
                 user.getLastName(),
+                user.getCompanyName(),
                 user.getFlat(),
                 user.getBuilding(),
                 user.getArea(),

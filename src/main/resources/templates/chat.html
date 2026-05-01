@@ -243,13 +243,13 @@ function renderConversationSections(items) {
 }
 
 async function loadConversations(query = '') {
-  const res = await fetch('/api/chat/conversations' + (query ? ('?query=' + encodeURIComponent(query)) : ''));
+  const res = await fetch('/api/chat/conversations' + (query ? ('?query=' + encodeURIComponent(query)) : ''), { credentials: 'include' });
   conversations = await res.json();
   renderConversationSections(conversations);
 }
 
 async function loadConversation(conversationId) {
-  const res = await fetch(`/api/chat/conversations/${conversationId}/messages`);
+  const res = await fetch(`/api/chat/conversations/${conversationId}/messages`, { credentials: 'include' });
   const messages = await res.json();
   const box = document.getElementById('chatBox');
   box.innerHTML = '';
@@ -276,7 +276,7 @@ function populateEmojiBar() {
   }));
 }
 
-fetch('/api/auth/me').then(r => r.json()).then(async me => {
+fetch('/api/auth/me', { credentials: 'include' }).then(r => r.json()).then(async me => {
   currentUserId = me.id;
   currentUsername = me.username;
   document.getElementById('sidebarCurrentUserName').textContent = me.username;
@@ -313,7 +313,7 @@ document.getElementById('userSearch').addEventListener('input', debounce(async (
   heading.innerHTML = '<span>Search Results</span>';
   list.innerHTML = '<div class="autosuggest-empty autosuggest-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Searching contacts...</span></div>';
   
-  const res = await fetch('/api/users/search?query=' + encodeURIComponent(query));
+  const res = await fetch('/api/users/search?query=' + encodeURIComponent(query), { credentials: 'include' });
   const users = await res.json();
   list.innerHTML = '';
   
@@ -381,7 +381,8 @@ document.getElementById('chatForm').addEventListener('submit', async (e) => {
     const res = await fetch('/api/chat/messages', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      credentials: 'include'
     });
     if (!res.ok) throw new Error('Failed to send message');
     const msg = await res.json();
@@ -408,7 +409,7 @@ stompClient.connect({}, () => {
       appendMessage(msg);
       renderTypingIndicator('', false);
       // Mark as read immediately on arrival if the conversation is active
-      fetch(`/api/chat/conversations/${msg.conversationId}/messages`).then(() => loadConversations());
+      fetch(`/api/chat/conversations/${msg.conversationId}/messages`, { credentials: 'include' }).then(() => loadConversations());
     } else {
       await loadConversations();
     }

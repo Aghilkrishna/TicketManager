@@ -94,6 +94,13 @@
     </button>
     <div></div>
     <div class="topbar-actions">
+        <a class="profile-button"
+           th:if="${currentFeatures.contains('FEATURE_TICKETS_CREATE_STANDARD') or currentFeatures.contains('FEATURE_TICKETS_CREATE_VENDOR') or currentFeatures.contains('FEATURE_TICKETS_MANAGE')}"
+           href="/tickets/create"
+           title="Create Ticket">
+            <i class="bi bi-plus-circle"></i>
+            <span th:text="${currentFeatures.contains('FEATURE_TICKETS_CREATE_VENDOR') and !currentFeatures.contains('FEATURE_TICKETS_CREATE_STANDARD') ? 'Create Vendor Ticket' : 'Create Ticket'}">Create Ticket</span>
+        </a>
         <a class="profile-button" href="/profile" title="Profile">
             <img th:if="${currentHasProfileImage}" th:src="@{/api/users/profile/picture}" alt="Profile" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
             <span th:if="${!currentHasProfileImage}" class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light text-dark fw-semibold" style="width: 32px; height: 32px;" th:text="${currentDisplayName != null ? #strings.substring(currentDisplayName,0,1).toUpperCase() : 'P'}">P</span>

@@ -10,11 +10,11 @@
             <div class="brand-mark">TM</div>
             <div>
                 <div class="fw-bold" style="font-size: 1.8rem; line-height: 1.1;">Ticket Manager</div>
-                <div style="font-size: 0.88rem; opacity: 0.78;">Secure account access and support operations</div>
+                <div style="font-size: 0.88rem; opacity: 0.78;">Unified sign in for agent and vendor users</div>
             </div>
         </div>
-        <h1 class="display-5 fw-bold">Modern ticket operations for fast-moving support teams.</h1>
-        <p class="lead mt-3">Track service work, coordinate in realtime, and keep users informed from one responsive workspace.</p>
+        <h1 class="display-5 fw-bold">Sign in with your email or mobile number.</h1>
+        <p class="lead mt-3">You will be redirected to your dashboard based on your current role and permissions.</p>
     </section>
     <section class="d-flex align-items-center justify-content-center">
         <div class="auth-panel">
@@ -23,22 +23,16 @@
                 <div class="fw-bold" style="font-size: 1.1rem; line-height: 1.2;">Ticket Manager</div>
             </div>
             <h2 class="fw-bold mb-2">Sign in</h2>
-            <p class="text-muted mb-4">Use your account credentials to access the dashboard.</p>
+            <p class="text-muted mb-4">Use your account credentials to continue.</p>
             <form id="loginForm" class="vstack gap-3">
                 <input class="form-control form-control-lg" name="email" placeholder="Email or Mobile" type="text" required>
                 <input type="password" class="form-control form-control-lg" name="password" placeholder="Password" required>
-                <button class="btn btn-primary btn-lg" type="submit">Login</button>
+                <button class="btn btn-primary btn-lg" type="submit">Sign in</button>
             </form>
             <div id="message" hidden></div>
             <div class="mt-4 d-flex justify-content-between">
                 <a th:href="@{/register}">Create account</a>
                 <a th:href="@{/reset-password}">Forgot password?</a>
-            </div>
-            <div class="mt-3 pt-3 border-top">
-                <span class="text-muted small">Vendor access : </span>
-                <a class="ms-2" th:href="@{/vendor/login}">login</a>
-                <span class="text-muted mx-2">|</span>
-                <a th:href="@{/vendor/register}">Sign up</a>
             </div>
         </div>
     </section>
@@ -60,7 +54,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   });
   const data = await res.json().catch(() => ({}));
   setButtonLoading(button, false);
-  if (res.ok) window.location.href = '/dashboard';
+  if (res.ok) window.location.href = '/tickets';
   else showInlineAlert(message, data.message || 'Login failed', 'danger', 'Sign-In Failed');
 });
 </script>

@@ -58,7 +58,7 @@ document.getElementById('vendorLoginForm').addEventListener('submit', async (e) 
   });
   const data = await res.json().catch(() => ({}));
   setButtonLoading(button, false);
-  if (res.ok) window.location.href = '/dashboard';
+  if (res.ok) window.location.href = '/tickets';
   else showInlineAlert(message, data.message || 'Vendor login failed', 'danger', 'Vendor Sign-In Failed');
 });
 </script>

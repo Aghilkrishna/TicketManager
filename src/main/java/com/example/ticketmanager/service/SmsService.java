@@ -25,13 +25,17 @@ public class SmsService {
     }
 
     public boolean sendOtp(String phoneNumber, String otp) {
+        String message = String.format("Your verification code for Ticket Manager is: %s. This code will expire in 10 minutes.", otp);
+        return sendMessage(phoneNumber, message);
+    }
+
+    public boolean sendMessage(String phoneNumber, String message) {
         if (!appProperties.sms().enabled()) {
-            log.info("SMS disabled. Would send OTP {} to {}", otp, phoneNumber);
+            log.info("SMS disabled. Would send message to {}: {}", phoneNumber, message);
             return true;
         }
 
         try {
-            String message = String.format("Your verification code for Ticket Manager is: %s. This code will expire in 10 minutes.", otp);
             String encodedMessage = URLEncoder.encode(message, StandardCharsets.UTF_8);
             String url = String.format("%s?apikey=%s&sender=%s&mobileno=%s&text=%s",
                     appProperties.sms().apiUrl(),

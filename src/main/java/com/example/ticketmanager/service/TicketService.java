@@ -52,6 +52,8 @@ public class TicketService {
     private final TicketSiteVisitRepository ticketSiteVisitRepository;
     private final UserService userService;
     private final NotificationService notificationService;
+    private final EmailNotificationSettingsService emailNotificationSettingsService;
+    private final CustomerAddressService customerAddressService;
     private final com.example.ticketmanager.config.AppProperties appProperties;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -66,6 +68,7 @@ public class TicketService {
         addInitialComment(saved, creatorUsername, request.initialComment());
         publishTicketListRefreshEvent("CREATED", saved);
         notifyStakeholders(saved, "Ticket created: " + saved.getTitle(), NotificationType.TICKET_UPDATED, EmailNotificationAction.TICKET_CREATED);
+        notifyAdditionalTicketAudiences(saved, "Ticket created: " + saved.getTitle(), NotificationType.TICKET_UPDATED);
         return toSummary(saved);
     }
 
@@ -80,6 +83,7 @@ public class TicketService {
         Ticket saved = ticketRepository.save(ticket);
         publishTicketListRefreshEvent("UPDATED", saved);
         notifyStakeholders(saved, "Ticket updated: " + saved.getTitle(), NotificationType.TICKET_UPDATED, EmailNotificationAction.TICKET_UPDATED);
+        notifyAdditionalTicketAudiences(saved, "Ticket updated: " + saved.getTitle(), NotificationType.TICKET_UPDATED);
         return toSummary(saved);
     }
 
@@ -95,10 +99,11 @@ public class TicketService {
 
     @Transactional(readOnly = true)
     public Page<AuthDtos.TicketSummary> list(String username, boolean adminScope, boolean assignedOnly, boolean createdOnly, String status, String priority,
-                                             Long assignedToId, String search, int page, int size,
+                                             Long assignedToId, Long vendorUserId, String search, int page, int size,
                                              String sortBy, String direction) {
         AppUser user = userService.getByEmail(username);
-        boolean effectiveAdminScope = adminScope && canManageAllTickets(username);
+        // Use already-loaded user to avoid a second getByEmail inside canManageAllTickets
+        boolean effectiveAdminScope = adminScope && userService.hasAuthority(user, "FEATURE_TICKETS_ALL_VIEW");
         Sort sort = Sort.by("desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC,
                 mapSortProperty(sortBy));
         Pageable pageable = PageRequest.of(page, size, sort);
@@ -110,10 +115,16 @@ public class TicketService {
                 .and(statusesSpecification(statusFilter))
                 .and(prioritySpecification(priorityFilter))
                 .and(assignedToSpecification(assignedToId))
+                .and(vendorSpecification(vendorUserId))
                 .and(searchSpecification(searchFilter));
 
+        // Pre-compute per-viewer constants once so the mapping lambda
+        // does not call getByEmail() for every ticket in the page (N+1 fix).
+        final boolean isVendorViewer = userService.hasRole(user, "ROLE_VENDOR");
+        final Long viewerUserId = user.getId();
+
         return ticketRepository.findAll(spec, pageable)
-                .map(ticket -> toListSummary(ticket, username));
+                .map(ticket -> toListSummary(ticket, isVendorViewer, viewerUserId));
     }
 
     @Transactional(readOnly = true)
@@ -143,6 +154,31 @@ public class TicketService {
         return toSummary(ticket, username);
     }
 
+    @Transactional(readOnly = true)
+    public AttachmentContent getAttachment(Long ticketId, Long attachmentId, String username, boolean adminScope) {
+        boolean effectiveAdminScope = adminScope && canManageAllTickets(username);
+        Ticket ticket = getTicket(ticketId);
+        if (!effectiveAdminScope && !canAccess(ticket, username)) {
+            throw new AppException(HttpStatus.FORBIDDEN, "Not allowed to view this attachment");
+        }
+        TicketAttachment attachment = ticket.getAttachments().stream()
+                .filter(item -> item.getId().equals(attachmentId))
+                .findFirst()
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Attachment not found"));
+        Path filePath = Path.of(appProperties.uploadDir()).resolve(attachment.getStoredFileName());
+        try {
+            return new AttachmentContent(
+                    attachment.getOriginalFileName(),
+                    attachment.getContentType() == null || attachment.getContentType().isBlank()
+                            ? org.springframework.http.MediaType.APPLICATION_OCTET_STREAM_VALUE
+                            : attachment.getContentType(),
+                    Files.readAllBytes(filePath)
+            );
+        } catch (IOException ex) {
+            throw new AppException(HttpStatus.NOT_FOUND, "Attachment file not found");
+        }
+    }
+
     @Transactional
     public AuthDtos.TicketCommentResponse addComment(Long ticketId, String username, AuthDtos.TicketCommentRequest request) {
         Ticket ticket = getTicket(ticketId);
@@ -164,6 +200,7 @@ public class TicketService {
             notificationService.notify(saved.getParent().getAuthor(), NotificationType.COMMENT_ADDED,
                     "New reply on ticket: " + ticket.getTitle(), "TICKET", ticket.getId(), EmailNotificationAction.COMMENT_ADDED);
         }
+        notifyAdditionalTicketAudiences(ticket, "New comment on ticket: " + ticket.getTitle(), NotificationType.COMMENT_ADDED);
         publishCommentEvent(ticket, "ADDED", saved.getId());
         return toCommentResponse(saved, username, List.of());
     }
@@ -225,6 +262,7 @@ public class TicketService {
         ticket.setUpdatedAt(LocalDateTime.now());
         ticketRepository.save(ticket);
         notifyStakeholders(ticket, "Site visit logged for ticket: " + ticket.getTitle(), NotificationType.TICKET_UPDATED, EmailNotificationAction.SITE_VISIT_ADDED);
+        notifyAdditionalTicketAudiences(ticket, "Site visit logged for ticket: " + ticket.getTitle(), NotificationType.TICKET_UPDATED);
         return toSiteVisitResponse(saved);
     }
 
@@ -324,6 +362,16 @@ public class TicketService {
         return (root, query, cb) -> cb.equal(root.get("assignedTo").get("id"), assignedToId);
     }
 
+    private Specification<Ticket> vendorSpecification(Long vendorUserId) {
+        if (vendorUserId == null) {
+            return Specification.where(null);
+        }
+        return (root, query, cb) -> cb.or(
+                cb.equal(root.get("vendorUser").get("id"), vendorUserId),
+                cb.equal(root.get("createdBy").get("id"), vendorUserId)
+        );
+    }
+
     private Specification<Ticket> searchSpecification(String search) {
         if (search == null || search.isBlank()) {
             return Specification.where(null);
@@ -335,7 +383,7 @@ public class TicketService {
             var assignedTo = root.join("assignedTo", JoinType.LEFT);
             var serviceUsers = root.join("serviceUsers", JoinType.LEFT);
             return cb.or(
-                    cb.like(cb.lower(root.get("id").as(String.class)), likeValue),
+                    cb.like(cb.toString(root.get("id")), likeValue),
                     cb.like(cb.lower(root.get("title")), likeValue),
                     cb.like(cb.lower(root.get("description")), likeValue),
                     cb.like(cb.lower(createdBy.get("username")), likeValue),
@@ -452,12 +500,63 @@ public class TicketService {
         ticket.setCustomerName(request.customerName() == null || request.customerName().isBlank() ? null : request.customerName().trim());
         ticket.setCustomerEmail(request.customerEmail() == null || request.customerEmail().isBlank() ? null : request.customerEmail().trim());
         ticket.setCustomerPhone(request.customerPhone() == null || request.customerPhone().isBlank() ? null : request.customerPhone().trim());
-        ticket.setCustomerFlat(request.customerFlat() == null || request.customerFlat().isBlank() ? null : request.customerFlat().trim());
-        ticket.setCustomerStreet(request.customerStreet() == null || request.customerStreet().isBlank() ? null : request.customerStreet().trim());
-        ticket.setCustomerCity(request.customerCity() == null || request.customerCity().isBlank() ? null : request.customerCity().trim());
-        ticket.setCustomerState(request.customerState() == null || request.customerState().isBlank() ? null : request.customerState().trim());
-        ticket.setCustomerPincode(request.customerPincode() == null || request.customerPincode().isBlank() ? null : request.customerPincode().trim());
-        ticket.setCustomerLocationLink(request.customerLocationLink() == null || request.customerLocationLink().isBlank() ? null : request.customerLocationLink().trim());
+        
+        // Handle address logic
+        if (request.customerAddressId() != null) {
+            // Use existing customer address
+            ticket.setCustomerAddressReferenceId(request.customerAddressId());
+            
+            // Copy address fields from customer address
+            var customerAddress = customerAddressService.getAddressById(request.customerAddressId(), actorUsername)
+                    .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Customer address not found"));
+            
+            ticket.setCustomerFlat(customerAddress.getFlat());
+            ticket.setCustomerStreet(customerAddress.getStreet());
+            ticket.setCustomerCity(customerAddress.getCity());
+            ticket.setCustomerState(customerAddress.getState());
+            ticket.setCustomerPincode(customerAddress.getPincode());
+            ticket.setCustomerLocationLink(customerAddress.getLocationLink());
+        } else if (request.customerAddressReferenceId() != null) {
+            // Copy address from referenced ticket and store reference ID (legacy support)
+            Ticket referenceTicket = getTicket(request.customerAddressReferenceId());
+            
+            // Store the reference ID
+            ticket.setCustomerAddressReferenceId(request.customerAddressReferenceId());
+            
+            // Copy address fields from referenced ticket
+            ticket.setCustomerFlat(referenceTicket.getCustomerFlat());
+            ticket.setCustomerStreet(referenceTicket.getCustomerStreet());
+            ticket.setCustomerCity(referenceTicket.getCustomerCity());
+            ticket.setCustomerState(referenceTicket.getCustomerState());
+            ticket.setCustomerPincode(referenceTicket.getCustomerPincode());
+            ticket.setCustomerLocationLink(referenceTicket.getCustomerLocationLink());
+        } else {
+            // New address - no reference, save as new address
+            ticket.setCustomerAddressReferenceId(null);
+            
+            ticket.setCustomerFlat(request.customerFlat() == null || request.customerFlat().isBlank() ? null : request.customerFlat().trim());
+            ticket.setCustomerStreet(request.customerStreet() == null || request.customerStreet().isBlank() ? null : request.customerStreet().trim());
+            ticket.setCustomerCity(request.customerCity() == null || request.customerCity().isBlank() ? null : request.customerCity().trim());
+            ticket.setCustomerState(request.customerState() == null || request.customerState().isBlank() ? null : request.customerState().trim());
+            ticket.setCustomerPincode(request.customerPincode() == null || request.customerPincode().isBlank() ? null : request.customerPincode().trim());
+            ticket.setCustomerLocationLink(request.customerLocationLink() == null || request.customerLocationLink().isBlank() ? null : request.customerLocationLink().trim());
+            
+            // Create new customer address if all address fields are provided
+            if (hasCompleteAddress(request)) {
+                customerAddressService.createCustomerAddress(
+                    request.customerName(),
+                    request.customerEmail(),
+                    request.customerPhone(),
+                    request.customerFlat(),
+                    request.customerStreet(),
+                    request.customerCity(),
+                    request.customerState(),
+                    request.customerPincode(),
+                    request.customerLocationLink(),
+                    actorUsername
+                );
+            }
+        }
         ticket.setScheduleDate(request.scheduleDate());
         ticket.setPriority(request.priority() == null || request.priority().isBlank()
                 ? TicketPriority.MEDIUM : TicketPriority.valueOf(request.priority()));
@@ -546,6 +645,54 @@ public class TicketService {
         recipients.forEach(user -> notificationService.notify(user, type, message, "TICKET", ticket.getId(), emailAction));
     }
 
+    private void notifyAdditionalTicketAudiences(Ticket ticket, String message, NotificationType type) {
+        boolean adminEmailEnabled = emailNotificationSettingsService.isEmailEnabled(EmailNotificationAction.ADMIN_TICKET_ACTIVITY);
+        boolean adminSmsEnabled = emailNotificationSettingsService.isSmsEnabled(EmailNotificationAction.ADMIN_TICKET_ACTIVITY);
+        boolean vendorEmailEnabled = emailNotificationSettingsService.isEmailEnabled(EmailNotificationAction.VENDOR_CREATED_TICKET_ACTIVITY);
+        boolean vendorSmsEnabled = emailNotificationSettingsService.isSmsEnabled(EmailNotificationAction.VENDOR_CREATED_TICKET_ACTIVITY);
+
+        if (!adminEmailEnabled && !adminSmsEnabled && !vendorEmailEnabled && !vendorSmsEnabled) {
+            return;
+        }
+
+        boolean vendorCreatedTicket = ticket.getCreatedBy() != null && userService.hasRole(ticket.getCreatedBy(), "ROLE_VENDOR");
+        Map<Long, ChannelPreference> recipientPreferences = new java.util.LinkedHashMap<>();
+
+        for (AppUser admin : userService.getAdmins()) {
+            if (admin == null || admin.getId() == null) {
+                continue;
+            }
+            ChannelPreference preference = recipientPreferences.computeIfAbsent(admin.getId(), ignored -> new ChannelPreference(admin));
+            preference.emailEnabled |= adminEmailEnabled;
+            preference.smsEnabled |= adminSmsEnabled;
+            if (vendorCreatedTicket) {
+                preference.emailEnabled |= vendorEmailEnabled;
+                preference.smsEnabled |= vendorSmsEnabled;
+            }
+        }
+
+        if (vendorCreatedTicket) {
+            AppUser vendorRecipient = ticket.getVendorUser() != null ? ticket.getVendorUser() : ticket.getCreatedBy();
+            if (vendorRecipient != null && vendorRecipient.getId() != null) {
+                ChannelPreference preference = recipientPreferences.computeIfAbsent(vendorRecipient.getId(), ignored -> new ChannelPreference(vendorRecipient));
+                preference.emailEnabled |= vendorEmailEnabled;
+                preference.smsEnabled |= vendorSmsEnabled;
+            }
+        }
+
+        recipientPreferences.values().stream()
+                .filter(ChannelPreference::hasAnyChannelEnabled)
+                .forEach(preference -> notificationService.sendOutboundNotification(
+                        preference.user,
+                        type,
+                        message,
+                        "TICKET",
+                        ticket.getId(),
+                        preference.emailEnabled,
+                        preference.smsEnabled
+                ));
+    }
+
     private void publishCommentEvent(Ticket ticket, String action, Long commentId) {
         AuthDtos.TicketCommentEvent event = new AuthDtos.TicketCommentEvent(ticket.getId(), action, commentId);
         Set<AppUser> recipients = new HashSet<>(ticket.getServiceUsers());
@@ -576,6 +723,21 @@ public class TicketService {
 
     public AuthDtos.TicketSummary toListSummary(Ticket ticket, String viewerUsername) {
         boolean vendorRestrictedView = viewerUsername != null && isVendorRestrictedView(ticket, viewerUsername);
+        return buildListSummary(ticket, vendorRestrictedView);
+    }
+
+    /**
+     * Efficient list-row mapping that accepts pre-computed viewer flags,
+     * avoiding a getByEmail() DB round-trip for every ticket in the page.
+     */
+    private AuthDtos.TicketSummary toListSummary(Ticket ticket, boolean isVendorViewer, Long viewerUserId) {
+        boolean vendorRestrictedView = isVendorViewer
+                && ticket.getCreatedBy() != null
+                && ticket.getCreatedBy().getId().equals(viewerUserId);
+        return buildListSummary(ticket, vendorRestrictedView);
+    }
+
+    private AuthDtos.TicketSummary buildListSummary(Ticket ticket, boolean vendorRestrictedView) {
         return new AuthDtos.TicketSummary(
                 ticket.getId(),
                 ticket.getTitle(),
@@ -587,8 +749,9 @@ public class TicketService {
                 ticket.getSiteVisits(),
                 null,
                 null,
-                null,
-                null,
+                ticket.getVendorUser() == null ? null : ticket.getVendorUser().getId(),
+                ticket.getVendorUser() == null ? null : ticket.getVendorUser().getUsername(),
+                ticket.getVendorUser() == null ? null : resolveVendorDisplayName(ticket.getVendorUser()),
                 null,
                 null,
                 null,
@@ -617,7 +780,9 @@ public class TicketService {
                 vendorRestrictedView ? Set.of() : ticket.getServiceUsers().stream().map(AppUser::getUsername).collect(java.util.stream.Collectors.toSet()),
                 ticket.getCreatedAt(),
                 ticket.getUpdatedAt(),
-                List.<String>of()
+                List.<String>of(),
+                !ticket.getAttachments().isEmpty(),
+                List.of()
         );
     }
 
@@ -647,6 +812,7 @@ public class TicketService {
                 ticket.getParentTicket() == null ? null : ticket.getParentTicket().getTitle(),
                 ticket.getVendorUser() == null ? null : ticket.getVendorUser().getId(),
                 ticket.getVendorUser() == null ? null : ticket.getVendorUser().getUsername(),
+                ticket.getVendorUser() == null ? null : resolveVendorDisplayName(ticket.getVendorUser()),
                 ticket.getVendorUser() == null || vendorRestrictedView ? null : ticket.getVendorUser().getEmail(),
                 ticket.getVendorUser() == null || vendorRestrictedView ? null : ticket.getVendorUser().getPhone(),
                 ticket.getVendorNotes(),
@@ -675,7 +841,11 @@ public class TicketService {
                 vendorRestrictedView ? Set.of() : ticket.getServiceUsers().stream().map(AppUser::getUsername).collect(java.util.stream.Collectors.toSet()),
                 ticket.getCreatedAt(),
                 ticket.getUpdatedAt(),
-                ticket.getAttachments().stream().map(TicketAttachment::getOriginalFileName).toList()
+                ticket.getAttachments().stream().map(TicketAttachment::getOriginalFileName).toList(),
+                !ticket.getAttachments().isEmpty(),
+                ticket.getAttachments().stream()
+                        .map(this::toAttachmentInfo)
+                        .toList()
         );
     }
 
@@ -701,6 +871,44 @@ public class TicketService {
             return "****";
         }
         return p.substring(0, p.length() - 4) + "****";
+    }
+
+    private String resolveVendorDisplayName(AppUser user) {
+        if (user == null) {
+            return null;
+        }
+        if (user.getCompanyName() != null && !user.getCompanyName().isBlank()) {
+            return user.getCompanyName().trim();
+        }
+        return user.getUsername();
+    }
+
+    private AuthDtos.TicketAttachmentInfo toAttachmentInfo(TicketAttachment attachment) {
+        return new AuthDtos.TicketAttachmentInfo(
+                attachment.getId(),
+                attachment.getOriginalFileName(),
+                attachment.getContentType() == null || attachment.getContentType().isBlank()
+                        ? org.springframework.http.MediaType.APPLICATION_OCTET_STREAM_VALUE
+                        : attachment.getContentType(),
+                attachment.getFileSize()
+        );
+    }
+
+    public record AttachmentContent(String fileName, String contentType, byte[] content) {
+    }
+
+    private static final class ChannelPreference {
+        private final AppUser user;
+        private boolean emailEnabled;
+        private boolean smsEnabled;
+
+        private ChannelPreference(AppUser user) {
+            this.user = user;
+        }
+
+        private boolean hasAnyChannelEnabled() {
+            return emailEnabled || smsEnabled;
+        }
     }
 
     public List<AuthDtos.TicketSummary> searchVisibleTickets(String username, String query) {
@@ -856,5 +1064,13 @@ public class TicketService {
             throw new AppException(HttpStatus.BAD_REQUEST, "A valid current location is required to log a site visit");
         }
         return longitude;
+    }
+
+    private boolean hasCompleteAddress(AuthDtos.TicketRequest request) {
+        return (request.customerFlat() != null && !request.customerFlat().isBlank()) ||
+               (request.customerStreet() != null && !request.customerStreet().isBlank()) ||
+               (request.customerCity() != null && !request.customerCity().isBlank()) ||
+               (request.customerState() != null && !request.customerState().isBlank()) ||
+               (request.customerPincode() != null && !request.customerPincode().isBlank());
     }
 }

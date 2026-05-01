@@ -89,14 +89,18 @@ public class UserRestController {
                 query, query, query
         ).stream().map(user -> Map.of(
                 "id", user.getId(),
-                "username", user.getUsername(),
-                "email", user.getEmail(),
-                "phone", user.getPhone(),
-                "roles", user.getRoles().stream()
-                        .filter(role -> role.isActive())
+                "username", user.getUsername() != null ? user.getUsername() : "",
+                "firstName", user.getFirstName() != null ? user.getFirstName() : "",
+                "companyName", user.getCompanyName() != null ? user.getCompanyName() : "",
+                "city", user.getCity() != null ? user.getCity() : "",
+                "email", user.getEmail() != null ? user.getEmail() : "",
+                "phone", user.getPhone() != null ? user.getPhone() : "",
+                "roles", user.getRoles() != null ? user.getRoles().stream()
+                        .filter(role -> role != null && role.isActive())
                         .map(role -> role.getName())
+                        .filter(name -> name != null)
                         .sorted()
-                        .toList()
+                        .toList() : List.of()
         )).toList();
     }
 

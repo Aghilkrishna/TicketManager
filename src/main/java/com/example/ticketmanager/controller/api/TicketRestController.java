@@ -5,6 +5,10 @@ import com.example.ticketmanager.service.TicketService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -63,13 +67,14 @@ public class TicketRestController {
                                              @RequestParam(required = false) String status,
                                              @RequestParam(required = false) String priority,
                                              @RequestParam(required = false) Long assignedToId,
+                                             @RequestParam(required = false) Long vendorUserId,
                                              @RequestParam(required = false) String search,
                                              @RequestParam(defaultValue = "updatedAt") String sortBy,
                                              @RequestParam(defaultValue = "desc") String direction,
                                              @RequestParam(defaultValue = "0") int page,
                                              @RequestParam(defaultValue = "10") int size) {
         String effectiveStatuses = (statuses != null && !statuses.isBlank()) ? statuses : status;
-        return ticketService.list(principal.getName(), adminScope, assignedOnly, createdOnly, effectiveStatuses, priority, assignedToId, search, page, size, sortBy, direction);
+        return ticketService.list(principal.getName(), adminScope, assignedOnly, createdOnly, effectiveStatuses, priority, assignedToId, vendorUserId, search, page, size, sortBy, direction);
     }
 
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
@@ -92,6 +97,19 @@ public class TicketRestController {
                                       @PathVariable Long ticketId,
                                       @RequestParam(defaultValue = "false") boolean adminScope) {
         return ticketService.get(ticketId, principal.getName(), adminScope);
+    }
+
+    @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
+    @GetMapping("/{ticketId}/attachments/{attachmentId}")
+    public ResponseEntity<ByteArrayResource> attachment(Principal principal,
+                                                        @PathVariable Long ticketId,
+                                                        @PathVariable Long attachmentId,
+                                                        @RequestParam(defaultValue = "false") boolean adminScope) {
+        var attachment = ticketService.getAttachment(ticketId, attachmentId, principal.getName(), adminScope);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + attachment.fileName() + "\"")
+                .contentType(MediaType.parseMediaType(attachment.contentType()))
+                .body(new ByteArrayResource(attachment.content()));
     }
 
     @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")

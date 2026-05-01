@@ -19,6 +19,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -95,6 +96,9 @@ public class Ticket {
     @Column(length = 1000)
     private String customerLocationLink;
 
+    @Column(name = "customer_address_reference_id")
+    private Long customerAddressReferenceId;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 30)
     private TicketPricingModel pricingModel;
@@ -136,6 +140,7 @@ public class Ticket {
     @JoinColumn(name = "assigned_to_id")
     private AppUser assignedTo;
 
+    @BatchSize(size = 25)
     @ManyToMany
     @JoinTable(name = "ticket_service_users",
             joinColumns = @JoinColumn(name = "ticket_id"),

@@ -11,11 +11,12 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        default_batch_fetch_size: 25
   thymeleaf:
     cache: false
   sql:
     init:
-      mode: always
+      mode: never
   servlet:
     multipart:
       max-file-size: 10MB

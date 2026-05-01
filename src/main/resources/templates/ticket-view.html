@@ -134,7 +134,7 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <div class="small text-muted text-uppercase mb-1">Vendor User</div>
-                                <div class="fw-semibold" th:text="${ticket.vendorName != null ? ticket.vendorName : 'Not linked'}"></div>
+                                <div class="fw-semibold" th:text="${ticket.vendorCompanyName != null ? ticket.vendorCompanyName : (ticket.vendorName != null ? ticket.vendorName : 'Not linked')}"></div>
                             </div>
                             <div class="col-md-6" th:if="${!vendorOnlyViewer}">
                                 <div class="small text-muted text-uppercase mb-1">Vendor Contact</div>
@@ -217,8 +217,13 @@
                                 <div class="p-3 rounded-4 border bg-white">
                                     <div class="small text-muted text-uppercase mb-2">Attachments</div>
                                     <div class="d-flex flex-wrap gap-2">
-                                        <span class="selected-user-chip" th:each="attachment : ${ticket.attachmentNames}" th:text="${attachment}">file.pdf</span>
-                                        <span class="text-muted" th:if="${#lists.isEmpty(ticket.attachmentNames)}">No attachments uploaded.</span>
+                                        <a class="selected-user-chip text-decoration-none"
+                                           th:each="attachment : ${ticket.attachments}"
+                                           th:href="@{/api/tickets/{ticketId}/attachments/{attachmentId}(ticketId=${ticket.id},attachmentId=${attachment.id})}"
+                                           th:text="${attachment.fileName}"
+                                           target="_blank"
+                                           rel="noopener noreferrer">file.pdf</a>
+                                        <span class="text-muted" th:if="${#lists.isEmpty(ticket.attachments)}">No attachments uploaded.</span>
                                     </div>
                                 </div>
                             </div>

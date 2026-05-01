@@ -2,6 +2,75 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:replace="~{fragments/layout :: head('Create Ticket')}"></th:block>
+    <style>
+/* Address Suggestions Styles */
+.address-suggestions-container {
+    position: absolute;
+    top: 100%;
+    /*left: 0;*/
+    right: 0;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 4px;
+    width: 400px;
+}
+
+.address-suggestion-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f3f4;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.address-suggestion-item:hover {
+    background-color: #f8f9fa;
+}
+
+.address-suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.address-suggestion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.address-suggestion-title {
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 0.95rem;
+}
+
+.address-suggestion-subtitle {
+    color: #6c757d;
+    font-size: 0.85rem;
+}
+
+.address-suggestion-address {
+    color: #495057;
+    font-size: 0.8rem;
+    margin-top: 2px;
+}
+
+.address-suggestion-badge {
+    background-color: #e3f2fd;
+    color: #0f6cbd;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+    </style>
 </head>
 <body th:with="vendorOnlyCreator=${currentFeatures.contains('FEATURE_TICKETS_CREATE_VENDOR') and !currentFeatures.contains('FEATURE_TICKETS_CREATE_STANDARD') and !currentFeatures.contains('FEATURE_TICKETS_MANAGE') and !currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW') and !currentFeatures.contains('FEATURE_TICKETS_REVIEW')},adminTicketScope=${currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW') or currentFeatures.contains('FEATURE_TICKETS_REVIEW')}">
 <div class="app-shell">
@@ -27,19 +96,20 @@
                                 <div class="row g-3">
                                     <div class="col-12">
                                         <label class="form-label">Title</label>
-                                        <input class="form-control form-control-lg" name="title" placeholder="Short issue summary" maxlength="150" required>
+                                        <input class="form-control form-control-lg" name="title" placeholder="Company/Customer Name" maxlength="150" required>
                                     </div>
                                     <div class="col-12">
                                         <label class="form-label">Description</label>
-                                        <textarea class="form-control" name="description" rows="5" placeholder="Describe the issue, expected service, and context" maxlength="4000" required></textarea>
+                                        <textarea class="form-control" name="description" rows="5" placeholder="Describe the requirement, issue, expected service, and context" maxlength="4000" required></textarea>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Type of Service</label>
                                         <select class="form-select" name="serviceType">
                                             <option value="">Select service type</option>
+                                            <option value="LEADS">Leads</option>
                                             <option value="INSTALLATION">Installation</option>
                                             <option value="REPAIR">Repair</option>
-                                            <option value="MAINTENANCE">Maintenance</option>
+                                            <option value="MAINTENANCE">AMC</option>
                                             <option value="SITE_VISIT">Site Visit</option>
                                         </select>
                                     </div>
@@ -50,9 +120,12 @@
                                     <div class="col-md-4">
                                         <label class="form-label">Status</label>
                                         <select class="form-select" name="status">
+                                            <option value="LEADS">Leads</option>
                                             <option selected value="OPEN">Open</option>
+                                            <option value="SITE_VISITED">Site Visited</option>
                                             <option value="IN_PROGRESS">In Progress</option>
                                             <option value="ON_HOLD">On Hold</option>
+                                            <option value="QUOTED">Quoted</option>
                                             <option value="RESOLVED">Resolved</option>
                                             <option value="CLOSED">Closed</option>
                                             <option value="CANCELLED">Cancelled</option>
@@ -100,6 +173,7 @@
                                 <div class="section-title mt-4 mb-3">Attachments</div>
                                 <label class="form-label">Related Files</label>
                                 <input class="form-control" type="file" name="files" multiple>
+                                <div id="selectedAttachments" class="d-flex flex-wrap gap-2 mt-3"></div>
                                 <div class="small text-muted mt-2">Attach quotations, photos, checklists, or any supporting documents.</div>
                             </div>
                         </div>
@@ -116,11 +190,17 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Email ID</label>
-                                <input class="form-control" name="customerEmail" type="email" placeholder="Email address" maxlength="100">
+                                <div class="position-relative">
+                                    <input class="form-control" name="customerEmail" type="email" placeholder="Email address" maxlength="100">
+                                    <div id="customerAddressSuggestions" class="address-suggestions-container" hidden></div>
+                                </div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Mobile Number</label>
-                                <input class="form-control" name="customerPhone" placeholder="Mobile number" maxlength="20">
+                                <div class="position-relative">
+                                    <input class="form-control" name="customerPhone" placeholder="Mobile number" maxlength="20">
+                                    <div id="customerAddressSuggestionsMobile" class="address-suggestions-container" hidden></div>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Flat / House No.</label>
@@ -132,13 +212,13 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">City</label>
-                                <input class="form-control address-part" name="customerCity" placeholder="City" maxlength="80">
+                                <input class="form-control address-part" name="customerCity" placeholder="City" maxlength="80" value="Chennai">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">State</label>
                                 <select class="form-select address-part" name="customerState">
                                     <option value="">Select state</option>
-                                    <option th:each="state : ${indiaStates}" th:value="${state}" th:text="${state}"></option>
+                                    <option th:each="state : ${indiaStates}" th:value="${state}" th:text="${state}" th:selected="${state == 'Tamil Nadu'}"></option>
                                 </select>
                             </div>
                             <div class="col-md-4">
@@ -200,22 +280,66 @@ function hasRole(user, roleName) {
   return Array.isArray(user.roles) && user.roles.includes(roleName);
 }
 
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
 function updateAddressPreview() {
-  const parts = [
-    document.querySelector('[name="customerFlat"]').value,
-    document.querySelector('[name="customerStreet"]').value,
-    document.querySelector('[name="customerCity"]').value,
-    document.querySelector('[name="customerState"]').value,
-    document.querySelector('[name="customerPincode"]').value
-  ].map(value => (value || '').trim()).filter(Boolean);
-  const summary = parts.join(', ');
-  document.getElementById('addressPreview').value = summary;
-  document.getElementById('addressSummary').value = summary;
+  try {
+    const flatField = document.querySelector('[name="customerFlat"]');
+    const streetField = document.querySelector('[name="customerStreet"]');
+    const cityField = document.querySelector('[name="customerCity"]');
+    const stateField = document.querySelector('[name="customerState"]');
+    const pincodeField = document.querySelector('[name="customerPincode"]');
+    
+    const parts = [
+      flatField ? flatField.value : '',
+      streetField ? streetField.value : '',
+      cityField ? cityField.value : '',
+      stateField ? stateField.value : '',
+      pincodeField ? pincodeField.value : ''
+    ].map(value => (value || '').trim()).filter(Boolean);
+    
+    const summary = parts.join(', ');
+    
+    const addressPreview = document.getElementById('addressPreview');
+    const addressSummary = document.getElementById('addressSummary');
+    
+    if (addressPreview) {
+      addressPreview.value = summary;
+    }
+    
+    if (addressSummary) {
+      addressSummary.value = summary;
+    }
+    
+  } catch (error) {
+    console.error('Error in updateAddressPreview:', error);
+  }
 }
 
 function mirrorLocationLink() {
   document.getElementById('locationLinkMirror').value = document.getElementById('customerLocationLink').value.trim();
 }
+
+// Global variables to track original autofilled data
+let originalCustomerData = {
+  addressId: null,
+  flat: '',
+  street: '',
+  city: '',
+  state: '',
+  pincode: '',
+  locationLink: ''
+};
 
 function escapeHtml(value) {
   return (value || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
@@ -233,14 +357,16 @@ function formatRoleLabel(roleName) {
 }
 
 function userSuggestionMarkup(user) {
+  const title = escapeHtml(user.username || user.firstName || 'Unknown User');
+  const subtitle = escapeHtml(user.companyName ? `${user.companyName} · ${user.city || ''}` : `${user.city || ''}`);
   return `
     <button type="button" class="autosuggest-item" data-id="${user.id}">
       <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${escapeHtml(user.username || 'User')}" loading="lazy" decoding="async">
       <div class="autosuggest-body">
         <div class="autosuggest-title-row">
-          <span class="autosuggest-title">${escapeHtml(user.username)}</span>
+          <span class="autosuggest-title">${title}</span>
         </div>
-        <div class="autosuggest-subtitle">Select user</div>
+        <div class="autosuggest-subtitle">${subtitle}</div>
       </div>
       <span class="autosuggest-action" aria-hidden="true"><i class="bi bi-arrow-up-right"></i></span>
     </button>`;
@@ -269,9 +395,81 @@ function parentTicketSuggestionMarkup(ticket) {
     </button>`;
 }
 
+function selectedFileMarkup(file, objectUrl) {
+  return `
+    <a class="selected-user-chip text-decoration-none" href="${objectUrl}" target="_blank" rel="noopener noreferrer">
+      <i class="bi bi-paperclip me-1"></i>${escapeHtml(file.name)}
+    </a>`;
+}
+
 function showSuggestionState(target, content, visible = true) {
+  if (!target) {
+    console.error('Target element is null!');
+    return;
+  }
+  
+  // For assigned user dropdown, move to body to avoid clipping issues
+  if (target.id === 'assignedResults' && visible) {
+    // Move dropdown to body level
+    if (!target.dataset.movedToBody) {
+      document.body.appendChild(target);
+      target.dataset.movedToBody = 'true';
+    }
+    
+    // Position it relative to the input field
+    const inputField = document.getElementById('assignedSearch');
+    if (inputField) {
+      const rect = inputField.getBoundingClientRect();
+      target.style.position = 'fixed';
+      target.style.top = (rect.bottom + window.scrollY) + 'px';
+      target.style.left = (rect.left + window.scrollX) + 'px';
+      target.style.width = rect.width + 'px';
+      target.style.zIndex = '999999';
+    }
+  }
+  
   target.innerHTML = content;
   target.hidden = !visible;
+  
+  // Add mouse-out hiding logic for customer search suggestion containers
+  if (visible && (target.id === 'customerAddressSuggestions' || target.id === 'customerAddressSuggestionsMobile')) {
+    // Remove any existing event listeners first
+    if (target._cleanupEventListeners) {
+      target._cleanupEventListeners();
+    }
+    
+    // Hide suggestions when clicking outside
+    const hideSuggestions = (event) => {
+      if (!target.contains(event.target)) {
+        target.hidden = true;
+        cleanupEventListeners();
+      }
+    };
+    
+    // Mouse leave handler
+    const handleMouseLeave = () => {
+      setTimeout(() => {
+        if (!target.matches(':hover')) {
+          target.hidden = true;
+          cleanupEventListeners();
+        }
+      }, 200);
+    };
+    
+    // Cleanup function to remove event listeners
+    const cleanupEventListeners = () => {
+      document.removeEventListener('click', hideSuggestions);
+      target.removeEventListener('mouseleave', handleMouseLeave);
+      target._cleanupEventListeners = null;
+    };
+    
+    // Store cleanup function for later removal
+    target._cleanupEventListeners = cleanupEventListeners;
+    
+    // Add event listeners for hiding suggestions
+    document.addEventListener('click', hideSuggestions);
+    target.addEventListener('mouseleave', handleMouseLeave);
+  }
 }
 
 async function searchUsers(query, target, filterFn, onSelect) {
@@ -280,14 +478,25 @@ async function searchUsers(query, target, filterFn, onSelect) {
     return;
   }
   showSuggestionState(target, '<div class="autosuggest-empty autosuggest-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Searching users...</span></div>');
-  const res = await fetch('/api/users/search?query=' + encodeURIComponent(query));
-  const users = (await res.json()).filter(filterFn);
-  showSuggestionState(target, users.map(userSuggestionMarkup).join('') || '<div class="autosuggest-empty">No matching users found.</div>', true);
-  target.querySelectorAll('button[data-id]').forEach(button => button.addEventListener('click', () => {
-    const user = users.find(item => item.id === Number(button.dataset.id));
-    onSelect(user);
-    showSuggestionState(target, '', false);
-  }));
+  try {
+    const res = await fetch('/api/users/search?query=' + encodeURIComponent(query));
+    if (!res.ok) {
+      throw new Error(`Search failed: ${res.status}`);
+    }
+    const allUsers = await res.json();
+    const filteredUsers = allUsers.filter(filterFn);
+    const markup = filteredUsers.map(userSuggestionMarkup).join('');
+    const finalMarkup = markup || '<div class="autosuggest-empty">No matching users found.</div>';
+    showSuggestionState(target, finalMarkup, true);
+    target.querySelectorAll('button[data-id]').forEach(button => button.addEventListener('click', () => {
+      const user = filteredUsers.find(item => item.id === Number(button.dataset.id));
+      onSelect(user);
+      showSuggestionState(target, '', false);
+    }));
+  } catch (error) {
+    console.error('Search error:', error);
+    showSuggestionState(target, '<div class="autosuggest-empty">Error searching users. Please try again.</div>', true);
+  }
 }
 
 async function searchParentTickets(query) {
@@ -312,42 +521,518 @@ async function searchParentTickets(query) {
   }));
 }
 
+// Initialize auto-suggest functionality after DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  
+  // Assigned user auto-suggest
+  const assignedSearch = document.getElementById('assignedSearch');
+  if (assignedSearch) {
+    assignedSearch.addEventListener('input', debounce(event => {
+      searchUsers(
+        event.target.value,
+        document.getElementById('assignedResults'),
+        user => true,
+        user => {
+          assignedSearch.value = `${user.username} (${user.email})`;
+          document.getElementById('assignedToId').value = user.id;
+        }
+      );
+    }, 220));
+  }
+
+  // Vendor user auto-suggest
+  const vendorSearch = document.getElementById('vendorSearch');
+  if (vendorSearch) {
+    vendorSearch.addEventListener('input', debounce(event => {
+      searchUsers(
+        event.target.value,
+        document.getElementById('vendorResults'),
+        user => hasRole(user, 'ROLE_VENDOR'),
+        user => {
+          vendorSearch.value = user.companyName || user.username;
+          document.getElementById('vendorUserId').value = user.id;
+        }
+      );
+    }, 220));
+  }
+});
+
 document.querySelectorAll('.address-part').forEach(field => field.addEventListener('input', updateAddressPreview));
 document.getElementById('customerLocationLink').addEventListener('input', mirrorLocationLink);
-if (document.getElementById('assignedSearch')) {
-  document.getElementById('assignedSearch').addEventListener('input', debounce(event => searchUsers(
-    event.target.value,
-    document.getElementById('assignedResults'),
-    user => true,
-    user => {
-      document.getElementById('assignedSearch').value = `${user.username} (${user.email})`;
-      document.getElementById('assignedToId').value = user.id;
-    }
-  ), 220));
+const fileInput = document.querySelector('input[name="files"]');
+if (fileInput) {
+  fileInput.addEventListener('change', event => {
+    const container = document.getElementById('selectedAttachments');
+    const files = Array.from(event.target.files || []);
+    container.innerHTML = files.map(file => selectedFileMarkup(file, URL.createObjectURL(file))).join('');
+  });
 }
-const vendorSearchCreate = document.getElementById('vendorSearch');
-if (vendorSearchCreate) {
-  vendorSearchCreate.addEventListener('input', debounce(event => searchUsers(
-    event.target.value,
-    document.getElementById('vendorResults'),
-    user => hasRole(user, 'ROLE_VENDOR'),
-    user => {
-      vendorSearchCreate.value = `${user.username} (${user.email})`;
-      document.getElementById('vendorUserId').value = user.id;
-    }
-  ), 220));
+async function searchCustomers(query, targetId) {
+  const target = document.getElementById(targetId);
+  if (!query || query.length < 3) {
+    showSuggestionState(target, '', false);
+    return;
+  }
+  showSuggestionState(target, '<div class="autosuggest-empty autosuggest-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Searching customers...</span></div>');
+  try {
+    const res = await fetch('/api/customers/search?query=' + encodeURIComponent(query));
+    const customers = await res.json();
+    showSuggestionState(target, customers.map(customerSuggestionMarkup).join('') || '<div class="autosuggest-empty">No matching customers found.</div>', true);
+    target.querySelectorAll('button[data-customer]').forEach(button => button.addEventListener('click', () => {
+      const customer = customers.find(item => item.email === button.dataset.customer || item.phone === button.dataset.customer);
+      if (customer) {
+        populateCustomerFields(customer);
+        // Search for customer addresses using the new API, passing the target container
+        searchCustomerAddresses(customer.email, customer.phone, targetId);
+      }
+      showSuggestionState(target, '', false);
+    }));
+  } catch (error) {
+    showSuggestionState(target, '<div class="autosuggest-empty">Error searching customers.</div>', true);
+  }
 }
+
+async function searchCustomerAddresses(email, phone, targetId) {
+  if (!email && !phone) {
+    return;
+  }
+  
+  try {
+    const params = new URLSearchParams();
+    if (email) params.append('email', email);
+    if (phone) params.append('phone', phone);
+    
+    const res = await fetch('/api/customers/addresses?' + params.toString());
+    const addresses = await res.json();
+    
+    if (addresses && addresses.length > 0) {
+      if (addresses.length === 1) {
+        // Auto-fill if only one address
+        selectNewAddress(addresses[0]);
+      } else {
+        // Show dropdown for multiple addresses only in the target container
+        showNewAddressSelection(addresses, targetId);
+      }
+    }
+  } catch (error) {
+    console.error('Error searching customer addresses:', error);
+  }
+}
+
+function customerSuggestionMarkup(customer) {
+  const identifier = customer.email || customer.phone;
+  return `<button type="button" class="autosuggest-item" data-customer="${identifier}">
+    <div class="fw-semibold">${customer.name || 'Unknown'}</div>
+    <div class="small text-muted">${customer.email || ''} ${customer.phone || ''}</div>
+    <div class="small text-primary">${customer.addresses ? customer.addresses.length + ' address(es)' : 'No addresses'}</div>
+  </button>`;
+}
+
+function populateCustomerFields(customer) {
+  document.querySelector('input[name="customerName"]').value = customer.name || '';
+  document.querySelector('input[name="customerEmail"]').value = customer.email || '';
+  document.querySelector('input[name="customerPhone"]').value = customer.phone || '';
+}
+
+function showAddressSelection(addresses, targetFieldId) {
+  
+  if (addresses.length === 1) {
+    selectAddress(addresses[0]);
+    return;
+  }
+  
+  try {
+    // Find the target suggestion container
+    const targetContainer = document.getElementById(targetFieldId);
+    if (!targetContainer) {
+      console.error('Target container not found:', targetFieldId);
+      return;
+    }
+    
+    // Build address list HTML
+    const addressListHtml = addresses.map((addr, index) => {
+      const locationHtml = addr.locationLink ? 
+        `<div class="address-suggestion-badge">View Location</div>` : '';
+      return `
+        <div class="address-suggestion-item" data-address-index="${index}">
+          <div class="address-suggestion-header">
+            <div class="address-suggestion-title">Address ${index + 1}</div>
+            ${locationHtml}
+          </div>
+          <div class="address-suggestion-address">${addr.fullAddress || 'No address details'}</div>
+        </div>`;
+    }).join('');
+    
+    // Show suggestions
+    targetContainer.innerHTML = addressListHtml;
+    targetContainer.classList.remove('hidden');
+    
+    // Handle address selection
+    targetContainer.querySelectorAll('.address-suggestion-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const index = parseInt(item.dataset.addressIndex);
+        selectAddress(addresses[index]);
+        // Hide suggestions after selection
+        targetContainer.classList.add('hidden');
+        cleanupEventListeners();
+      });
+    });
+    
+    // Hide suggestions when clicking outside
+    const hideSuggestions = (event) => {
+      if (!targetContainer.contains(event.target)) {
+        targetContainer.classList.add('hidden');
+        cleanupEventListeners();
+      }
+    };
+    
+    // Mouse leave handler
+    const handleMouseLeave = () => {
+      setTimeout(() => {
+        if (!targetContainer.matches(':hover')) {
+          targetContainer.classList.add('hidden');
+          cleanupEventListeners();
+        }
+      }, 200);
+    };
+    
+    // Cleanup function to remove event listeners
+    const cleanupEventListeners = () => {
+      document.removeEventListener('click', hideSuggestions);
+      targetContainer.removeEventListener('mouseleave', handleMouseLeave);
+    };
+    
+    // Add event listeners for hiding suggestions
+    document.addEventListener('click', hideSuggestions);
+    targetContainer.addEventListener('mouseleave', handleMouseLeave);
+    
+  } catch (error) {
+    console.error('Error in showAddressSelection:', error);
+  }
+}
+
+function showNewAddressSelection(addresses, targetFieldId) {
+  try {
+    // Find the target suggestion container
+    const targetContainer = document.getElementById(targetFieldId);
+    if (!targetContainer) {
+      console.error('Target container not found:', targetFieldId);
+      return;
+    }
+    
+    // Cleanup any existing event listeners first
+    if (targetContainer._cleanupEventListeners) {
+      targetContainer._cleanupEventListeners();
+    }
+    
+    // Build address list HTML
+    const addressListHtml = addresses.map((addr) => {
+      const locationHtml = addr.locationLink ? 
+        `<div class="address-suggestion-badge">View Location</div>` : '';
+      return `
+        <div class="address-suggestion-item" data-address-id="${addr.id}">
+          <div class="address-suggestion-header">
+            <div class="address-suggestion-title">Saved Address</div>
+            ${locationHtml}
+          </div>
+          <div class="address-suggestion-address">${addr.fullAddress || 'No address details'}</div>
+        </div>`;
+    }).join('');
+    
+    // Show suggestions
+    targetContainer.innerHTML = addressListHtml;
+    targetContainer.classList.remove('hidden');
+    targetContainer.hidden = false;
+    
+    // Handle address selection
+    targetContainer.querySelectorAll('.address-suggestion-item').forEach(item => {
+      item.addEventListener('click', (event) => {
+        event.stopPropagation(); // Prevent event bubbling
+        const addressId = item.dataset.addressId;
+        const address = addresses.find(addr => addr.id == addressId);
+        if (address) {
+          selectNewAddress(address);
+        }
+        // Hide suggestions after selection
+        targetContainer.classList.add('hidden');
+        targetContainer.hidden = true;
+        cleanupEventListeners();
+      });
+    });
+    
+    // Hide suggestions when clicking outside
+    const hideSuggestions = (event) => {
+      if (!targetContainer.contains(event.target)) {
+        targetContainer.classList.add('hidden');
+        targetContainer.hidden = true;
+        cleanupEventListeners();
+      }
+    };
+    
+    // Mouse leave handler
+    const handleMouseLeave = () => {
+      setTimeout(() => {
+        if (!targetContainer.matches(':hover')) {
+          targetContainer.classList.add('hidden');
+          targetContainer.hidden = true;
+          cleanupEventListeners();
+        }
+      }, 200);
+    };
+    
+    // Cleanup function to remove event listeners
+    const cleanupEventListeners = () => {
+      document.removeEventListener('click', hideSuggestions);
+      targetContainer.removeEventListener('mouseleave', handleMouseLeave);
+      targetContainer._cleanupEventListeners = null;
+    };
+    
+    // Store cleanup function for later removal
+    targetContainer._cleanupEventListeners = cleanupEventListeners;
+    
+    // Add event listeners for hiding suggestions
+    document.addEventListener('click', hideSuggestions);
+    targetContainer.addEventListener('mouseleave', handleMouseLeave);
+    
+  } catch (error) {
+    console.error('Error in showNewAddressSelection:', error);
+  }
+}
+
+function selectAddress(address) {
+  
+  if (!address) {
+    console.error('Address is null or undefined');
+    return;
+  }
+  
+  try {
+    // Find all address fields
+    const flatField = document.querySelector('input[name="customerFlat"]');
+    const streetField = document.querySelector('input[name="customerStreet"]');
+    const cityField = document.querySelector('input[name="customerCity"]');
+    const stateField = document.querySelector('select[name="customerState"]');
+    const pincodeField = document.querySelector('input[name="customerPincode"]');
+    const locationLinkField = document.querySelector('input[name="customerLocationLink"]');
+    
+    // Set field values
+    if (flatField) flatField.value = address.flat || '';
+    if (streetField) streetField.value = address.street || '';
+    if (cityField) cityField.value = address.city || '';
+    if (stateField) stateField.value = address.state || '';
+    if (pincodeField) pincodeField.value = address.pincode || '';
+    if (locationLinkField) locationLinkField.value = address.locationLink || '';
+    
+    // Store the address reference to prevent duplicates
+    if (address.ticketId) {
+      // Store the reference ticket ID in a hidden field
+      let addressRefField = document.getElementById('customerAddressReferenceId');
+      if (!addressRefField) {
+        addressRefField = document.createElement('input');
+        addressRefField.type = 'hidden';
+        addressRefField.id = 'customerAddressReferenceId';
+        addressRefField.name = 'customerAddressReferenceId';
+        document.getElementById('ticketForm').appendChild(addressRefField);
+      }
+      addressRefField.value = address.ticketId;
+    }
+    
+    // Update address preview
+    updateAddressPreview();
+    
+  } catch (error) {
+    console.error('Error in selectAddress:', error);
+    alert('Error selecting address. Please try again.');
+  }
+}
+
+function selectNewAddress(address) {
+  
+  if (!address) {
+    console.error('Address is null or undefined');
+    return;
+  }
+  
+  try {
+    // Find all address fields
+    const flatField = document.querySelector('input[name="customerFlat"]');
+    const streetField = document.querySelector('input[name="customerStreet"]');
+    const cityField = document.querySelector('input[name="customerCity"]');
+    const stateField = document.querySelector('select[name="customerState"]');
+    const pincodeField = document.querySelector('input[name="customerPincode"]');
+    const locationLinkField = document.querySelector('input[name="customerLocationLink"]');
+    
+    // Set field values
+    if (flatField) flatField.value = address.flat || '';
+    if (streetField) streetField.value = address.street || '';
+    if (cityField) cityField.value = address.city || '';
+    if (stateField) stateField.value = address.state || '';
+    if (pincodeField) pincodeField.value = address.pincode || '';
+    if (locationLinkField) locationLinkField.value = address.locationLink || '';
+    
+    // Store the address ID to reference the existing address
+    let addressIdField = document.getElementById('customerAddressId');
+    if (!addressIdField) {
+      addressIdField = document.createElement('input');
+      addressIdField.type = 'hidden';
+      addressIdField.id = 'customerAddressId';
+      addressIdField.name = 'customerAddressId';
+      document.getElementById('ticketForm').appendChild(addressIdField);
+    }
+    addressIdField.value = address.id;
+    
+    // Store original autofilled data for change detection
+    originalCustomerData = {
+      addressId: address.id,
+      flat: address.flat || '',
+      street: address.street || '',
+      city: address.city || '',
+      state: address.state || '',
+      pincode: address.pincode || '',
+      locationLink: address.locationLink || ''
+    };
+    
+    // Remove any existing reference to old ticket-based address
+    const addressRefField = document.getElementById('customerAddressReferenceId');
+    if (addressRefField) {
+      addressRefField.remove();
+    }
+    
+    // Update address preview
+    updateAddressPreview();
+    
+  } catch (error) {
+    console.error('Error in selectNewAddress:', error);
+    alert('Error selecting address. Please try again.');
+  }
+}
+
+function hasCustomerAddressChanged() {
+  // If no original data (manually entered), return false
+  if (!originalCustomerData.addressId) {
+    return false;
+  }
+  
+  // Get current field values
+  const currentFlat = document.querySelector('input[name="customerFlat"]')?.value || '';
+  const currentStreet = document.querySelector('input[name="customerStreet"]')?.value || '';
+  const currentCity = document.querySelector('input[name="customerCity"]')?.value || '';
+  const currentState = document.querySelector('select[name="customerState"]')?.value || '';
+  const currentPincode = document.querySelector('input[name="customerPincode"]')?.value || '';
+  const currentLocationLink = document.querySelector('input[name="customerLocationLink"]')?.value || '';
+  
+  // Compare with original data
+  return originalCustomerData.flat !== currentFlat ||
+         originalCustomerData.street !== currentStreet ||
+         originalCustomerData.city !== currentCity ||
+         originalCustomerData.state !== currentState ||
+         originalCustomerData.pincode !== currentPincode ||
+         originalCustomerData.locationLink !== currentLocationLink;
+}
+
+function clearAddressFields() {
+  try {
+    document.querySelectorAll('.address-part').forEach(field => {
+      if (field.tagName === 'SELECT') {
+        field.value = '';
+      } else {
+        field.value = '';
+      }
+    });
+    
+    // Also clear the location link field
+    const locationLinkField = document.querySelector('input[name="customerLocationLink"]');
+    if (locationLinkField) {
+      locationLinkField.value = '';
+    }
+    
+    // Hide address suggestion containers
+    const emailSuggestions = document.getElementById('customerAddressSuggestions');
+    const mobileSuggestions = document.getElementById('customerAddressSuggestionsMobile');
+    if (emailSuggestions) {
+      emailSuggestions.classList.add('hidden');
+    }
+    if (mobileSuggestions) {
+      mobileSuggestions.classList.add('hidden');
+    }
+    
+    // Reset original data tracking
+    originalCustomerData = {
+      addressId: null,
+      flat: '',
+      street: '',
+      city: '',
+      state: '',
+      pincode: '',
+      locationLink: ''
+    };
+    
+    // Remove the address reference if it exists (user is choosing new address)
+    const addressRefField = document.getElementById('customerAddressReferenceId');
+    if (addressRefField) {
+      addressRefField.remove();
+    }
+    
+    // Remove the address ID if it exists
+    const addressIdField = document.getElementById('customerAddressId');
+    if (addressIdField) {
+      addressIdField.remove();
+    }
+    
+    updateAddressPreview();
+  } catch (error) {
+    console.error('Error in clearAddressFields:', error);
+  }
+}
+
+// Add customer search event listeners
+document.querySelector('input[name="customerPhone"]').addEventListener('input', debounce(event => {
+  searchCustomers(event.target.value, 'customerAddressSuggestionsMobile');
+}, 400));
+
+document.querySelector('input[name="customerEmail"]').addEventListener('input', debounce(event => {
+  searchCustomers(event.target.value, 'customerAddressSuggestions');
+}, 400));
+
+// Add event listeners to address fields to hide customer suggestions when user starts typing new address
+document.querySelectorAll('.address-part').forEach(field => {
+  field.addEventListener('input', () => {
+    // Hide customer suggestion containers when user starts entering new address
+    const emailSuggestions = document.getElementById('customerAddressSuggestions');
+    const mobileSuggestions = document.getElementById('customerAddressSuggestionsMobile');
+    
+    if (emailSuggestions) {
+      emailSuggestions.classList.add('hidden');
+    }
+    if (mobileSuggestions) {
+      mobileSuggestions.classList.add('hidden');
+    }
+  });
+});
+
+
 document.getElementById('parentTicketSearch').addEventListener('input', debounce(event => searchParentTickets(event.target.value), 220));
 
 document.getElementById('ticketForm').addEventListener('submit', async event => {
   event.preventDefault();
   updateAddressPreview();
   mirrorLocationLink();
+  
   const form = event.target;
   const message = document.getElementById('message');
   const button = form.querySelector('button[type="submit"]');
   clearInlineAlert(message);
   setButtonLoading(button, true, 'Creating ticket...');
+  
+  // Check if customer address has changed from autofilled data
+  if (hasCustomerAddressChanged()) {
+    // Remove the existing address ID to force creation of new address
+    const addressIdField = document.getElementById('customerAddressId');
+    if (addressIdField) {
+      addressIdField.remove();
+    }
+  }
+  
   const data = new FormData(form);
   const res = await fetch('/api/tickets', {method: 'POST', body: data});
   const payload = await res.json().catch(() => ({}));

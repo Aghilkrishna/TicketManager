@@ -8,12 +8,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/dashboard")
@@ -33,7 +35,7 @@ public class DashboardRestController {
     @GetMapping("/my-ticket-status")
     public Map<String, Long> myTicketStatus(Principal principal) {
         com.example.ticketmanager.entity.AppUser user = userService.getByEmail(principal.getName());
-        boolean isVendor = userService.hasRole(principal.getName(), "ROLE_VENDOR");
+        boolean isVendor = userService.hasRole(user, "ROLE_VENDOR");  // use loaded user, not email string
 
         List<Object[]> rows = isVendor
                 ? ticketRepository.countCreatedByStatus(user.getId())
@@ -43,13 +45,25 @@ public class DashboardRestController {
     }
 
     /**
-     * "All Ticket Status" chart data – all tickets across the workspace.
+     * "All Ticket Status" chart data – all tickets accessible to the user.
      * Visible to Admin and Manager only.
      */
     @PreAuthorize("hasAuthority('FEATURE_DASHBOARD_ALL_TICKET_STATUS')")
     @GetMapping("/all-ticket-status")
-    public Map<String, Long> allTicketStatus() {
-        return buildStatusMap(ticketRepository.countAllByStatus());
+    public Map<String, Long> allTicketStatus(Principal principal) {
+        com.example.ticketmanager.entity.AppUser user = userService.getByEmail(principal.getName());
+        boolean effectiveAdminScope = userService.hasAuthority(user, "FEATURE_TICKETS_ALL_VIEW");
+        
+        if (effectiveAdminScope) {
+            return buildStatusMap(ticketRepository.countAllByStatus());
+        } else {
+            // Apply same scope logic as ticket list for non-admin users
+            boolean isVendor = userService.hasRole(user, "ROLE_VENDOR");
+            List<Object[]> rows = isVendor
+                    ? ticketRepository.countCreatedByStatus(user.getId())
+                    : ticketRepository.countAssignedByStatus(user.getId());
+            return buildStatusMap(rows);
+        }
     }
 
     /**
@@ -66,6 +80,55 @@ public class DashboardRestController {
             String label = roleName.charAt(0) + roleName.substring(1).toLowerCase();
             result.merge(label, ((Number) row[1]).longValue(), Long::sum);
         }
+        return result;
+    }
+
+    @PreAuthorize("hasAuthority('FEATURE_DASHBOARD_ACCESS')")
+    @GetMapping("/metrics")
+    public Map<String, Object> metrics(Principal principal, @RequestParam(defaultValue = "all") String scope) {
+        var user = userService.getByEmail(principal.getName());
+        boolean vendor = userService.hasRole(user, "ROLE_VENDOR");
+        boolean admin = userService.hasRole(user, "ROLE_ADMIN");
+        
+        // For admin users, respect the scope parameter
+        // For non-admin users, use default logic based on authorities
+        boolean allTicketScope;
+        if (admin) {
+            // Admin can choose between 'all' (organization) and 'mine' (assigned to them)
+            allTicketScope = !"mine".equals(scope);
+        } else {
+            // Non-admin users use authority-based logic
+            allTicketScope = userService.hasAuthority(user, "FEATURE_DASHBOARD_ALL_TICKET_STATUS");
+        }
+
+        List<Object[]> rows = allTicketScope
+                ? ticketRepository.countAllByStatus()
+                : (vendor ? ticketRepository.countCreatedByStatus(user.getId()) : ticketRepository.countAssignedByStatus(user.getId()));
+
+        Map<String, Long> statusCounts = buildStatusMap(rows);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("statusCounts", statusCounts);
+        result.put("totalTickets", statusCounts.values().stream().mapToLong(Long::longValue).sum());
+        result.put("activeUsers", vendor ? null : userRepository.countEnabledUsersByActiveRoleNames(List.of("ROLE_ADMIN", "ROLE_MANAGER", "ROLE_AGENT")));
+        result.put("activeVendors", vendor ? null : userRepository.countEnabledUsersByActiveRoleNames(List.of("ROLE_VENDOR")));
+        result.put("scope", allTicketScope ? "all" : "mine");
+        result.put("isAdmin", admin);
+        
+        // Determine visible cards based on user role
+        Set<String> visibleCards;
+        if (vendor) {
+            visibleCards = Set.of("enquiry", "open", "inProgress", "onHold", "quoted", "resolved", "closed", "cancelled", "totalTickets");
+        } else {
+            boolean agent = userService.hasRole(user, "ROLE_AGENT");
+            if (agent) {
+                // Agent users: exclude Active Users and Active Vendor cards
+                visibleCards = Set.of("enquiry", "open", "inProgress", "onHold", "quoted", "resolved", "closed", "cancelled", "totalTickets");
+            } else {
+                // Admin and Manager users: include all cards
+                visibleCards = Set.of("enquiry", "open", "inProgress", "onHold", "quoted", "resolved", "closed", "cancelled", "totalTickets", "activeUsers", "activeVendors");
+            }
+        }
+        result.put("visibleCards", visibleCards);
         return result;
     }
 
@@ -92,4 +155,3 @@ public class DashboardRestController {
         return result;
     }
 }
-

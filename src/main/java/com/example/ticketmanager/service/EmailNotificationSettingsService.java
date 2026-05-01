@@ -23,9 +23,21 @@ public class EmailNotificationSettingsService {
 
     @Transactional(readOnly = true)
     public boolean isEnabled(EmailNotificationAction action) {
+        return isEmailEnabled(action);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isEmailEnabled(EmailNotificationAction action) {
         return settingRepository.findById(action)
-                .map(EmailNotificationSetting::isEnabled)
+                .map(EmailNotificationSetting::isEmailEnabled)
                 .orElse(true);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isSmsEnabled(EmailNotificationAction action) {
+        return settingRepository.findById(action)
+                .map(EmailNotificationSetting::isSmsEnabled)
+                .orElse(false);
     }
 
     @Transactional(readOnly = true)
@@ -37,7 +49,8 @@ public class EmailNotificationSettingsService {
                         action.name(),
                         action.label(),
                         action.description(),
-                        settings.get(action) == null || settings.get(action).isEnabled()
+                        settings.get(action) == null || settings.get(action).isEmailEnabled(),
+                        settings.get(action) != null && settings.get(action).isSmsEnabled()
                 ))
                 .toList();
     }
@@ -59,7 +72,8 @@ public class EmailNotificationSettingsService {
                 created.setAction(action);
                 return created;
             });
-            setting.setEnabled(item.enabled());
+            setting.setEmailEnabled(item.emailEnabled());
+            setting.setSmsEnabled(item.smsEnabled());
             settingRepository.save(setting);
         }
         return listSettings();

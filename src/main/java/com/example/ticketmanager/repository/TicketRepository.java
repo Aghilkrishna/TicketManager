@@ -16,6 +16,18 @@ import java.util.List;
 import java.util.Collection;
 
 public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecificationExecutor<Ticket> {
+
+    /**
+     * Override the default Specification-based findAll to eagerly load the three
+     * single-valued associations used in every list row, eliminating N+1 queries.
+     * Only ManyToOne paths are included here – collection paths would cause
+     * Hibernate to apply pagination in memory. serviceUsers is handled via
+     * @BatchSize on the Ticket entity instead.
+     */
+    @Override
+    @EntityGraph(attributePaths = {"createdBy", "assignedTo", "updatedBy"})
+    Page<Ticket> findAll(org.springframework.data.jpa.domain.Specification<Ticket> spec, Pageable pageable);
+
     Page<Ticket> findByCreatedByOrAssignedToOrServiceUsersContains(AppUser createdBy, AppUser assignedTo, AppUser serviceUser, Pageable pageable);
 
     @Query(

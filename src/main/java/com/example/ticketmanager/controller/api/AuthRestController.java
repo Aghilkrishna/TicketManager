@@ -1,6 +1,7 @@
 package com.example.ticketmanager.controller.api;
 
 import com.example.ticketmanager.dto.AuthDtos;
+import com.example.ticketmanager.exception.AppException;
 import com.example.ticketmanager.service.AuthService;
 import com.example.ticketmanager.service.MobileVerificationService;
 import com.example.ticketmanager.service.UserService;
@@ -8,6 +9,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -71,6 +73,9 @@ public class AuthRestController {
 
     @GetMapping("/me")
     public AuthDtos.ProfileResponse me(Principal principal) {
+        if (principal == null) {
+            throw new AppException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
         return userService.getProfile(principal.getName());
     }
 
