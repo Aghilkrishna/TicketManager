@@ -26,7 +26,18 @@ public final class AuthDtos {
             @NotBlank @Size(max = 80) String lastName,
             @NotBlank @Email String email,
             @NotBlank @Size(min = 8, max = 100) String password,
-            @Pattern(regexp = "^$|^[0-9+\\-() ]{7,20}$", message = "Invalid phone number") String phone
+            @Pattern(regexp = "^(agent|vendor)$", message = "Type must be agent or vendor") String type,
+            @Pattern(regexp = "^$|^[0-9+\\-() ]{7,20}$", message = "Invalid phone number") String phone,
+            @Size(max = 150) String companyName,
+            @Size(max = 120) String contactPerson,
+            @Size(max = 30) String gstNumber,
+            @Size(max = 120) String flat,
+            @Size(max = 120) String building,
+            @Size(max = 120) String area,
+            @Size(max = 80) String city,
+            @Size(max = 80) String state,
+            @Size(max = 80) String country,
+            @Size(max = 20) String pincode
     ) {
     }
 
@@ -65,6 +76,7 @@ public final class AuthDtos {
             String phone,
             String firstName,
             String lastName,
+            String companyName,
             String flat,
             String building,
             String area,
@@ -84,6 +96,7 @@ public final class AuthDtos {
             @Pattern(regexp = "^$|^[0-9+\\-() ]{7,20}$", message = "Invalid phone number") String phone,
             @Size(max = 80) String firstName,
             @Size(max = 80) String lastName,
+            @Size(max = 150) String companyName,
             @Size(max = 120) String flat,
             @Size(max = 120) String building,
             @Size(max = 120) String area,
@@ -129,6 +142,8 @@ public final class AuthDtos {
             @Size(max = 80) String customerState,
             @Size(max = 20) String customerPincode,
             @Size(max = 1000) String customerLocationLink,
+            Long customerAddressReferenceId,
+            Long customerAddressId,
             String pricingModel,
             BigDecimal estimatedCost,
             BigDecimal actualCost,
@@ -155,6 +170,7 @@ public final class AuthDtos {
             String parentTicketTitle,
             Long vendorUserId,
             String vendorName,
+            String vendorCompanyName,
             String vendorEmail,
             String vendorPhone,
             String vendorNotes,
@@ -183,7 +199,17 @@ public final class AuthDtos {
             Set<String> serviceUsers,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
-            List<String> attachmentNames
+            List<String> attachmentNames,
+            boolean hasAttachments,
+            List<TicketAttachmentInfo> attachments
+    ) {
+    }
+
+    public record TicketAttachmentInfo(
+            Long id,
+            String fileName,
+            String contentType,
+            long fileSize
     ) {
     }
 

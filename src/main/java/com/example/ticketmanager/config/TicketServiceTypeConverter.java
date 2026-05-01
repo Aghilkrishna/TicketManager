@@ -30,6 +30,9 @@ public class TicketServiceTypeConverter implements AttributeConverter<TicketServ
         } catch (IllegalArgumentException e) {
             // Handle legacy values or unknown types
             switch (dbData.trim().toLowerCase()) {
+                case "leads":
+                case "lead":
+                    return TicketServiceType.LEADS;
                 case "installation":
                     return TicketServiceType.INSTALLATION;
                 case "service":

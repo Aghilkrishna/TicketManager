@@ -30,6 +30,7 @@ public final class AdminDtos {
             String username,
             String email,
             String phone,
+            String companyName,
             boolean enabled,
             boolean emailVerified,
             Set<String> roles,
@@ -72,13 +73,15 @@ public final class AdminDtos {
             String action,
             String label,
             String description,
-            boolean enabled
+            boolean emailEnabled,
+            boolean smsEnabled
     ) {
     }
 
     public record EmailNotificationSettingUpdateItem(
             String action,
-            boolean enabled
+            boolean emailEnabled,
+            boolean smsEnabled
     ) {
     }
 
@@ -130,6 +133,8 @@ public final class AdminDtos {
             Set<String> roleLabels,
             long resolvedTicketCount,
             BigDecimal resolvedAmount,
+            long quotedTicketCount,
+            BigDecimal quotedAmount,
             long closedTicketCount,
             BigDecimal closedAmount,
             String billingStatusLabel
@@ -154,6 +159,8 @@ public final class AdminDtos {
             Set<String> roleLabels,
             long resolvedTicketCount,
             BigDecimal resolvedAmount,
+            long quotedTicketCount,
+            BigDecimal quotedAmount,
             long closedTicketCount,
             BigDecimal closedAmount,
             BigDecimal totalClosedAmount,

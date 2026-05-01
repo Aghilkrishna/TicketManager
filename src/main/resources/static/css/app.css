@@ -60,7 +60,7 @@ textarea.form-control[readonly]::placeholder {
 }
 
 .sidebar {
-    width: 292px;
+    width: 271px;
     padding: 1.5rem 1.25rem;
     background: linear-gradient(180deg, #0f172a, #132238);
     color: #e2e8f0;
@@ -324,6 +324,10 @@ textarea.form-control[readonly]::placeholder {
     gap: 1rem;
 }
 
+.dashboard-metric-grid {
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
 .dashboard-charts-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
@@ -360,6 +364,48 @@ textarea.form-control[readonly]::placeholder {
     box-shadow: var(--shadow);
 }
 
+.dashboard-metric-card {
+    display: flex;
+    align-items: center;
+    gap: 0.95rem;
+    min-height: 118px;
+}
+
+.dashboard-metric-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    display: grid;
+    place-items: center;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+}
+
+.dashboard-metric-copy {
+    min-width: 0;
+}
+
+.dashboard-metric-title {
+    color: var(--muted);
+    font-size: 0.88rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.3rem;
+}
+
+.metric-tone-enquiry .dashboard-metric-icon { background: #f3e8ff; color: #7e22ce; }
+.metric-tone-open .dashboard-metric-icon { background: #dbeafe; color: #1d4ed8; }
+.metric-tone-progress .dashboard-metric-icon { background: #ffedd5; color: #c2410c; }
+.metric-tone-hold .dashboard-metric-icon { background: #fef3c7; color: #b45309; }
+.metric-tone-quoted .dashboard-metric-icon { background: #e0f2fe; color: #0284c7; }
+.metric-tone-resolved .dashboard-metric-icon { background: #dcfce7; color: #15803d; }
+.metric-tone-closed .dashboard-metric-icon { background: #e5e7eb; color: #374151; }
+.metric-tone-cancelled .dashboard-metric-icon { background: #fee2e2; color: #b91c1c; }
+.metric-tone-total .dashboard-metric-icon { background: #dbeafe; color: #0f6cbd; }
+.metric-tone-users .dashboard-metric-icon { background: #cffafe; color: #0f766e; }
+.metric-tone-vendors .dashboard-metric-icon { background: #ede9fe; color: #6d28d9; }
+
 .metric-value {
     font-size: 2rem;
     font-weight: 800;
@@ -385,10 +431,57 @@ textarea.form-control[readonly]::placeholder {
     padding: 1.25rem;
 }
 
+.toolbar-filters-section,
+.toolbar-sort-section {
+    margin-bottom: 1.5rem;
+}
+
+.toolbar-section-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.toolbar-section-title::before {
+    content: '';
+    width: 3px;
+    height: 16px;
+    background: var(--primary);
+    border-radius: 2px;
+}
+
 .toolbar-grid {
     display: grid;
-    grid-template-columns: 2fr repeat(4, 1fr) auto;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 0.85rem;
+    align-items: start;
+}
+
+.toolbar-sort-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 0.85rem;
+    align-items: start;
+}
+
+@media (min-width: 1200px) {
+    .toolbar-grid {
+        grid-template-columns: 2fr repeat(auto-fit, minmax(120px, 1fr));
+    }
+    
+    .toolbar-sort-grid {
+        grid-template-columns: 2fr 1fr;
+    }
+}
+
+.toolbar-grid > div {
+    position: relative;
 }
 
 .sidebar-subnav {
@@ -622,6 +715,11 @@ textarea.form-control[readonly]::placeholder {
 }
 
 .autosuggest-panel {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 99999;
     display: flex;
     flex-direction: column;
     gap: 0;
@@ -632,6 +730,40 @@ textarea.form-control[readonly]::placeholder {
     border-radius: 12px;
     background: #fff;
     box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+}
+
+/* Additional fix for specific containers */
+.form-card .autosuggest-panel {
+    z-index: 100000;
+    position: absolute;
+}
+
+.col-md-8 .autosuggest-panel,
+.col-md-6 .autosuggest-panel {
+    z-index: 100001;
+    position: absolute;
+}
+
+/* Specific fix for assigned user dropdown */
+#assignedResults {
+    z-index: 999999 !important;
+    position: absolute !important;
+}
+
+/* Ensure vendorResults displays first in all pages */
+#vendorResults,
+#adminVendorResults {
+    z-index: 1000000 !important;
+    position: absolute !important;
+}
+
+/* Add relative positioning to form input containers for autosuggest */
+.form-control ~ .autosuggest-panel {
+    position: absolute;
+}
+
+.mb-3, .col-md-8, .col-md-6 {
+    position: relative;
 }
 
 .autosuggest-item {
@@ -883,11 +1015,53 @@ textarea.form-control[readonly]::placeholder {
     font-size: 0.7rem;
 }
 
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+    position: relative;
+}
+
+.sortable-header:hover {
+    background-color: var(--primary-soft);
+}
+
+.sort-indicator {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-left: 0.5rem;
+    opacity: 0.4;
+    transition: all 0.2s ease;
+}
+
+.sort-indicator.active {
+    color: var(--primary);
+    opacity: 1;
+    font-weight: 700;
+}
+
+.sortable-header:hover .sort-indicator {
+    opacity: 0.8;
+}
+
+.sortable-header:hover .sort-indicator.active {
+    opacity: 1;
+}
+
 .table thead th {
     color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     font-size: 0.78rem;
+    vertical-align: top;
+}
+
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+    position: relative;
 }
 
 .status-pill,
@@ -901,8 +1075,11 @@ textarea.form-control[readonly]::placeholder {
     gap: 0.35rem;
 }
 
+.status-pill.LEADS { background: #f3e8ff; color: #7e22ce; }
+.status-pill.SITE_VISITED { background: #cffafe; color: #0f766e; }
 .status-pill.OPEN, .status-pill.IN_PROGRESS { background: #dbeafe; color: #1d4ed8; }
 .status-pill.ON_HOLD { background: #fef3c7; color: #b45309; }
+.status-pill.QUOTED { background: #e0f2fe; color: #0284c7; }
 .status-pill.RESOLVED, .status-pill.CLOSED { background: #dcfce7; color: #15803d; }
 .status-pill.CANCELLED { background: #f3f4f6; color: #6b7280; }
 

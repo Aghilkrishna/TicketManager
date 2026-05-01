@@ -18,6 +18,11 @@ CREATE TABLE IF NOT EXISTS email_notification_settings (
     action_name VARCHAR(60) PRIMARY KEY,
     enabled BOOLEAN NOT NULL DEFAULT TRUE
 );
+ALTER TABLE email_notification_settings ADD COLUMN IF NOT EXISTS email_enabled BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE email_notification_settings ADD COLUMN IF NOT EXISTS sms_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+UPDATE email_notification_settings
+SET email_enabled = enabled
+WHERE email_enabled IS DISTINCT FROM enabled;
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(80);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(80);
@@ -75,6 +80,8 @@ CREATE TABLE IF NOT EXISTS ticket_site_visits (
 ALTER TABLE ticket_site_visits ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
 ALTER TABLE ticket_site_visits ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
 CREATE INDEX IF NOT EXISTS idx_ticket_service_users_user_ticket ON ticket_service_users(user_id, ticket_id);
+-- Index for loading service-users by ticket_id (used in @BatchSize batch fetching)
+CREATE INDEX IF NOT EXISTS idx_ticket_service_users_ticket_user ON ticket_service_users(ticket_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_ticket_comments_ticket_created_at ON ticket_comments(ticket_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_ticket_site_visits_ticket_visited_at ON ticket_site_visits(ticket_id, visited_at);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_read_created_at ON notifications(user_id, read_flag, created_at);

@@ -22,44 +22,76 @@
                         <span th:text="${currentFeatures.contains('FEATURE_TICKETS_CREATE_VENDOR') and !currentFeatures.contains('FEATURE_TICKETS_CREATE_STANDARD') ? 'Create Vendor Ticket' : 'Create Ticket'}">Create Ticket</span>
                     </a>
                 </div>
-                <div class="toolbar-grid">
-                    <input id="search" class="form-control" placeholder="Search by ID, title, status, priority, assigned user">
-                    <select id="status" class="form-select">
-                        <option value="">All status</option>
-                        <option>OPEN</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>RESOLVED</option><option>CLOSED</option><option>CANCELLED</option>
-                    </select>
-                    <select id="priority" class="form-select">
-                        <option value="">All priority</option>
-                        <option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option>
-                    </select>
-                    <select id="sortBy" class="form-select">
-                        <option value="id">Ticket ID</option>
-                        <option value="title">Title</option>
-                        <option value="serviceType">Service Type</option>
-                        <option value="createdBy">Created By</option>
-                        <option value="status">Status</option>
-                        <option value="priority">Priority</option>
-                        <option value="updatedAt" selected>Last Updated</option>
-                    </select>
-                    <select id="direction" class="form-select"><option value="desc">Descending</option><option value="asc">Ascending</option></select>
-                    <button id="applyFilters" class="btn btn-dark">Apply</button>
+                <div class="toolbar-filters-section">
+                    <h6 class="toolbar-section-title">Filters</h6>
+                    <div class="toolbar-grid">
+                        <input id="search" class="form-control" placeholder="Search by Ticket ID, Type, Title, Priority, Status, Vendor, Created By, Created Date, Scheduled Date, Updated Date, Assigned To, Customer name, Customer mobile">
+                        <select id="status" class="form-select">
+                            <option value="">All status</option>
+                            <option>LEADS</option><option>OPEN</option><option>SITE_VISITED</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>QUOTED</option><option>RESOLVED</option><option>CLOSED</option><option>CANCELLED</option>
+                        </select>
+                        <select id="priority" class="form-select">
+                            <option value="">All priority</option>
+                            <option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option>
+                        </select>
+                        <div th:if="${!currentRoles.contains('ROLE_VENDOR')}">
+                            <input id="vendorSearch" class="form-control" placeholder="Vendor company">
+                            <div id="vendorResults" class="autosuggest-panel mt-2" hidden></div>
+                            <input type="hidden" id="vendorUserId">
+                        </div>
+                    </div>
                 </div>
             </section>
 
-            <section class="table-card glass-card">
+            <section id="ticketsTable" class="table-card glass-card">
                 <div class="table-responsive">
                     <table class="table align-middle">
                         <thead>
                         <tr>
-                            <th>S.No</th>
-                            <th>Ticket ID</th>
-                            <th>Title</th>
-                            <th>Type</th>
-                            <th>Created By</th>
-                            <th>Description</th>
-                            <th>Status</th>
-                            <th>Priority</th>
-                            <th>Assigned User</th>
+                            <th class="sortable-header" data-sort="id">
+                                Ticket ID
+                                <span class="sort-indicator" id="sort-id"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="serviceType">
+                                Type
+                                <span class="sort-indicator" id="sort-serviceType"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="title">
+                                Title
+                                <span class="sort-indicator" id="sort-title"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="priority">
+                                Priority
+                                <span class="sort-indicator" id="sort-priority"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="status">
+                                Status
+                                <span class="sort-indicator" id="sort-status"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="vendor">
+                                Vendor
+                                <span class="sort-indicator" id="sort-vendor"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="createdBy">
+                                Created By
+                                <span class="sort-indicator" id="sort-createdBy"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="createdAt">
+                                Created Date
+                                <span class="sort-indicator" id="sort-createdAt"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="scheduleDate">
+                                Scheduled Date
+                                <span class="sort-indicator" id="sort-scheduleDate"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="updatedAt">
+                                Updated Date
+                                <span class="sort-indicator" id="sort-updatedAt"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="assignedTo">
+                                Assigned To
+                                <span class="sort-indicator" id="sort-assignedTo"></span>
+                            </th>
                             <th class="text-end">Actions</th>
                         </tr>
                         </thead>
@@ -68,7 +100,18 @@
                 </div>
                 <div id="ticketEmpty" class="empty-state d-none">No tickets matched the current selection.</div>
                 <div class="pagination-wrap">
-                    <div id="paginationSummary" class="text-muted small"></div>
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div id="paginationSummary" class="text-muted small"></div>
+                        <div class="d-flex align-items-center gap-2">
+                            <label class="small text-muted" for="pageSize">Records per page</label>
+                            <select id="pageSize" class="form-select form-select-sm" style="width: auto;">
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100" selected>100</option>
+                                <option value="200">200</option>
+                            </select>
+                        </div>
+                    </div>
                     <div id="paginationList" class="pagination-list"></div>
                 </div>
             </section>
@@ -81,20 +124,150 @@
 <script th:inline="javascript">
 const forcedStatuses = /*[[${forcedStatuses}]]*/ [];
 const canEditTickets = /*[[${currentFeatures.contains('FEATURE_TICKETS_MANAGE') or currentFeatures.contains('FEATURE_SITE_VISIT_EDIT')}]]*/ false;
-const assignedOnly = /*[[${assignedOnly}]]*/ true;
-const createdOnly = /*[[${createdOnly}]]*/ false;
-const adminScope = /*[[${adminScope}]]*/ false;
+let assignedOnly = /*[[${assignedOnly}]]*/ true;
+let createdOnly = /*[[${createdOnly}]]*/ false;
+let adminScope = /*[[${adminScope}]]*/ false;
 const canViewAllTickets = /*[[${currentFeatures.contains('FEATURE_TICKETS_ALL_VIEW')}]]*/ false;
 let currentPage = 0;
-let pageSize = 10;
+let pageSize = 100;
 const refreshTicketsDebounced = debounce(() => loadTickets(), 400);
 let lastTicketRefreshToastAt = 0;
+
+// Read URL parameters on page load
+function initializeFromUrlParams() {
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  // Set status filter if provided
+  if (urlParams.has('statuses')) {
+    const statusValue = urlParams.get('statuses');
+    const statusSelect = document.getElementById('status');
+    if (statusSelect) {
+      statusSelect.value = statusValue;
+    }
+  }
+  
+  // Update assignedOnly variable if provided
+  if (urlParams.has('assignedOnly')) {
+    assignedOnly = urlParams.get('assignedOnly') === 'true';
+  }
+  
+  // Update createdOnly variable if provided
+  if (urlParams.has('createdOnly')) {
+    createdOnly = urlParams.get('createdOnly') === 'true';
+  }
+  
+  // Update adminScope variable if provided
+  if (urlParams.has('adminScope')) {
+    adminScope = urlParams.get('adminScope') === 'true';
+  }
+  
+  // Set search filter if provided
+  if (urlParams.has('search')) {
+    const searchValue = urlParams.get('search');
+    const searchInput = document.getElementById('search');
+    if (searchInput) {
+      searchInput.value = searchValue;
+    }
+  }
+  
+  // Set priority filter if provided
+  if (urlParams.has('priority')) {
+    const priorityValue = urlParams.get('priority');
+    const prioritySelect = document.getElementById('priority');
+    if (prioritySelect) {
+      prioritySelect.value = priorityValue;
+    }
+  }
+}
+
+function escapeHtml(value) {
+  return (value || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+function hasRole(user, roleName) {
+  return Array.isArray(user.roles) && user.roles.includes(roleName);
+}
+
+function userSuggestionMarkup(user) {
+  const title = escapeHtml(user.username || user.firstName || 'Vendor');
+  const subtitle = escapeHtml(user.companyName ? `${user.companyName} · ${user.city || ''}` : `${user.city || ''}`);
+  return `
+    <button type="button" class="autosuggest-item" data-id="${user.id}">
+      <img class="autosuggest-avatar" src="/api/users/avatar/${user.id}" alt="${title}" loading="lazy" decoding="async">
+      <div class="autosuggest-body">
+        <div class="autosuggest-title-row"><span class="autosuggest-title">${title}</span></div>
+        <div class="autosuggest-subtitle">${subtitle}</div>
+      </div>
+      <span class="autosuggest-action" aria-hidden="true"><i class="bi bi-building"></i></span>
+    </button>`;
+}
+
+function showSuggestionState(target, content, visible = true) {
+  target.innerHTML = content;
+  target.hidden = !visible;
+  
+  // For assigned user dropdown, move to body to avoid clipping issues
+  if (target.id === 'vendorResults' && visible) {
+    // Move dropdown to body level
+    if (!target.dataset.movedToBody) {
+      document.body.appendChild(target);
+      target.dataset.movedToBody = 'true';
+    }
+    
+    // Position it relative to the input field
+    const inputField = document.getElementById('vendorSearch');
+    if (inputField) {
+      const rect = inputField.getBoundingClientRect();
+      target.style.position = 'fixed';
+      target.style.top = (rect.bottom + window.scrollY) + 'px';
+      target.style.left = rect.left + 'px';
+      target.style.width = rect.width + 'px';
+      target.style.zIndex = '999999';
+    }
+  } else if (target.id === 'vendorResults' && !visible) {
+    // Reset position when hidden
+    target.style.position = '';
+    target.style.top = '';
+    target.style.left = '';
+    target.style.width = '';
+    target.style.zIndex = '';
+  }
+}
+
+async function searchUsers(query, target, filterFn, onSelect) {
+  if (!query || query.trim().length < 2) {
+    document.getElementById('vendorUserId').value = '';
+    showSuggestionState(target, '', false);
+    return;
+  }
+  showSuggestionState(target, '<div class="autosuggest-empty autosuggest-loading"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>Searching vendors...</span></div>');
+  const res = await fetch('/api/users/search?query=' + encodeURIComponent(query));
+  const users = (await res.json()).filter(filterFn);
+  showSuggestionState(target, users.map(userSuggestionMarkup).join('') || '<div class="autosuggest-empty">No matching vendors found.</div>', true);
+  target.querySelectorAll('button[data-id]').forEach(button => button.addEventListener('click', () => {
+    const user = users.find(item => item.id === Number(button.dataset.id));
+    onSelect(user);
+    showSuggestionState(target, '', false);
+  }));
+}
+
+function formatDateTime(value) {
+  if (!value) return '-';
+  return new Date(value).toLocaleDateString();
+}
+
+function formatDate(value) {
+  if (!value) return '-';
+  return new Date(value + 'T00:00:00').toLocaleDateString();
+}
 
 function renderPagination(data) {
   const list = document.getElementById('paginationList');
   const summary = document.getElementById('paginationSummary');
   list.innerHTML = '';
-  summary.textContent = `Showing page ${data.number + 1} of ${Math.max(data.totalPages, 1)} · ${data.totalElements} tickets`;
+  const start = data.totalElements === 0 ? 0 : (data.number * data.size) + 1;
+  const end = Math.min((data.number + 1) * data.size, data.totalElements);
+  summary.textContent = `Showing ${start}-${end} of ${data.totalElements} tickets · Page ${data.number + 1} of ${Math.max(data.totalPages, 1)}`;
   const addButton = (label, page, disabled = false, active = false) => {
     const button = document.createElement('button');
     button.className = 'page-link-btn' + (active ? ' active' : '');
@@ -123,8 +296,9 @@ async function loadTickets() {
     search: document.getElementById('search').value,
     statuses: document.getElementById('status').value || forcedStatuses.join(','),
     priority: document.getElementById('priority').value,
-    sortBy: document.getElementById('sortBy').value,
-    direction: document.getElementById('direction').value
+    vendorUserId: document.getElementById('vendorUserId').value,
+    sortBy: currentSortBy,
+    direction: currentDirection
   });
   const res = await fetch('/api/tickets?' + params.toString());
   const data = await res.json();
@@ -133,19 +307,21 @@ async function loadTickets() {
   body.innerHTML = '';
   const tickets = data.content || [];
   empty.classList.toggle('d-none', tickets.length > 0);
-  tickets.forEach((ticket, index) => {
-    const assignedUsers = [ticket.assignedTo, ...(ticket.serviceUsers || [])].filter(Boolean).join(', ');
+  tickets.forEach(ticket => {
+    const assignedUser = ticket.assignedTo || 'Unassigned';
     body.innerHTML += `
       <tr>
-        <td>${currentPage * pageSize + index + 1}</td>
         <td>#${ticket.id}</td>
-        <td><a class="fw-semibold text-decoration-none" href="/tickets/view?id=${ticket.id}">${ticket.title}</a></td>
         <td>${ticket.serviceTypeLabel || '-'}</td>
-        <td>${ticket.createdBy || '-'}</td>
-        <td><div class="text-muted small">${ticket.description.slice(0, 100)}</div></td>
-        <td><span class="status-pill ${ticket.status}">${ticket.status}</span></td>
+        <td><a class="fw-semibold text-decoration-none" href="/tickets/view?id=${ticket.id}">${ticket.title}${ticket.hasAttachments ? ' <i class="bi bi-paperclip ms-1 text-muted" title="Attachments available"></i>' : ''}</a></td>
         <td><span class="priority-pill ${ticket.priority}">${ticket.priority}</span></td>
-        <td>${assignedUsers || 'Unassigned'}</td>
+        <td><span class="status-pill ${ticket.status}">${ticket.status}</span></td>
+        <td>${ticket.vendorCompanyName || '-'}</td>
+        <td>${ticket.createdBy || '-'}</td>
+        <td>${formatDateTime(ticket.createdAt)}</td>
+        <td>${formatDate(ticket.scheduleDate)}</td>
+        <td>${formatDateTime(ticket.updatedAt)}</td>
+        <td>${assignedUser}</td>
         <td class="text-end">
           <a class="btn btn-sm btn-outline-secondary" href="/tickets/view?id=${ticket.id}" title="View"><i class="bi bi-eye"></i></a>
           ${canEditTickets && (ticket.status !== 'CLOSED' || canViewAllTickets) ? `<a class="btn btn-sm btn-outline-primary" href="/tickets/edit?id=${ticket.id}" title="Edit"><i class="bi bi-pencil"></i></a>` : ''}
@@ -155,14 +331,89 @@ async function loadTickets() {
   renderPagination(data);
 }
 
+let currentSortBy = 'updatedAt';
+let currentDirection = 'desc';
+
+function updateSortIndicators() {
+  // Remove active class from all indicators
+  document.querySelectorAll('.sort-indicator').forEach(indicator => {
+    indicator.classList.remove('active');
+    indicator.textContent = '↕';
+  });
+  
+  // Set current sort indicator with active class
+  const currentIndicator = document.getElementById(`sort-${currentSortBy}`);
+  if (currentIndicator) {
+    currentIndicator.classList.add('active');
+    currentIndicator.textContent = currentDirection === 'asc' ? '↑' : '↓';
+  }
+}
+
+function handleHeaderSort(sortField) {
+  if (currentSortBy === sortField) {
+    // Toggle direction if same field
+    currentDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    // New field, default to desc
+    currentSortBy = sortField;
+    currentDirection = 'desc';
+  }
+  
+  currentPage = 0;
+  updateSortIndicators();
+  loadTickets();
+}
+
+// Add click handlers to sortable headers
+document.querySelectorAll('.sortable-header').forEach(header => {
+  header.addEventListener('click', () => {
+    const sortField = header.dataset.sort;
+    if (sortField) {
+      handleHeaderSort(sortField);
+    }
+  });
+  header.style.cursor = 'pointer';
+});
+
 if (forcedStatuses.length === 1) {
   document.getElementById('status').value = forcedStatuses[0];
 }
-document.getElementById('applyFilters').addEventListener('click', () => {
+
+// Initialize sort indicators
+updateSortIndicators();
+
+document.getElementById('search').addEventListener('input', debounce(event => {
+  currentPage = 0;
+  loadTickets();
+}, 400));
+document.getElementById('status').addEventListener('change', () => {
   currentPage = 0;
   loadTickets();
 });
+document.getElementById('priority').addEventListener('change', () => {
+  currentPage = 0;
+  loadTickets();
+});
+document.getElementById('pageSize').addEventListener('change', event => {
+  pageSize = Number(event.target.value) || 100;
+  currentPage = 0;
+  loadTickets();
+});
+document.getElementById('vendorSearch').addEventListener('input', debounce(event => searchUsers(
+  event.target.value,
+  document.getElementById('vendorResults'),
+  user => hasRole(user, 'ROLE_VENDOR'),
+  user => {
+    document.getElementById('vendorSearch').value = user.companyName || user.username;
+    document.getElementById('vendorUserId').value = user.id;
+    currentPage = 0;
+    loadTickets();
+  }
+), 220));
 loadTickets();
+
+// Initialize URL parameters after page load
+initializeFromUrlParams();
 
 if (typeof SockJS !== 'undefined' && typeof Stomp !== 'undefined') {
   const socket = new SockJS('/ws');

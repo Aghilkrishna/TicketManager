@@ -7,18 +7,18 @@
 <div class="app-shell">
     <aside th:replace="~{fragments/layout :: sidebar('admin', 'email-notifications')}"></aside>
     <div class="main-panel">
-        <header th:replace="~{fragments/layout :: topbar('Email Notification', 'Control which application actions trigger outbound email')}"></header>
+        <header th:replace="~{fragments/layout :: topbar('Email Notification', 'Control which application actions trigger outbound email and SMS')}"></header>
         <main class="content-area">
             <section class="hero-banner glass-card mb-4">
                 <h1 class="h2 fw-bold mb-2">Email Notification Settings</h1>
-                <p class="mb-0">Enable or disable email delivery for specific application actions. In-app notifications continue to work independently.</p>
+                <p class="mb-0">Enable or disable email and SMS delivery for specific application actions. In-app notifications continue to work independently.</p>
             </section>
 
             <section class="form-card glass-card">
                 <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4">
                     <div>
                         <div class="section-title">Notification Actions</div>
-                        <div class="table-subtitle">Only the enabled actions below will send emails.</div>
+                        <div class="table-subtitle">Only the enabled channels below will send outbound alerts.</div>
                     </div>
                     <button id="saveEmailNotificationSettings" class="btn btn-primary" type="button">Save Settings</button>
                 </div>
@@ -34,15 +34,22 @@ let emailNotificationSettings = [];
 
 function renderEmailNotificationSettings() {
   document.getElementById('emailNotificationList').innerHTML = emailNotificationSettings.map(setting => `
-    <div class="col-md-6">
+    <div class="col-12">
       <label class="d-block border rounded-4 p-3 h-100" style="cursor:pointer;">
-        <div class="d-flex justify-content-between align-items-start gap-3">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
           <div>
             <div class="fw-semibold">${setting.label}</div>
             <div class="text-muted small mt-2">${setting.description}</div>
           </div>
-          <div class="form-check form-switch mt-1">
-            <input class="form-check-input" type="checkbox" data-action="${setting.action}" ${setting.enabled ? 'checked' : ''}>
+          <div class="d-flex gap-4 align-items-center mt-1">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" data-channel="email" data-action="${setting.action}" ${setting.emailEnabled ? 'checked' : ''}>
+              <span class="small ms-2">Email</span>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" data-channel="sms" data-action="${setting.action}" ${setting.smsEnabled ? 'checked' : ''}>
+              <span class="small ms-2">SMS</span>
+            </div>
           </div>
         </div>
       </label>
@@ -61,9 +68,10 @@ document.getElementById('saveEmailNotificationSettings').addEventListener('click
   const message = document.getElementById('emailNotificationMessage');
   clearInlineAlert(message);
   setButtonLoading(button, true, 'Saving settings...');
-  const payload = Array.from(document.querySelectorAll('#emailNotificationList input[type="checkbox"]')).map(input => ({
-    action: input.dataset.action,
-    enabled: input.checked
+  const payload = emailNotificationSettings.map(setting => ({
+    action: setting.action,
+    emailEnabled: Boolean(document.querySelector(`#emailNotificationList input[data-channel="email"][data-action="${setting.action}"]`)?.checked),
+    smsEnabled: Boolean(document.querySelector(`#emailNotificationList input[data-channel="sms"][data-action="${setting.action}"]`)?.checked)
   }));
   const res = await fetch('/api/admin/email-notifications', {
     method: 'PUT',
