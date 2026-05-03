@@ -16,10 +16,11 @@ WORKDIR /app
 # Set environment variables for Spring Boot
 ENV SPRING_PROFILES_ACTIVE=prod
 ENV APP_UPLOAD_DIR=/app/uploads
+ENV LOGS_DIR=/app/logs
 ENV TZ=Asia/Kolkata
 
-# Create uploads directory and set permissions
-RUN mkdir -p /app/uploads && chmod 777 /app/uploads
+# Create uploads and logs directories and set permissions
+RUN mkdir -p /app/uploads /app/logs && chmod 777 /app/uploads /app/logs
 
 # Copy the built jar from the build stage
 COPY --from=build /app/target/ticket-manager-*.jar app.jar
