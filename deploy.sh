@@ -1,9 +1,24 @@
 #!/bin/bash
+set -euo pipefail
 
 # Configuration
 BACKUP_DIR="../backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 CURRENT_BACKUP="$BACKUP_DIR/backup_$TIMESTAMP"
+ENV_FILE=".env"
+
+# Load production environment values if present
+if [ -f "$ENV_FILE" ]; then
+    set -a
+    source "$ENV_FILE"
+    set +a
+fi
+
+DB_CONTAINER_NAME="${DB_CONTAINER_NAME:-ticketmanager-db}"
+DB_NAME="${DB_NAME:-ticketmanager}"
+DB_USERNAME="${DB_USERNAME:-postgres}"
+APP_IMAGE_NAME="${APP_IMAGE_NAME:-ticketmanager-app}"
+UPLOADS_HOST_DIR="${UPLOADS_HOST_DIR:-/opt/ticket_manager_app/uploads}"
 
 # Create backup directory if it doesn't exist
 mkdir -p "$BACKUP_DIR"
@@ -47,20 +62,33 @@ mkdir -p "$CURRENT_BACKUP"
 
 # Database Backup
 echo "  - Backing up database..."
-docker exec ticketmanager-db pg_dump -U postgres ticketmanager > "$CURRENT_BACKUP/db_dump.sql" 2>/dev/null
-if [ $? -eq 0 ]; then
-    echo "  - Database backup complete."
+DUMP_FILE="$CURRENT_BACKUP/db_dump.sql"
+DUMP_TMP_FILE="$CURRENT_BACKUP/db_dump.sql.tmp"
+
+if docker exec -e PGPASSWORD="${DB_PASSWORD:-}" "$DB_CONTAINER_NAME" \
+    pg_dump --clean --if-exists --create --inserts --column-inserts --verbose \
+    -U "$DB_USERNAME" "$DB_NAME" > "$DUMP_TMP_FILE"; then
+    if [ -s "$DUMP_TMP_FILE" ]; then
+        mv "$DUMP_TMP_FILE" "$DUMP_FILE"
+        echo "  - Database backup complete: $DUMP_FILE"
+    else
+        rm -f "$DUMP_TMP_FILE"
+        echo "  ❌ Database backup failed: dump file is empty."
+        exit 1
+    fi
 else
-    echo "  ⚠️ Warning: Database backup failed (is the DB container running?)."
+    rm -f "$DUMP_TMP_FILE"
+    echo "  ❌ Database backup failed (check DB credentials/container)."
+    exit 1
 fi
 
 # Uploads Backup
 echo "  - Backing up uploads folder..."
-if [ -d "./uploads" ]; then
-    tar -czf "$CURRENT_BACKUP/uploads_backup.tar.gz" ./uploads
+if [ -d "$UPLOADS_HOST_DIR" ]; then
+    tar -czf "$CURRENT_BACKUP/uploads_backup.tar.gz" -C "$(dirname "$UPLOADS_HOST_DIR")" "$(basename "$UPLOADS_HOST_DIR")"
     echo "  - Uploads backup complete."
 else
-    echo "  - No uploads folder found, skipping."
+    echo "  - Uploads folder not found at $UPLOADS_HOST_DIR, skipping."
 fi
 
 # Save current git commit hash for reference
@@ -84,7 +112,7 @@ export APP_IMAGE_TAG="$IMAGE_TAG"
 docker compose build app
 
 # Tag it as latest for general use
-docker tag ticketmanager-app:$IMAGE_TAG ticketmanager-app:latest
+docker tag "$APP_IMAGE_NAME:$IMAGE_TAG" "$APP_IMAGE_NAME:latest"
 
 # Start with the specific tag
 docker compose up -d
