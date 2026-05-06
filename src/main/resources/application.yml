@@ -42,3 +42,7 @@ app:
     api-key: ${APP_SMS_API_KEY:}
     sender: ${APP_SMS_SENDER:VIEWIT}
     api-url: ${APP_SMS_API_URL:https://www.smsalert.co.in/api/push.json}
+  reports:
+    schedule:
+      enabled: ${APP_REPORTS_SCHEDULE_ENABLED:true}
+      cron: ${APP_REPORTS_SCHEDULE_CRON:0 0 1 * * ?}

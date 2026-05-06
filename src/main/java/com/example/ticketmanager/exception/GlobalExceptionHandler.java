@@ -5,6 +5,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -48,6 +50,13 @@ public class GlobalExceptionHandler {
     public Object handleConstraint(ConstraintViolationException ex, HttpServletRequest request) {
         log.warn("Constraint violation: uri={}, message={}", request.getRequestURI(), ex.getMessage());
         return buildResponse(request, HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler({AuthorizationDeniedException.class, AccessDeniedException.class})
+    public Object handleAccessDenied(Exception ex, HttpServletRequest request) {
+        log.warn("Access denied: uri={}, exception={}, message={}",
+                request.getRequestURI(), ex.getClass().getSimpleName(), ex.getMessage());
+        return buildResponse(request, HttpStatus.FORBIDDEN, "Access Denied");
     }
 
     @ExceptionHandler(Exception.class)

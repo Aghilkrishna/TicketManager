@@ -9,7 +9,8 @@ public record AppProperties(
         Mail mail,
         String uploadDir,
         Masking masking,
-        Sms sms
+        Sms sms,
+        Reports reports
 ) {
     public record Jwt(String secret, long expiration) {
     }
@@ -21,5 +22,11 @@ public record AppProperties(
     }
 
     public record Sms(boolean enabled, String apiKey, String sender, String apiUrl) {
+    }
+
+    public record Reports(Schedule schedule) {
+    }
+
+    public record Schedule(boolean enabled, String cron) {
     }
 }
