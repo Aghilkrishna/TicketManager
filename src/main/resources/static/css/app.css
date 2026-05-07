@@ -83,6 +83,10 @@ textarea.form-control[readonly]::placeholder {
     display: none;
 }
 
+.sidebar.collapsed .subnav-chevron {
+    display: none;
+}
+
 .sidebar.collapsed .nav-item {
     justify-content: center;
 }
@@ -501,11 +505,21 @@ textarea.form-control[readonly]::placeholder {
 }
 
 .subnav-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     color: #94a3b8;
     text-decoration: none;
     border-radius: 12px;
     padding: 0.55rem 0.75rem;
     font-size: 0.92rem;
+}
+
+.subnav-item i {
+    width: 1rem;
+    text-align: center;
+    font-size: 0.85rem;
+    opacity: 0.92;
 }
 
 .subnav-item.active,
