@@ -60,14 +60,6 @@
                                 Title
                                 <span class="sort-indicator" id="sort-title"></span>
                             </th>
-                            <th class="sortable-header" data-sort="priority">
-                                Priority
-                                <span class="sort-indicator" id="sort-priority"></span>
-                            </th>
-                            <th class="sortable-header" data-sort="status">
-                                Status
-                                <span class="sort-indicator" id="sort-status"></span>
-                            </th>
                             <th class="sortable-header" data-sort="vendor">
                                 Vendor
                                 <span class="sort-indicator" id="sort-vendor"></span>
@@ -84,9 +76,17 @@
                                 Scheduled Date
                                 <span class="sort-indicator" id="sort-scheduleDate"></span>
                             </th>
-                            <th class="sortable-header" data-sort="updatedAt">
-                                Updated Date
-                                <span class="sort-indicator" id="sort-updatedAt"></span>
+<!--                            <th class="sortable-header" data-sort="updatedAt">-->
+<!--                                Updated Date-->
+<!--                                <span class="sort-indicator" id="sort-updatedAt"></span>-->
+<!--                            </th>-->
+                            <th class="sortable-header" data-sort="status">
+                                Status
+                                <span class="sort-indicator" id="sort-status"></span>
+                            </th>
+                            <th class="sortable-header" data-sort="priority">
+                                Priority
+                                <span class="sort-indicator" id="sort-priority"></span>
                             </th>
                             <th class="sortable-header" data-sort="assignedTo">
                                 Assigned To
@@ -314,13 +314,15 @@ async function loadTickets() {
         <td>#${ticket.id}</td>
         <td>${ticket.serviceTypeLabel || '-'}</td>
         <td><a class="fw-semibold text-decoration-none" href="/tickets/view?id=${ticket.id}">${ticket.title}${ticket.hasAttachments ? ' <i class="bi bi-paperclip ms-1 text-muted" title="Attachments available"></i>' : ''}</a></td>
-        <td><span class="priority-pill ${ticket.priority}">${ticket.priority}</span></td>
-        <td><span class="status-pill ${ticket.status}">${ticket.status}</span></td>
+
+
         <td>${ticket.vendorCompanyName || '-'}</td>
         <td>${ticket.createdBy || '-'}</td>
         <td>${formatDateTime(ticket.createdAt)}</td>
         <td>${formatDate(ticket.scheduleDate)}</td>
-        <td>${formatDateTime(ticket.updatedAt)}</td>
+        <!-- <td>${formatDateTime(ticket.updatedAt)}</td> -->
+        <td><span class="status-pill ${ticket.status}">${ticket.status}</span></td>
+        <td><span class="priority-pill ${ticket.priority}">${ticket.priority}</span></td>
         <td>${assignedUser}</td>
         <td class="text-end">
           <a class="btn btn-sm btn-outline-secondary" href="/tickets/view?id=${ticket.id}" title="View"><i class="bi bi-eye"></i></a>

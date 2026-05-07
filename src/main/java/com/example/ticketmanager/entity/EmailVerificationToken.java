@@ -33,7 +33,7 @@ public class EmailVerificationToken {
     @JoinColumn(name = "user_id", nullable = false)
     private AppUser user;
 
-    @Column(nullable = false)
+    @Column(name = "expiry_date", nullable = false)
     private LocalDateTime expiresAt;
 
     @Column(nullable = false)

@@ -14,7 +14,7 @@
             </div>
         </div>
         <h1 class="display-5 fw-bold">Create your account with role-specific details.</h1>
-        <p class="lead mt-3">Use one signup flow for agent and vendor users.</p>
+        <p class="lead mt-3">Use one signup flow for technician and vendor users.</p>
     </section>
     <section class="d-flex align-items-center justify-content-center">
         <div class="auth-panel">
@@ -37,9 +37,10 @@
                     </div>
                     <div class="col-md-6">
                         <select class="form-select form-select-lg" name="type" id="accountType" required>
-                            <option value="">Select user type</option>
-                            <option value="agent">Agent</option>
+                            <option value="">User type</option>
+                            <option value="agent">Technician</option>
                             <option value="vendor">Vendor</option>
+                            <option value="user">Customer</option>
                         </select>
                     </div>
                     <div class="col-md-6">
@@ -51,7 +52,7 @@
                 </div>
 
                 <div class="pt-2">
-                    <div class="fw-semibold mb-2">Vendor details</div>
+                    <div class="fw-semibold mb-2">Company details</div>
                     <div class="row g-3">
                         <div class="col-md-6">
                             <input class="form-control form-control-lg" name="companyName" placeholder="Company name" maxlength="150">
@@ -69,7 +70,7 @@
                 </div>
 
                 <div class="pt-3">
-                    <div class="fw-semibold mb-2">Business address</div>
+                    <div class="fw-semibold mb-2">Address</div>
                     <div class="row g-3">
                         <div class="col-md-6">
                             <input class="form-control form-control-lg" name="flat" placeholder="Flat / Unit" maxlength="120">

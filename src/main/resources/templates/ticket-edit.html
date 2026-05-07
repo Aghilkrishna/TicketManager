@@ -83,6 +83,7 @@
                                             <option value="Google Ads" th:selected="${ticket.leadFrom == 'Google Ads'}">Google Ads</option>
                                             <option value="Online" th:selected="${ticket.leadFrom == 'Online'}">Online</option>
                                             <option value="Instagram" th:selected="${ticket.leadFrom == 'Instagram'}">Instagram</option>
+                                            <option value="IndiaMart" th:selected="${ticket.leadFrom == 'IndiaMart'}">IndiaMart</option>
                                             <option value="OTHERS">Others</option>
                                         </select>
                                         <input class="form-control" name="leadFromOther" id="leadFromOther" maxlength="120" placeholder="Enter lead source" hidden>
@@ -99,7 +100,7 @@
                                                name="siteVisits"
                                                th:value="${ticket.siteVisits != null ? ticket.siteVisits : 0}"
                                                readonly>
-                                        <div class="form-text" th:text="${agentEditorView ? 'This counter updates automatically whenever you submit the Site Visit Log form below.' : 'Only site visit log submissions update this counter for agent users.'}">This counter updates automatically whenever you submit the Site Visit Log form below.</div>
+                                        <div class="form-text" th:text="${agentEditorView ? 'This counter updates automatically whenever you submit the Site Visit Log form below.' : 'Only site visit log submissions update this counter for technician users.'}">This counter updates automatically whenever you submit the Site Visit Log form below.</div>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Status</label>
@@ -306,7 +307,7 @@ const ticketId = /*[[${ticket.id}]]*/ 0;
 const canAssignUsers = /*[[${adminTicketScope}]]*/ false;
 const agentEditor = /*[[${agentEditorView}]]*/ false;
 const originalTicket = /*[[${ticket}]]*/ {};
-const leadFromOptions = ['Facebook Meta', 'Indeed', 'Google Ads', 'Online', 'Instagram'];
+const leadFromOptions = ['Facebook Meta', 'Indeed', 'Google Ads', 'Online', 'Instagram', 'IndiaMart'];
 
 function hasRole(user, roleName) {
   return Array.isArray(user.roles) && user.roles.includes(roleName);
@@ -489,7 +490,7 @@ function renderSiteVisits(visits) {
         <div class="site-visit-identity">
           <div class="site-visit-icon"><i class="bi bi-person-walking"></i></div>
           <div class="site-visit-meta">
-            <div class="site-visit-agent">${escapeHtml(visit.agentName || 'Agent')}</div>
+            <div class="site-visit-agent">${escapeHtml(visit.agentName || 'Technician')}</div>
             <div class="site-visit-time"><i class="bi bi-calendar-event"></i><span>${formatVisitDateTime(visit.visitedAt)}</span></div>
           </div>
         </div>
