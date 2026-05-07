@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
@@ -31,10 +32,10 @@ public class DataInitializer {
     private final UserIdProofRepository userIdProofRepository;
 
     @Bean
-    CommandLineRunner seedData() {
+    CommandLineRunner seedEssentialData() {
         return args -> {
-            log.info("Starting data initialization");
-            
+            log.info("Starting essential data initialization");
+
             seedRole("ROLE_ADMIN", "Full administrative access", Set.of(
                     AppFeature.DASHBOARD_ACCESS,
                     AppFeature.DASHBOARD_MY_TICKET_STATUS,
@@ -91,49 +92,56 @@ public class DataInitializer {
                     AppFeature.TICKETS_VIEW,
                     AppFeature.CHAT_ACCESS
             ));
-            if (userRepository.count() == 0) {
-                log.info("Creating default users");
-                createUser("admin", "admin@example.com", "9999999999", "Admin@123", "ROLE_ADMIN", "ROLE_MANAGER");
-                createUser("manager", "manager@example.com", "8888888888", "Manager@123", "ROLE_MANAGER");
-                createUser("agent", "agent@example.com", "7777777777", "Agent@123", "ROLE_AGENT");
-                createUser("vendor", "vendor@example.com", "5555555555", "Vendor@123", "ROLE_VENDOR");
-                createUser("user", "user@example.com", "6666666666", "User@123", "ROLE_USER");
-                log.info("Default users created successfully");
-            } else {
-                log.info("Users already exist, skipping user creation");
-            }
-            
             // Seed email notification settings
             seedEmailNotificationSettings();
-            
-            // Create sample tickets and related data
-            if (ticketRepository.count() == 0) {
-                log.info("Creating sample tickets and related data");
-                createSampleTickets();
-                log.info("Sample tickets created successfully");
+
+            log.info("Essential data initialization completed");
+        };
+    }
+
+    @Bean
+    @Profile("!prod")
+    CommandLineRunner seedDemoData() {
+        return args -> {
+            log.info("Seeding demo data (non-prod profile)");
+
+            if (userRepository.count() == 0) {
+                log.info("Creating default demo users");
+                createUser("admin",   "admin@example.com",   "9999999999", "Admin@123",   "ROLE_ADMIN", "ROLE_MANAGER");
+                createUser("manager", "manager@example.com", "8888888888", "Manager@123", "ROLE_MANAGER");
+                createUser("agent",   "agent@example.com",   "7777777777", "Agent@123",   "ROLE_AGENT");
+                createUser("vendor",  "vendor@example.com",  "5555555555", "Vendor@123",  "ROLE_VENDOR");
+                createUser("user",    "user@example.com",    "6666666666", "User@123",    "ROLE_USER");
+                log.info("Demo users created");
             } else {
-                log.info("Tickets already exist, skipping ticket creation");
+                log.info("Users already exist, skipping demo user creation");
             }
-            
-            // Create sample notifications
+
+            if (ticketRepository.count() == 0) {
+                log.info("Creating sample tickets");
+                createSampleTickets();
+                log.info("Sample tickets created");
+            } else {
+                log.info("Tickets already exist, skipping sample ticket creation");
+            }
+
             if (notificationRepository.count() == 0) {
                 log.info("Creating sample notifications");
                 createSampleNotifications();
-                log.info("Sample notifications created successfully");
+                log.info("Sample notifications created");
             } else {
-                log.info("Notifications already exist, skipping notification creation");
+                log.info("Notifications already exist, skipping sample notification creation");
             }
-            
-            // Create sample user ID proofs
+
             if (userIdProofRepository.count() == 0) {
                 log.info("Creating sample user ID proofs");
                 createSampleUserIdProofs();
-                log.info("Sample user ID proofs created successfully");
+                log.info("Sample user ID proofs created");
             } else {
-                log.info("User ID proofs already exist, skipping ID proof creation");
+                log.info("User ID proofs already exist, skipping sample ID proof creation");
             }
-            
-            log.info("Data initialization completed successfully");
+
+            log.info("Demo data seeding completed");
         };
     }
 

@@ -35,6 +35,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return uri.startsWith("/css/")
                 || uri.startsWith("/js/")
                 || uri.startsWith("/images/")
+                || uri.equals("/yubix-logo-2.png")
+                || uri.equals("/favicon.ico")
                 || uri.startsWith("/webjars/")
                 || uri.startsWith("/api/auth/login")
                 || uri.startsWith("/api/auth/register")

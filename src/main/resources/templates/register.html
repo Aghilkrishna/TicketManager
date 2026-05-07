@@ -7,19 +7,19 @@
 <div class="auth-wrap auth-wrap-login">
     <section class="auth-banner">
         <div class="d-flex align-items-center gap-3 mb-4">
-            <div class="brand-mark">TM</div>
+            <img th:src="@{/images/yubix-logo-2.png}" src="/images/yubix-logo-2.png" alt="Yubix" class="auth-logo-banner">
             <div>
                 <div class="fw-bold" style="font-size: 1.8rem; line-height: 1.1;">Ticket Manager</div>
                 <div style="font-size: 0.88rem; opacity: 0.78;">Unified account onboarding for all users</div>
             </div>
         </div>
         <h1 class="display-5 fw-bold">Create your account with role-specific details.</h1>
-        <p class="lead mt-3">Use one signup flow for agent and vendor users.</p>
+        <p class="lead mt-3">Use one signup flow for technician and vendor users.</p>
     </section>
     <section class="d-flex align-items-center justify-content-center">
         <div class="auth-panel">
             <div class="d-lg-none d-flex align-items-center gap-2 mb-3">
-                <div class="brand-mark" style="width: 40px; height: 40px; border-radius: 12px;">TM</div>
+                <img th:src="@{/images/yubix-logo-2.png}" src="/images/yubix-logo-2.png" alt="Yubix" class="auth-logo-mobile">
                 <div class="fw-bold" style="font-size: 1.1rem; line-height: 1.2;">Ticket Manager</div>
             </div>
             <h2 class="fw-bold mb-2">Register</h2>
@@ -37,9 +37,10 @@
                     </div>
                     <div class="col-md-6">
                         <select class="form-select form-select-lg" name="type" id="accountType" required>
-                            <option value="">Select user type</option>
-                            <option value="agent">Agent</option>
+                            <option value="">User type</option>
+                            <option value="agent">Technician</option>
                             <option value="vendor">Vendor</option>
+                            <option value="user">Customer</option>
                         </select>
                     </div>
                     <div class="col-md-6">
@@ -51,7 +52,7 @@
                 </div>
 
                 <div class="pt-2">
-                    <div class="fw-semibold mb-2">Vendor details</div>
+                    <div class="fw-semibold mb-2">Company details</div>
                     <div class="row g-3">
                         <div class="col-md-6">
                             <input class="form-control form-control-lg" name="companyName" placeholder="Company name" maxlength="150">
@@ -69,7 +70,7 @@
                 </div>
 
                 <div class="pt-3">
-                    <div class="fw-semibold mb-2">Business address</div>
+                    <div class="fw-semibold mb-2">Address</div>
                     <div class="row g-3">
                         <div class="col-md-6">
                             <input class="form-control form-control-lg" name="flat" placeholder="Flat / Unit" maxlength="120">

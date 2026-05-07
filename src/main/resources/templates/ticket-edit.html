@@ -65,7 +65,7 @@
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Type of Service</label>
-                                        <select class="form-select" name="serviceType">
+                                        <select class="form-select" name="serviceType" id="serviceType">
                                             <option value="" th:selected="${ticket.serviceType == null}">Select service type</option>
                                             <option value="LEADS" th:selected="${ticket.serviceType == 'LEADS'}">Leads</option>
                                             <option value="INSTALLATION" th:selected="${ticket.serviceType == 'INSTALLATION'}">Installation</option>
@@ -73,6 +73,20 @@
                                             <option value="MAINTENANCE" th:selected="${ticket.serviceType == 'MAINTENANCE'}">AMC</option>
                                             <option value="SITE_VISIT" th:selected="${ticket.serviceType == 'SITE_VISIT'}">Site Visit</option>
                                         </select>
+                                    </div>
+                                    <div class="col-md-4" id="leadFromGroup" th:hidden="${ticket.serviceType != 'LEADS' and (ticket.leadFrom == null or #strings.isEmpty(ticket.leadFrom))}">
+                                        <label class="form-label">Lead From</label>
+                                        <select class="form-select" name="leadFrom" id="leadFrom">
+                                            <option value="">Select lead source</option>
+                                            <option value="Facebook Meta" th:selected="${ticket.leadFrom == 'Facebook Meta'}">Facebook Meta</option>
+                                            <option value="Indeed" th:selected="${ticket.leadFrom == 'Indeed'}">Indeed</option>
+                                            <option value="Google Ads" th:selected="${ticket.leadFrom == 'Google Ads'}">Google Ads</option>
+                                            <option value="Online" th:selected="${ticket.leadFrom == 'Online'}">Online</option>
+                                            <option value="Instagram" th:selected="${ticket.leadFrom == 'Instagram'}">Instagram</option>
+                                            <option value="IndiaMart" th:selected="${ticket.leadFrom == 'IndiaMart'}">IndiaMart</option>
+                                            <option value="OTHERS">Others</option>
+                                        </select>
+                                        <input class="form-control" name="leadFromOther" id="leadFromOther" maxlength="120" placeholder="Enter lead source" hidden>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Schedule Date</label>
@@ -86,7 +100,7 @@
                                                name="siteVisits"
                                                th:value="${ticket.siteVisits != null ? ticket.siteVisits : 0}"
                                                readonly>
-                                        <div class="form-text" th:text="${agentEditorView ? 'This counter updates automatically whenever you submit the Site Visit Log form below.' : 'Only site visit log submissions update this counter for agent users.'}">This counter updates automatically whenever you submit the Site Visit Log form below.</div>
+                                        <div class="form-text" th:text="${agentEditorView ? 'This counter updates automatically whenever you submit the Site Visit Log form below.' : 'Only site visit log submissions update this counter for technician users.'}">This counter updates automatically whenever you submit the Site Visit Log form below.</div>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Status</label>
@@ -293,9 +307,43 @@ const ticketId = /*[[${ticket.id}]]*/ 0;
 const canAssignUsers = /*[[${adminTicketScope}]]*/ false;
 const agentEditor = /*[[${agentEditorView}]]*/ false;
 const originalTicket = /*[[${ticket}]]*/ {};
+const leadFromOptions = ['Facebook Meta', 'Indeed', 'Google Ads', 'Online', 'Instagram', 'IndiaMart'];
 
 function hasRole(user, roleName) {
   return Array.isArray(user.roles) && user.roles.includes(roleName);
+}
+
+function toggleLeadFromFields() {
+  const serviceTypeEl = document.getElementById('serviceType');
+  const leadFromGroup = document.getElementById('leadFromGroup');
+  const leadFromEl = document.getElementById('leadFrom');
+  const leadFromOtherEl = document.getElementById('leadFromOther');
+  const isLeads = serviceTypeEl && serviceTypeEl.value === 'LEADS';
+  const hasExistingLeadFrom = !!(originalTicket && originalTicket.leadFrom);
+  leadFromGroup.hidden = !isLeads && !(hasExistingLeadFrom && leadFromEl.value);
+  if (!isLeads) {
+    leadFromEl.hidden = false;
+    leadFromEl.disabled = hasExistingLeadFrom;
+    leadFromOtherEl.hidden = true;
+    leadFromOtherEl.disabled = true;
+    leadFromEl.required = false;
+    leadFromOtherEl.required = false;
+    if (!hasExistingLeadFrom) {
+      leadFromEl.value = '';
+      leadFromOtherEl.value = '';
+    }
+    return;
+  }
+  leadFromEl.disabled = false;
+  leadFromOtherEl.disabled = false;
+  leadFromEl.required = true;
+  const isOthers = leadFromEl.value === 'OTHERS';
+  leadFromEl.hidden = isOthers;
+  leadFromEl.disabled = false;
+  leadFromEl.required = !isOthers;
+  leadFromOtherEl.hidden = !isOthers;
+  leadFromOtherEl.disabled = !isOthers;
+  leadFromOtherEl.required = isOthers;
 }
 
 function debounce(func, wait) {
@@ -442,7 +490,7 @@ function renderSiteVisits(visits) {
         <div class="site-visit-identity">
           <div class="site-visit-icon"><i class="bi bi-person-walking"></i></div>
           <div class="site-visit-meta">
-            <div class="site-visit-agent">${escapeHtml(visit.agentName || 'Agent')}</div>
+            <div class="site-visit-agent">${escapeHtml(visit.agentName || 'Technician')}</div>
             <div class="site-visit-time"><i class="bi bi-calendar-event"></i><span>${formatVisitDateTime(visit.visitedAt)}</span></div>
           </div>
         </div>
@@ -515,6 +563,27 @@ async function loadSiteVisits() {
 
 // Initialize auto-suggest functionality after DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+  const serviceTypeEl = document.getElementById('serviceType');
+  const leadFromEl = document.getElementById('leadFrom');
+  const leadFromOtherEl = document.getElementById('leadFromOther');
+  if (leadFromEl && originalTicket && originalTicket.leadFrom) {
+    if (leadFromOptions.includes(originalTicket.leadFrom)) {
+      leadFromEl.value = originalTicket.leadFrom;
+    } else {
+      leadFromEl.value = 'OTHERS';
+      if (leadFromOtherEl) {
+        leadFromOtherEl.value = originalTicket.leadFrom;
+      }
+    }
+  }
+  if (serviceTypeEl) {
+    serviceTypeEl.addEventListener('change', toggleLeadFromFields);
+  }
+  if (leadFromEl) {
+    leadFromEl.addEventListener('change', toggleLeadFromFields);
+  }
+  toggleLeadFromFields();
+
   // Assigned user auto-suggest
   if (canAssignUsers) {
     const assignedSearch = document.getElementById('assignedSearch');
@@ -652,6 +721,22 @@ document.getElementById('ticketForm').addEventListener('submit', async event => 
   setButtonLoading(button, true, agentEditor ? 'Updating status...' : 'Updating ticket...');
 
   const formData = new FormData(event.target);
+  if (!agentEditor && formData.get('serviceType') === 'LEADS') {
+    const leadFrom = (formData.get('leadFrom') || '').trim();
+    if (!leadFrom) {
+      setButtonLoading(button, false);
+      showInlineAlert(message, 'Please select Lead From for Leads type tickets.', 'danger', 'Validation Error');
+      return;
+    }
+    if (leadFrom === 'OTHERS') {
+      const other = (formData.get('leadFromOther') || '').trim();
+      if (!other) {
+        setButtonLoading(button, false);
+        showInlineAlert(message, 'Please enter Other Lead Source.', 'danger', 'Validation Error');
+        return;
+      }
+    }
+  }
   if (agentEditor) {
     // When agent update status, they are only allowed to change status.
     // However, the backend DTO requires title and description which are read-only for agents.

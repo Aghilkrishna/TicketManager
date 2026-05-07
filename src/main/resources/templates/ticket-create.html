@@ -104,7 +104,7 @@
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Type of Service</label>
-                                        <select class="form-select" name="serviceType">
+                                        <select class="form-select" name="serviceType" id="serviceType">
                                             <option value="">Select service type</option>
                                             <option value="LEADS">Leads</option>
                                             <option value="INSTALLATION">Installation</option>
@@ -112,6 +112,20 @@
                                             <option value="MAINTENANCE">AMC</option>
                                             <option value="SITE_VISIT">Site Visit</option>
                                         </select>
+                                    </div>
+                                    <div class="col-md-4" id="leadFromGroup" hidden>
+                                        <label class="form-label">Lead From</label>
+                                        <select class="form-select" name="leadFrom" id="leadFrom">
+                                            <option value="">Select lead source</option>
+                                            <option value="Facebook Meta">Facebook Meta</option>
+                                            <option value="Indeed">Indeed</option>
+                                            <option value="Google Ads">Google Ads</option>
+                                            <option value="Online">Online</option>
+                                            <option value="Instagram">Instagram</option>
+                                            <option value="IndiaMart">IndiaMart</option>
+                                            <option value="OTHERS">Others</option>
+                                        </select>
+                                        <input class="form-control" name="leadFromOther" id="leadFromOther" maxlength="120" placeholder="Enter lead source" hidden>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Schedule Date</label>
@@ -278,6 +292,34 @@
 <script th:inline="javascript">
 function hasRole(user, roleName) {
   return Array.isArray(user.roles) && user.roles.includes(roleName);
+}
+
+function toggleLeadFromFields() {
+  const serviceTypeEl = document.getElementById('serviceType');
+  const leadFromGroup = document.getElementById('leadFromGroup');
+  const leadFromEl = document.getElementById('leadFrom');
+  const leadFromOtherEl = document.getElementById('leadFromOther');
+  const isLeads = serviceTypeEl && serviceTypeEl.value === 'LEADS';
+  leadFromGroup.hidden = !isLeads;
+  if (!isLeads) {
+    leadFromEl.hidden = false;
+    leadFromEl.disabled = false;
+    leadFromEl.value = '';
+    leadFromOtherEl.value = '';
+    leadFromEl.required = false;
+    leadFromOtherEl.required = false;
+    leadFromOtherEl.hidden = true;
+    leadFromOtherEl.disabled = true;
+    return;
+  }
+  leadFromEl.required = true;
+  const isOthers = leadFromEl.value === 'OTHERS';
+  leadFromEl.hidden = isOthers;
+  leadFromEl.disabled = false;
+  leadFromEl.required = !isOthers;
+  leadFromOtherEl.hidden = !isOthers;
+  leadFromOtherEl.disabled = !isOthers;
+  leadFromOtherEl.required = isOthers;
 }
 
 function debounce(func, wait) {
@@ -1034,6 +1076,22 @@ document.getElementById('ticketForm').addEventListener('submit', async event => 
   }
   
   const data = new FormData(form);
+  if (data.get('serviceType') === 'LEADS') {
+    const leadFrom = (data.get('leadFrom') || '').trim();
+    if (!leadFrom) {
+      setButtonLoading(button, false);
+      showInlineAlert(message, 'Please select Lead From for Leads type tickets.', 'danger', 'Validation Error');
+      return;
+    }
+    if (leadFrom === 'OTHERS') {
+      const other = (data.get('leadFromOther') || '').trim();
+      if (!other) {
+        setButtonLoading(button, false);
+        showInlineAlert(message, 'Please enter Other Lead Source.', 'danger', 'Validation Error');
+        return;
+      }
+    }
+  }
   const res = await fetch('/api/tickets', {method: 'POST', body: data});
   const payload = await res.json().catch(() => ({}));
   setButtonLoading(button, false);
@@ -1047,6 +1105,9 @@ document.getElementById('ticketForm').addEventListener('submit', async event => 
 
 updateAddressPreview();
 mirrorLocationLink();
+document.getElementById('serviceType').addEventListener('change', toggleLeadFromFields);
+document.getElementById('leadFrom').addEventListener('change', toggleLeadFromFields);
+toggleLeadFromFields();
 </script>
 </body>
 </html>

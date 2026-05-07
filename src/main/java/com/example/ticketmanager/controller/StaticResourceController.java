@@ -1,7 +1,6 @@
 package com.example.ticketmanager.controller;
 
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,7 +14,7 @@ public class StaticResourceController {
 
     @GetMapping("/favicon.ico")
     public ResponseEntity<byte[]> favicon() throws IOException {
-        ClassPathResource resource = new ClassPathResource("static/favicon.ico");
+        ClassPathResource resource = new ClassPathResource("static/favicon.ico_bkup");
         if (!resource.exists()) {
             // Return empty response if favicon doesn't exist
             return ResponseEntity.ok().build();

@@ -52,6 +52,9 @@ public class Ticket {
     @Column(length = 30)
     private TicketServiceType serviceType;
 
+    @Column(length = 120)
+    private String leadFrom;
+
     @Column(length = 1000)
     private String locationLink;
 

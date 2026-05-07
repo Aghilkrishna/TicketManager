@@ -52,12 +52,12 @@ public class AuthService {
         log.info("Starting user registration for email: {}", request.email());
         validateUniqueEmailAndPhone(request.email(), request.phone());
         String type = normalize(request.type());
-        if (type == null || (!"agent".equalsIgnoreCase(type) && !"vendor".equalsIgnoreCase(type))) {
-            throw new AppException(HttpStatus.BAD_REQUEST, "Type must be agent or vendor");
+        if (type == null || (!"agent".equalsIgnoreCase(type) && !"vendor".equalsIgnoreCase(type) && !"user".equalsIgnoreCase(type))) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Type must be agent, vendor, or user");
         }
 
         boolean vendorRegistration = "vendor".equalsIgnoreCase(type);
-        String roleName = vendorRegistration ? "ROLE_VENDOR" : "ROLE_AGENT";
+        String roleName = vendorRegistration ? "ROLE_VENDOR" : ("user".equalsIgnoreCase(type) ? "ROLE_USER" : "ROLE_AGENT");
         Role selectedRole = roleRepository.findByName(roleName)
                 .orElseThrow(() -> new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "Selected role missing"));
 
@@ -92,10 +92,12 @@ public class AuthService {
         userRepository.save(user);
         log.info("User registered successfully with ID: {} for email: {}", user.getId(), user.getEmail());
         sendVerificationEmail(user);
-        return new AuthDtos.AuthResponse(user.getId(), user.getUsername(), user.getEmail(), Set.of(roleName),
-                vendorRegistration
-                        ? "Vendor registration successful. Verify your email to activate your account."
-                        : "Agent registration successful. Verify your email to activate your account.");
+        String successMessage = vendorRegistration
+                ? "Vendor registration successful. Verify your email to activate your account."
+                : ("user".equalsIgnoreCase(type)
+                        ? "User registration successful. Verify your email to activate your account."
+                        : "Technician registration successful. Verify your email to activate your account.");
+        return new AuthDtos.AuthResponse(user.getId(), user.getUsername(), user.getEmail(), Set.of(roleName), successMessage);
     }
 
     @Transactional

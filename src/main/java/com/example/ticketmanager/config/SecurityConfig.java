@@ -41,7 +41,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/login", "/register", "/vendor/login", "/vendor/register",
-                                "/verify-email", "/reset-password", "/css/**", "/js/**",
+                                "/verify-email", "/reset-password", "/css/**", "/js/**", "/images/**",
+                                "/favicon.ico", "/yubix-logo-2.png",
                                 "/api/auth/login", "/api/auth/register", "/api/auth/vendor/login", 
                                 "/api/auth/vendor/register", "/api/auth/password-reset", "/api/auth/verify",
                                 "/api/auth/mobile", "/api/public/**", "/ws/**", "/access-denied", "/error").permitAll()

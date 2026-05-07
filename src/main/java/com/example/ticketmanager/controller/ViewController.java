@@ -309,6 +309,12 @@ public class ViewController {
         return "admin-staff-billing-invoice";
     }
 
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_REPORTS')")
+    @GetMapping("/admin/reports")
+    public String adminReports() {
+        return "admin-reports";
+    }
+
     @GetMapping("/chat")
     @PreAuthorize("hasAuthority('FEATURE_CHAT_ACCESS')")
     public String chat() {

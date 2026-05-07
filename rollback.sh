@@ -1,8 +1,23 @@
 #!/bin/bash
+set -euo pipefail
 
 # Configuration
 BACKUP_DIR="../backups"
 LATEST_BACKUP="$BACKUP_DIR/latest"
+ENV_FILE=".env"
+
+# Load production environment values if present
+if [ -f "$ENV_FILE" ]; then
+    set -a
+    source "$ENV_FILE"
+    set +a
+fi
+
+DB_CONTAINER_NAME="${DB_CONTAINER_NAME:-ticketmanager-db}"
+DB_NAME="${DB_NAME:-ticketmanager}"
+DB_USERNAME="${DB_USERNAME:-postgres}"
+APP_IMAGE_NAME="${APP_IMAGE_NAME:-ticketmanager-app}"
+UPLOADS_HOST_DIR="${UPLOADS_HOST_DIR:-/opt/ticket_manager_app/uploads}"
 
 # Helper function for user confirmation
 confirm() {
@@ -47,8 +62,9 @@ fi
 if confirm "📦 Do you want to restore the uploads folder?"; then
     if [ -f "$BACKUP_PATH/uploads_backup.tar.gz" ]; then
         echo "📦 Restoring uploads folder..."
-        rm -rf ./uploads
-        tar -xzf "$BACKUP_PATH/uploads_backup.tar.gz"
+        mkdir -p "$UPLOADS_HOST_DIR"
+        rm -rf "$UPLOADS_HOST_DIR"
+        tar -xzf "$BACKUP_PATH/uploads_backup.tar.gz" -C "$(dirname "$UPLOADS_HOST_DIR")"
     else
         echo "⚠️ No uploads backup found."
     fi
@@ -71,7 +87,7 @@ if confirm "🏗️ Do you want to restore the previous Docker image?"; then
     else
         echo "✅ Previous Docker image restored."
         # Also tag it as latest
-        docker tag ticketmanager-app:$BACKUP_NAME ticketmanager-app:latest
+        docker tag "$APP_IMAGE_NAME:$BACKUP_NAME" "$APP_IMAGE_NAME:latest"
     fi
 else
     echo "⏭️ Skipping application restoration."
@@ -85,11 +101,7 @@ if confirm "🗄️ Do you want to restore the database?"; then
 
     if [ -f "$BACKUP_PATH/db_dump.sql" ]; then
         echo "🗄️ Restoring database from SQL dump..."
-        # Drop and recreate database to ensure clean restore (using same env vars as docker compose)
-        DB_NAME="ticketmanager"
-        DB_USER="postgres"
-        
-        cat "$BACKUP_PATH/db_dump.sql" | docker exec -i ticketmanager-db psql -U "$DB_USER" -d "$DB_NAME" > /dev/null
+        cat "$BACKUP_PATH/db_dump.sql" | docker exec -i "$DB_CONTAINER_NAME" psql -U "$DB_USERNAME" -d "$DB_NAME" > /dev/null
         
         if [ $? -eq 0 ]; then
             echo "✅ Database restore complete."

@@ -5,6 +5,7 @@ import com.example.ticketmanager.entity.TicketBillingStatus;
 import com.example.ticketmanager.exception.AppException;
 import com.example.ticketmanager.repository.UserRepository;
 import com.example.ticketmanager.service.AdminService;
+import com.example.ticketmanager.service.ReportService;
 import com.example.ticketmanager.service.StaffBillingService;
 import com.example.ticketmanager.service.TicketService;
 import com.example.ticketmanager.service.UserService;
@@ -13,8 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -32,6 +33,7 @@ public class AdminRestController {
     private final UserService userService;
     private final AdminService adminService;
     private final StaffBillingService staffBillingService;
+    private final ReportService reportService;
 
     @GetMapping("/report")
     @PreAuthorize("hasAuthority('FEATURE_ADMIN_REPORT_ACCESS')")
@@ -179,5 +181,105 @@ public class AdminRestController {
                 "message", "PAID".equals(status.name()) ? "Ticket billing marked as paid" : "Ticket billing marked as unpaid",
                 "status", status.name()
         );
+    }
+
+    @GetMapping("/reports/download")
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_REPORTS')")
+    public ResponseEntity<ByteArrayResource> downloadReport(
+            @RequestParam String reportType,
+            @RequestParam(required = false) String dateRange,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String ticketStatus,
+            @RequestParam(required = false) String ticketPriority,
+            @RequestParam(required = false) String serviceType,
+            @RequestParam(required = false) String userStatus,
+            @RequestParam(required = false) String emailVerified,
+            @RequestParam(required = false) String userRole,
+            Principal principal) {
+        
+        try {
+            byte[] reportData = reportService.generateReport(
+                reportType, dateRange, startDate, endDate,
+                ticketStatus, ticketPriority, serviceType,
+                userStatus, emailVerified, userRole, principal.getName()
+            );
+            
+            String filename = reportService.getReportFilename(reportType);
+            ByteArrayResource resource = new ByteArrayResource(reportData);
+            
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(resource);
+        } catch (Exception e) {
+            throw new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "Error generating report: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/reports/email")
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_REPORTS')")
+    public ResponseEntity<Map<String, Object>> emailReport(
+            @RequestParam String reportType,
+            @RequestParam(required = false) String dateRange,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String ticketStatus,
+            @RequestParam(required = false) String ticketPriority,
+            @RequestParam(required = false) String serviceType,
+            @RequestParam(required = false) String userStatus,
+            @RequestParam(required = false) String emailVerified,
+            @RequestParam(required = false) String userRole,
+            @RequestParam String recipientEmail,
+            @RequestParam(required = false) String emailSubject,
+            @RequestParam(required = false) String emailMessage,
+            Principal principal) {
+        
+        try {
+            reportService.emailReport(
+                reportType, dateRange, startDate, endDate,
+                ticketStatus, ticketPriority, serviceType,
+                userStatus, emailVerified, userRole,
+                recipientEmail, emailSubject, emailMessage, principal.getName()
+            );
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Report sent successfully"
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "success", false,
+                "message", "Error sending report: " + e.getMessage()
+            ));
+        }
+    }
+
+    @GetMapping("/reports/recent")
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_REPORTS')")
+    public ResponseEntity<List<Map<String, Object>>> getRecentReports() {
+        try {
+            List<Map<String, Object>> reports = reportService.getRecentReports();
+            return ResponseEntity.ok(reports);
+        } catch (Exception e) {
+            throw new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "Error fetching recent reports: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/reports/download/{reportId}")
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_REPORTS')")
+    public ResponseEntity<ByteArrayResource> downloadReportById(@PathVariable Long reportId) {
+        try {
+            byte[] reportData = reportService.getReportById(reportId);
+            String filename = reportService.getReportFilenameById(reportId);
+            ByteArrayResource resource = new ByteArrayResource(reportData);
+            
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(resource);
+        } catch (Exception e) {
+            throw new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "Error downloading report: " + e.getMessage());
+        }
     }
 }

@@ -83,6 +83,10 @@ textarea.form-control[readonly]::placeholder {
     display: none;
 }
 
+.sidebar.collapsed .subnav-chevron {
+    display: none;
+}
+
 .sidebar.collapsed .nav-item {
     justify-content: center;
 }
@@ -108,11 +112,17 @@ textarea.form-control[readonly]::placeholder {
     width: 48px;
     height: 48px;
     border-radius: 14px;
-    background: linear-gradient(135deg, #38bdf8, #14b8a6);
-    color: #082f49;
+    /*background: linear-gradient(135deg, #38bdf8, #14b8a6);*/
+    /*color: #082f49;*/
     display: grid;
     place-items: center;
     font-weight: 800;
+}
+
+.brand-mark-logo {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
 }
 
 .brand-title {
@@ -495,11 +505,21 @@ textarea.form-control[readonly]::placeholder {
 }
 
 .subnav-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     color: #94a3b8;
     text-decoration: none;
     border-radius: 12px;
     padding: 0.55rem 0.75rem;
     font-size: 0.92rem;
+}
+
+.subnav-item i {
+    width: 1rem;
+    text-align: center;
+    font-size: 0.85rem;
+    opacity: 0.92;
 }
 
 .subnav-item.active,
@@ -1107,6 +1127,26 @@ textarea.form-control[readonly]::placeholder {
     margin: auto;
     width: min(460px, calc(100% - 2rem));
     padding: 2rem;
+}
+
+.auth-logo-banner {
+    width: 260px;
+    height: 80px;
+    border-radius: 14px;
+    object-fit: cover;
+    /*background: rgba(255, 255, 255, 0.16);*/
+    /*border: 1px solid rgba(255, 255, 255, 0.22);*/
+    /*padding: 0.35rem;*/
+}
+
+.auth-logo-mobile {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    object-fit: cover;
+    background: rgba(15, 23, 42, 0.06);
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    padding: 0.25rem;
 }
 
 .banner-chip {
