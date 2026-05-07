@@ -8,19 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
-import org.apache.poi.xddf.usermodel.chart.AxisPosition;
-import org.apache.poi.xddf.usermodel.chart.BarDirection;
-import org.apache.poi.xddf.usermodel.chart.ChartTypes;
-import org.apache.poi.xddf.usermodel.chart.LegendPosition;
-import org.apache.poi.xddf.usermodel.chart.XDDFBarChartData;
-import org.apache.poi.xddf.usermodel.chart.XDDFCategoryAxis;
-import org.apache.poi.xddf.usermodel.chart.XDDFChartData;
-import org.apache.poi.xddf.usermodel.chart.XDDFDataSource;
-import org.apache.poi.xddf.usermodel.chart.XDDFNumericalDataSource;
-import org.apache.poi.xddf.usermodel.chart.XDDFValueAxis;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.apache.poi.xssf.usermodel.XSSFChart;
-import org.apache.poi.xssf.usermodel.XSSFDrawing;
+import org.apache.poi.xddf.usermodel.chart.*;
+import org.apache.poi.xssf.usermodel.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,11 +19,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,6 +30,46 @@ public class ReportService {
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+
+    // ── Power BI / modern SaaS color palette ─────────────────────────────────
+    private static final byte[] RGB_NAVY      = {(byte)0x1F, (byte)0x38, (byte)0x64};
+    private static final byte[] RGB_BLUE      = {(byte)0x2E, (byte)0x75, (byte)0xB6};
+    private static final byte[] RGB_MED_BLUE  = {(byte)0x44, (byte)0x72, (byte)0xC4};
+    private static final byte[] RGB_LITE_BLUE = {(byte)0xEE, (byte)0xF4, (byte)0xFB};
+    private static final byte[] RGB_WHITE     = {(byte)0xFF, (byte)0xFF, (byte)0xFF};
+    private static final byte[] RGB_ROW_ALT   = {(byte)0xF5, (byte)0xF8, (byte)0xFC};
+    private static final byte[] RGB_BORDER    = {(byte)0xD6, (byte)0xDC, (byte)0xE4};
+    private static final byte[] RGB_TEXT_DARK = {(byte)0x26, (byte)0x26, (byte)0x26};
+
+    // Badge palette
+    private static final byte[] RGB_GREEN_BG  = {(byte)0xE2, (byte)0xEF, (byte)0xDA};
+    private static final byte[] RGB_GREEN_FG  = {(byte)0x37, (byte)0x5C, (byte)0x23};
+    private static final byte[] RGB_RED_BG    = {(byte)0xFF, (byte)0xCC, (byte)0xCC};
+    private static final byte[] RGB_RED_FG    = {(byte)0xC0, (byte)0x00, (byte)0x00};
+    private static final byte[] RGB_AMBER_BG  = {(byte)0xFF, (byte)0xF2, (byte)0xCC};
+    private static final byte[] RGB_AMBER_FG  = {(byte)0x80, (byte)0x60, (byte)0x00};
+    private static final byte[] RGB_ORANGE_BG = {(byte)0xFC, (byte)0xE4, (byte)0xD6};
+    private static final byte[] RGB_ORANGE_FG = {(byte)0x84, (byte)0x32, (byte)0x00};
+    private static final byte[] RGB_PURPLE_BG = {(byte)0xE8, (byte)0xD5, (byte)0xF5};
+    private static final byte[] RGB_PURPLE_FG = {(byte)0x4B, (byte)0x0B, (byte)0x6B};
+    private static final byte[] RGB_TEAL_BG   = {(byte)0xCC, (byte)0xF2, (byte)0xF5};
+    private static final byte[] RGB_TEAL_FG   = {(byte)0x00, (byte)0x5E, (byte)0x6B};
+    private static final byte[] RGB_GRAY_BG   = {(byte)0xF2, (byte)0xF2, (byte)0xF2};
+    private static final byte[] RGB_GRAY_FG   = {(byte)0x59, (byte)0x59, (byte)0x59};
+    private static final byte[] RGB_INDIGO_BG = {(byte)0xDB, (byte)0xE5, (byte)0xF1};
+    private static final byte[] RGB_INDIGO_FG = {(byte)0x17, (byte)0x37, (byte)0x5E};
+
+    // Chart dimensions — each chart is CHART_H rows tall; sections are padded
+    // so the next section always starts below the previous chart.
+    private static final int CHART_H   = 15;
+    private static final int CHART_W   = 9;
+    private static final int CHART_COL = 3;
+
+    private XSSFColor rgb(byte[] b) {
+        return new XSSFColor(b, null);
+    }
+
+    // ── Public API ────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public byte[] generateReport(String reportType, String dateRange, String startDate, String endDate,
@@ -69,30 +94,26 @@ public class ReportService {
         return reportType.toLowerCase() + "_report_" + timestamp + ".xlsx";
     }
 
+    // ── Report generation ─────────────────────────────────────────────────────
+
     private byte[] generateTicketsReport(String dateRange, String startDate, String endDate,
-                                       String ticketStatus, String ticketPriority, String serviceType) throws IOException {
+                                         String ticketStatus, String ticketPriority, String serviceType) throws IOException {
         List<Ticket> tickets = getFilteredTickets(dateRange, startDate, endDate, ticketStatus, ticketPriority, serviceType);
-        
-        try (XSSFWorkbook workbook = new XSSFWorkbook();
-             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            
-            Sheet sheet = workbook.createSheet("Tickets Report");
+
+        try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            XSSFSheet sheet = wb.createSheet("Tickets Report");
             sheet.setDisplayGridlines(false);
-            sheet.setDefaultRowHeightInPoints(20f);
-            CellStyle metaStyle = createMetaStyle(workbook);
-            CellStyle bodyEvenStyle = createBodyStyle(workbook, IndexedColors.WHITE);
-            CellStyle bodyOddStyle = createBodyStyle(workbook, IndexedColors.GREY_25_PERCENT);
-            CellStyle dateStyle = createDateStyle(workbook);
-            CellStyle moneyStyle = createMoneyStyle(workbook);
-            
-            // Create header style
-            CellStyle headerStyle = createHeaderStyle(workbook);
-            Map<String, CellStyle> ticketBadgeStyles = createTicketBadgeStyles(workbook);
-            addReportTitle(sheet, "Tickets Report", "Scope: All filtered ticket records • Generated at: " +
-                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a")), metaStyle);
-            
-            // Create headers
-            Row headerRow = sheet.createRow(2);
+            sheet.setDefaultRowHeightInPoints(22f);
+
+            XSSFCellStyle metaStyle      = createMetaStyle(wb);
+            XSSFCellStyle bodyEvenStyle  = createBodyStyle(wb, false);
+            XSSFCellStyle bodyOddStyle   = createBodyStyle(wb, true);
+            XSSFCellStyle dateStyle      = createDateStyle(wb);
+            XSSFCellStyle moneyStyle     = createMoneyStyle(wb);
+            XSSFCellStyle headerStyle    = createHeaderStyle(wb);
+            Map<String, XSSFCellStyle> badgeStyles = createTicketBadgeStyles(wb);
+
             String[] headers = {
                 "Ticket ID", "Parent Ticket ID", "Vendor User ID", "Created By ID", "Assigned To ID",
                 "Customer Address Ref ID", "Title", "Description", "Service Type", "Status", "Priority",
@@ -101,18 +122,25 @@ public class ReportService {
                 "Estimated Cost", "Actual Cost", "Billing Status", "Schedule Date",
                 "Created By", "Assigned To", "Created At", "Updated At", "Site Visits"
             };
-            
+
+            addReportTitle(sheet, "Tickets Report",
+                "Scope: All filtered ticket records  •  Generated: " +
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a")),
+                metaStyle, headers.length - 1);
+
+            Row headerRow = sheet.createRow(2);
+            headerRow.setHeightInPoints(26f);
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(headers[i]);
                 cell.setCellStyle(headerStyle);
             }
-            
-            // Create data rows
+
             int rowNum = 3;
             for (Ticket ticket : tickets) {
                 Row row = sheet.createRow(rowNum++);
-                
+                row.setHeightInPoints(22f);
+
                 row.createCell(0).setCellValue(ticket.getId());
                 row.createCell(1).setCellValue(ticket.getParentTicket() != null ? ticket.getParentTicket().getId() : 0L);
                 row.createCell(2).setCellValue(ticket.getVendorUser() != null ? ticket.getVendorUser().getId() : 0L);
@@ -121,401 +149,566 @@ public class ReportService {
                 row.createCell(5).setCellValue(ticket.getCustomerAddressReferenceId() != null ? ticket.getCustomerAddressReferenceId() : 0L);
                 row.createCell(6).setCellValue(ticket.getTitle() != null ? ticket.getTitle() : "");
                 row.createCell(7).setCellValue(ticket.getDescription() != null ? ticket.getDescription() : "");
-                setBadgeCell(row.createCell(8), ticket.getServiceType() != null ? ticket.getServiceType().toString() : "", ticketBadgeStyles);
-                setBadgeCell(row.createCell(9), ticket.getStatus() != null ? ticket.getStatus().toString() : "", ticketBadgeStyles);
-                setBadgeCell(row.createCell(10), ticket.getPriority() != null ? ticket.getPriority().toString() : "", ticketBadgeStyles);
-                row.createCell(11).setCellValue(ticket.getCustomerName() != null ? ticket.getCustomerName() : "");
-                row.createCell(12).setCellValue(ticket.getCustomerEmail() != null ? ticket.getCustomerEmail() : "");
-                row.createCell(13).setCellValue(ticket.getCustomerPhone() != null ? ticket.getCustomerPhone() : "");
-                row.createCell(14).setCellValue(ticket.getAddress() != null ? ticket.getAddress() : "");
-                row.createCell(15).setCellValue(ticket.getCustomerFlat() != null ? ticket.getCustomerFlat() : "");
-                row.createCell(16).setCellValue(ticket.getCustomerStreet() != null ? ticket.getCustomerStreet() : "");
-                row.createCell(17).setCellValue(ticket.getCustomerCity() != null ? ticket.getCustomerCity() : "");
-                row.createCell(18).setCellValue(ticket.getCustomerState() != null ? ticket.getCustomerState() : "");
+                setBadgeCell(row.createCell(8),  ticket.getServiceType() != null ? ticket.getServiceType().toString() : "", badgeStyles);
+                setBadgeCell(row.createCell(9),  ticket.getStatus()      != null ? ticket.getStatus().toString()      : "", badgeStyles);
+                setBadgeCell(row.createCell(10), ticket.getPriority()    != null ? ticket.getPriority().toString()    : "", badgeStyles);
+                row.createCell(11).setCellValue(ticket.getCustomerName()    != null ? ticket.getCustomerName()    : "");
+                row.createCell(12).setCellValue(ticket.getCustomerEmail()   != null ? ticket.getCustomerEmail()   : "");
+                row.createCell(13).setCellValue(ticket.getCustomerPhone()   != null ? ticket.getCustomerPhone()   : "");
+                row.createCell(14).setCellValue(ticket.getAddress()         != null ? ticket.getAddress()         : "");
+                row.createCell(15).setCellValue(ticket.getCustomerFlat()    != null ? ticket.getCustomerFlat()    : "");
+                row.createCell(16).setCellValue(ticket.getCustomerStreet()  != null ? ticket.getCustomerStreet()  : "");
+                row.createCell(17).setCellValue(ticket.getCustomerCity()    != null ? ticket.getCustomerCity()    : "");
+                row.createCell(18).setCellValue(ticket.getCustomerState()   != null ? ticket.getCustomerState()   : "");
                 row.createCell(19).setCellValue(ticket.getCustomerPincode() != null ? ticket.getCustomerPincode() : "");
-                Cell estimatedCell = row.createCell(20);
-                estimatedCell.setCellValue(ticket.getEstimatedCost() != null ? ticket.getEstimatedCost().doubleValue() : 0.0);
-                estimatedCell.setCellStyle(moneyStyle);
-                Cell actualCell = row.createCell(21);
-                actualCell.setCellValue(ticket.getActualCost() != null ? ticket.getActualCost().doubleValue() : 0.0);
-                actualCell.setCellStyle(moneyStyle);
+
+                Cell estCell = row.createCell(20);
+                estCell.setCellValue(ticket.getEstimatedCost() != null ? ticket.getEstimatedCost().doubleValue() : 0.0);
+                estCell.setCellStyle(moneyStyle);
+
+                Cell actCell = row.createCell(21);
+                actCell.setCellValue(ticket.getActualCost() != null ? ticket.getActualCost().doubleValue() : 0.0);
+                actCell.setCellStyle(moneyStyle);
+
                 row.createCell(22).setCellValue(ticket.getBillingStatus() != null ? ticket.getBillingStatus().toString() : "");
-                row.createCell(23).setCellValue(ticket.getScheduleDate() != null ? ticket.getScheduleDate().toString() : "");
-                row.createCell(24).setCellValue(ticket.getCreatedBy() != null ? ticket.getCreatedBy().getUsername() : "");
-                row.createCell(25).setCellValue(ticket.getAssignedTo() != null ? ticket.getAssignedTo().getUsername() : "");
-                Cell createdAtCell = row.createCell(26);
-                createdAtCell.setCellValue(ticket.getCreatedAt() != null ? ticket.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : "");
-                createdAtCell.setCellStyle(dateStyle);
-                Cell updatedAtCell = row.createCell(27);
-                updatedAtCell.setCellValue(ticket.getUpdatedAt() != null ? ticket.getUpdatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : "");
-                updatedAtCell.setCellStyle(dateStyle);
+                row.createCell(23).setCellValue(ticket.getScheduleDate()  != null ? ticket.getScheduleDate().toString()  : "");
+                row.createCell(24).setCellValue(ticket.getCreatedBy()     != null ? ticket.getCreatedBy().getUsername()  : "");
+                row.createCell(25).setCellValue(ticket.getAssignedTo()    != null ? ticket.getAssignedTo().getUsername() : "");
+
+                Cell caCell = row.createCell(26);
+                caCell.setCellValue(ticket.getCreatedAt() != null ? ticket.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : "");
+                caCell.setCellStyle(dateStyle);
+
+                Cell uaCell = row.createCell(27);
+                uaCell.setCellValue(ticket.getUpdatedAt() != null ? ticket.getUpdatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : "");
+                uaCell.setCellStyle(dateStyle);
+
                 row.createCell(28).setCellValue(ticket.getSiteVisits() != null ? ticket.getSiteVisits() : 0);
+
                 applyBodyStyle(row, bodyEvenStyle, bodyOddStyle, Set.of(8, 9, 10, 20, 21, 26, 27));
             }
-            
-            // Auto-size columns
-            for (int i = 0; i < headers.length; i++) {
-                sheet.autoSizeColumn(i);
-            }
+
+            for (int i = 0; i < headers.length; i++) sheet.autoSizeColumn(i);
             sheet.createFreezePane(0, 3);
             sheet.setAutoFilter(new CellRangeAddress(2, Math.max(2, rowNum - 1), 0, headers.length - 1));
 
-            addTicketMetricsSheet(workbook, tickets);
-            
-            workbook.write(out);
+            addTicketMetricsSheet(wb, tickets);
+
+            wb.write(out);
             return out.toByteArray();
         }
     }
 
     private byte[] generateUsersReport(String dateRange, String startDate, String endDate,
-                                     String userStatus, String emailVerified, String userRole) throws IOException {
+                                        String userStatus, String emailVerified, String userRole) throws IOException {
         List<AppUser> users = getFilteredUsers(dateRange, startDate, endDate, userStatus, emailVerified, userRole);
-        
-        try (XSSFWorkbook workbook = new XSSFWorkbook();
-             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            
-            Sheet sheet = workbook.createSheet("Users Report");
+
+        try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            XSSFSheet sheet = wb.createSheet("Users Report");
             sheet.setDisplayGridlines(false);
-            sheet.setDefaultRowHeightInPoints(20f);
-            CellStyle metaStyle = createMetaStyle(workbook);
-            CellStyle bodyEvenStyle = createBodyStyle(workbook, IndexedColors.WHITE);
-            CellStyle bodyOddStyle = createBodyStyle(workbook, IndexedColors.GREY_25_PERCENT);
-            CellStyle dateStyle = createDateStyle(workbook);
-            
-            // Create header style
-            CellStyle headerStyle = createHeaderStyle(workbook);
-            Map<String, CellStyle> userBadgeStyles = createUserBadgeStyles(workbook);
-            addReportTitle(sheet, "Users Report", "Scope: All filtered user records • Generated at: " +
-                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a")), metaStyle);
-            
-            // Create headers
-            Row headerRow = sheet.createRow(2);
+            sheet.setDefaultRowHeightInPoints(22f);
+
+            XSSFCellStyle metaStyle     = createMetaStyle(wb);
+            XSSFCellStyle bodyEvenStyle = createBodyStyle(wb, false);
+            XSSFCellStyle bodyOddStyle  = createBodyStyle(wb, true);
+            XSSFCellStyle dateStyle     = createDateStyle(wb);
+            XSSFCellStyle headerStyle   = createHeaderStyle(wb);
+            Map<String, XSSFCellStyle> badgeStyles = createUserBadgeStyles(wb);
+
             String[] headers = {
                 "User ID", "Username", "Email", "Phone", "First Name", "Last Name", "Company Name",
                 "Contact Person", "GST Number", "Flat", "Building", "Area", "City", "State",
                 "Country", "Pincode", "Status", "Email Verified", "Phone Verified", "Roles", "Role IDs", "Created At"
             };
-            
+
+            addReportTitle(sheet, "Users Report",
+                "Scope: All filtered user records  •  Generated: " +
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a")),
+                metaStyle, headers.length - 1);
+
+            Row headerRow = sheet.createRow(2);
+            headerRow.setHeightInPoints(26f);
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(headers[i]);
                 cell.setCellStyle(headerStyle);
             }
-            
-            // Create data rows
+
             int rowNum = 3;
             for (AppUser user : users) {
                 Row row = sheet.createRow(rowNum++);
-                
+                row.setHeightInPoints(22f);
+
                 row.createCell(0).setCellValue(user.getId());
-                row.createCell(1).setCellValue(user.getUsername() != null ? user.getUsername() : "");
-                row.createCell(2).setCellValue(user.getEmail() != null ? user.getEmail() : "");
-                row.createCell(3).setCellValue(user.getPhone() != null ? user.getPhone() : "");
-                row.createCell(4).setCellValue(user.getFirstName() != null ? user.getFirstName() : "");
-                row.createCell(5).setCellValue(user.getLastName() != null ? user.getLastName() : "");
-                row.createCell(6).setCellValue(user.getCompanyName() != null ? user.getCompanyName() : "");
-                row.createCell(7).setCellValue(user.getContactPerson() != null ? user.getContactPerson() : "");
-                row.createCell(8).setCellValue(user.getGstNumber() != null ? user.getGstNumber() : "");
-                row.createCell(9).setCellValue(user.getFlat() != null ? user.getFlat() : "");
-                row.createCell(10).setCellValue(user.getBuilding() != null ? user.getBuilding() : "");
-                row.createCell(11).setCellValue(user.getArea() != null ? user.getArea() : "");
-                row.createCell(12).setCellValue(user.getCity() != null ? user.getCity() : "");
-                row.createCell(13).setCellValue(user.getState() != null ? user.getState() : "");
-                row.createCell(14).setCellValue(user.getCountry() != null ? user.getCountry() : "");
-                row.createCell(15).setCellValue(user.getPincode() != null ? user.getPincode() : "");
-                setBadgeCell(row.createCell(16), user.isEnabled() ? "ENABLED" : "DISABLED", userBadgeStyles);
-                setBadgeCell(row.createCell(17), user.isEmailVerified() ? "VERIFIED" : "UNVERIFIED", userBadgeStyles);
-                setBadgeCell(row.createCell(18), user.isPhoneVerified() ? "VERIFIED" : "UNVERIFIED", userBadgeStyles);
+                row.createCell(1).setCellValue(user.getUsername()     != null ? user.getUsername()     : "");
+                row.createCell(2).setCellValue(user.getEmail()        != null ? user.getEmail()        : "");
+                row.createCell(3).setCellValue(user.getPhone()        != null ? user.getPhone()        : "");
+                row.createCell(4).setCellValue(user.getFirstName()    != null ? user.getFirstName()    : "");
+                row.createCell(5).setCellValue(user.getLastName()     != null ? user.getLastName()     : "");
+                row.createCell(6).setCellValue(user.getCompanyName()  != null ? user.getCompanyName()  : "");
+                row.createCell(7).setCellValue(user.getContactPerson()!= null ? user.getContactPerson(): "");
+                row.createCell(8).setCellValue(user.getGstNumber()    != null ? user.getGstNumber()    : "");
+                row.createCell(9).setCellValue(user.getFlat()         != null ? user.getFlat()         : "");
+                row.createCell(10).setCellValue(user.getBuilding()    != null ? user.getBuilding()     : "");
+                row.createCell(11).setCellValue(user.getArea()        != null ? user.getArea()         : "");
+                row.createCell(12).setCellValue(user.getCity()        != null ? user.getCity()         : "");
+                row.createCell(13).setCellValue(user.getState()       != null ? user.getState()        : "");
+                row.createCell(14).setCellValue(user.getCountry()     != null ? user.getCountry()      : "");
+                row.createCell(15).setCellValue(user.getPincode()     != null ? user.getPincode()      : "");
+
+                setBadgeCell(row.createCell(16), user.isEnabled()       ? "ENABLED"    : "DISABLED",   badgeStyles);
+                setBadgeCell(row.createCell(17), user.isEmailVerified() ? "VERIFIED"   : "UNVERIFIED", badgeStyles);
+                setBadgeCell(row.createCell(18), user.isPhoneVerified() ? "VERIFIED"   : "UNVERIFIED", badgeStyles);
+
                 Set<Role> roles = user.getRoles();
-                String primaryRole = (roles == null || roles.isEmpty()) ? "NO_ROLE" : roles.stream().map(Role::getName).sorted().findFirst().orElse("NO_ROLE");
-                setBadgeCell(row.createCell(19), primaryRole, userBadgeStyles);
-                row.createCell(20).setCellValue(roles == null ? "" : roles.stream().map(role -> String.valueOf(role.getId())).collect(Collectors.joining(", ")));
-                Cell createdAtCell = row.createCell(21);
-                createdAtCell.setCellValue(user.getCreatedAt() != null ? user.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : "");
-                createdAtCell.setCellStyle(dateStyle);
+                String primaryRole = (roles == null || roles.isEmpty())
+                    ? "NO_ROLE"
+                    : roles.stream().map(Role::getName).sorted().findFirst().orElse("NO_ROLE");
+                setBadgeCell(row.createCell(19), primaryRole, badgeStyles);
+                row.createCell(20).setCellValue(roles == null ? "" :
+                    roles.stream().map(r -> String.valueOf(r.getId())).collect(Collectors.joining(", ")));
+
+                Cell caCell = row.createCell(21);
+                caCell.setCellValue(user.getCreatedAt() != null ? user.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : "");
+                caCell.setCellStyle(dateStyle);
+
                 applyBodyStyle(row, bodyEvenStyle, bodyOddStyle, Set.of(16, 17, 18, 19, 21));
             }
-            
-            // Auto-size columns
-            for (int i = 0; i < headers.length; i++) {
-                sheet.autoSizeColumn(i);
-            }
+
+            for (int i = 0; i < headers.length; i++) sheet.autoSizeColumn(i);
             sheet.createFreezePane(0, 3);
             sheet.setAutoFilter(new CellRangeAddress(2, Math.max(2, rowNum - 1), 0, headers.length - 1));
 
-            addUserMetricsSheet(workbook, users);
-            
-            workbook.write(out);
+            addUserMetricsSheet(wb, users);
+
+            wb.write(out);
             return out.toByteArray();
         }
     }
 
-    private CellStyle createHeaderStyle(XSSFWorkbook workbook) {
-        CellStyle style = workbook.createCellStyle();
-        style.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
-        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        style.setBorderTop(BorderStyle.THIN);
-        style.setBorderBottom(BorderStyle.THIN);
-        style.setBorderLeft(BorderStyle.THIN);
-        style.setBorderRight(BorderStyle.THIN);
-        style.setAlignment(HorizontalAlignment.CENTER);
-        style.setVerticalAlignment(VerticalAlignment.CENTER);
-        style.setWrapText(true);
-        
-        Font font = workbook.createFont();
-        font.setBold(true);
-        font.setColor(IndexedColors.WHITE.getIndex());
-        font.setFontHeightInPoints((short) 10);
-        style.setFont(font);
-        
-        return style;
+    // ── Metrics sheets ────────────────────────────────────────────────────────
+
+    private void addTicketMetricsSheet(XSSFWorkbook wb, List<Ticket> tickets) {
+        XSSFSheet metrics = wb.createSheet("Ticket Metrics");
+        metrics.setDisplayGridlines(false);
+
+        XSSFCellStyle headerStyle   = createHeaderStyle(wb);
+        XSSFCellStyle sectionStyle  = createSectionTitleStyle(wb);
+        XSSFCellStyle metaStyle     = createMetaStyle(wb);
+        XSSFCellStyle kpiLabelStyle = createKpiLabelStyle(wb);
+        XSSFCellStyle kpiValueStyle = createKpiValueStyle(wb);
+        XSSFCellStyle dataEven      = createBodyStyle(wb, false);
+        XSSFCellStyle dataOdd       = createBodyStyle(wb, true);
+
+        addReportTitle(metrics, "Ticket Metrics Dashboard",
+            "Visual breakdown by service type, status and priority", metaStyle, 12);
+
+        metrics.setColumnWidth(0, 28 * 256);
+        metrics.setColumnWidth(1, 14 * 256);
+        metrics.setColumnWidth(2,  3 * 256);
+        for (int c = CHART_COL; c <= CHART_COL + CHART_W + 1; c++) metrics.setColumnWidth(c, 11 * 256);
+
+        // KPI summary band
+        Row kpiRow = metrics.createRow(2);
+        kpiRow.setHeightInPoints(32f);
+        Cell kpiLabel = kpiRow.createCell(0);
+        kpiLabel.setCellValue("Total Tickets");
+        kpiLabel.setCellStyle(kpiLabelStyle);
+        Cell kpiValue = kpiRow.createCell(1);
+        kpiValue.setCellValue(tickets.size());
+        kpiValue.setCellStyle(kpiValueStyle);
+
+        int rowIdx = 4; // leave one spacer row after KPI
+
+        // Section 1 — Service Type
+        SectionBounds s1 = writeMetricSection(metrics, rowIdx, "By Service Type",
+            countBy(tickets, t -> t.getServiceType() == null ? "UNKNOWN" : t.getServiceType().name()),
+            sectionStyle, headerStyle, dataEven, dataOdd, "Service Type", "Count");
+        addBarChart(metrics, s1.dataStartRow(), s1.dataEndRow(),
+            CHART_COL, s1.titleRow(), CHART_COL + CHART_W, s1.titleRow() + CHART_H,
+            "Service Type Distribution");
+        rowIdx = Math.max(s1.nextRow(), s1.titleRow() + CHART_H) + 3;
+
+        // Section 2 — Status
+        SectionBounds s2 = writeMetricSection(metrics, rowIdx, "By Status",
+            countBy(tickets, t -> t.getStatus() == null ? "UNKNOWN" : t.getStatus().name()),
+            sectionStyle, headerStyle, dataEven, dataOdd, "Status", "Count");
+        addBarChart(metrics, s2.dataStartRow(), s2.dataEndRow(),
+            CHART_COL, s2.titleRow(), CHART_COL + CHART_W, s2.titleRow() + CHART_H,
+            "Status Distribution");
+        rowIdx = Math.max(s2.nextRow(), s2.titleRow() + CHART_H) + 3;
+
+        // Section 3 — Priority
+        SectionBounds s3 = writeMetricSection(metrics, rowIdx, "By Priority",
+            countBy(tickets, t -> t.getPriority() == null ? "UNKNOWN" : t.getPriority().name()),
+            sectionStyle, headerStyle, dataEven, dataOdd, "Priority", "Count");
+        addBarChart(metrics, s3.dataStartRow(), s3.dataEndRow(),
+            CHART_COL, s3.titleRow(), CHART_COL + CHART_W, s3.titleRow() + CHART_H,
+            "Priority Distribution");
+
+        metrics.createFreezePane(0, 2);
     }
 
-    private CellStyle createMetaStyle(XSSFWorkbook workbook) {
-        CellStyle style = workbook.createCellStyle();
-        style.setFillForegroundColor(IndexedColors.LIGHT_TURQUOISE.getIndex());
-        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        style.setVerticalAlignment(VerticalAlignment.CENTER);
-        Font font = workbook.createFont();
-        font.setBold(true);
-        font.setFontHeightInPoints((short) 9);
-        font.setColor(IndexedColors.DARK_BLUE.getIndex());
-        style.setFont(font);
-        return style;
+    private void addUserMetricsSheet(XSSFWorkbook wb, List<AppUser> users) {
+        XSSFSheet metrics = wb.createSheet("User Metrics");
+        metrics.setDisplayGridlines(false);
+
+        XSSFCellStyle headerStyle   = createHeaderStyle(wb);
+        XSSFCellStyle sectionStyle  = createSectionTitleStyle(wb);
+        XSSFCellStyle metaStyle     = createMetaStyle(wb);
+        XSSFCellStyle kpiLabelStyle = createKpiLabelStyle(wb);
+        XSSFCellStyle kpiValueStyle = createKpiValueStyle(wb);
+        XSSFCellStyle dataEven      = createBodyStyle(wb, false);
+        XSSFCellStyle dataOdd       = createBodyStyle(wb, true);
+
+        addReportTitle(metrics, "User Metrics Dashboard",
+            "Visual breakdown by user status, verification and role", metaStyle, 12);
+
+        metrics.setColumnWidth(0, 28 * 256);
+        metrics.setColumnWidth(1, 14 * 256);
+        metrics.setColumnWidth(2,  3 * 256);
+        for (int c = CHART_COL; c <= CHART_COL + CHART_W + 1; c++) metrics.setColumnWidth(c, 11 * 256);
+
+        Row kpiRow = metrics.createRow(2);
+        kpiRow.setHeightInPoints(32f);
+        Cell kpiLabel = kpiRow.createCell(0);
+        kpiLabel.setCellValue("Total Users");
+        kpiLabel.setCellStyle(kpiLabelStyle);
+        Cell kpiValue = kpiRow.createCell(1);
+        kpiValue.setCellValue(users.size());
+        kpiValue.setCellStyle(kpiValueStyle);
+
+        int rowIdx = 4;
+
+        SectionBounds s1 = writeMetricSection(metrics, rowIdx, "By User Status",
+            countBy(users, u -> u.isEnabled() ? "ENABLED" : "DISABLED"),
+            sectionStyle, headerStyle, dataEven, dataOdd, "User Status", "Count");
+        addBarChart(metrics, s1.dataStartRow(), s1.dataEndRow(),
+            CHART_COL, s1.titleRow(), CHART_COL + CHART_W, s1.titleRow() + CHART_H,
+            "User Status Distribution");
+        rowIdx = Math.max(s1.nextRow(), s1.titleRow() + CHART_H) + 3;
+
+        SectionBounds s2 = writeMetricSection(metrics, rowIdx, "By Email Verification",
+            countBy(users, u -> u.isEmailVerified() ? "VERIFIED" : "UNVERIFIED"),
+            sectionStyle, headerStyle, dataEven, dataOdd, "Email Status", "Count");
+        addBarChart(metrics, s2.dataStartRow(), s2.dataEndRow(),
+            CHART_COL, s2.titleRow(), CHART_COL + CHART_W, s2.titleRow() + CHART_H,
+            "Email Verification Distribution");
+        rowIdx = Math.max(s2.nextRow(), s2.titleRow() + CHART_H) + 3;
+
+        SectionBounds s3 = writeMetricSection(metrics, rowIdx, "By Role",
+            countRoles(users),
+            sectionStyle, headerStyle, dataEven, dataOdd, "Role", "Count");
+        addBarChart(metrics, s3.dataStartRow(), s3.dataEndRow(),
+            CHART_COL, s3.titleRow(), CHART_COL + CHART_W, s3.titleRow() + CHART_H,
+            "Role Distribution");
+
+        metrics.createFreezePane(0, 2);
     }
 
-    private CellStyle createBodyStyle(XSSFWorkbook workbook, IndexedColors fillColor) {
-        CellStyle style = workbook.createCellStyle();
-        style.setFillForegroundColor(fillColor.getIndex());
-        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        style.setBorderBottom(BorderStyle.THIN);
-        style.setBorderLeft(BorderStyle.THIN);
-        style.setBorderRight(BorderStyle.THIN);
-        style.setVerticalAlignment(VerticalAlignment.CENTER);
-        Font font = workbook.createFont();
-        font.setFontHeightInPoints((short) 10);
-        font.setColor(IndexedColors.GREY_80_PERCENT.getIndex());
-        style.setFont(font);
-        return style;
-    }
+    // ── Section writer ────────────────────────────────────────────────────────
 
-    private CellStyle createDateStyle(XSSFWorkbook workbook) {
-        CellStyle style = createBodyStyle(workbook, IndexedColors.WHITE);
-        style.setDataFormat(workbook.createDataFormat().getFormat("yyyy-mm-dd hh:mm"));
-        return style;
-    }
+    private SectionBounds writeMetricSection(XSSFSheet sheet, int startRow, String title,
+                                              LinkedHashMap<String, Integer> data,
+                                              XSSFCellStyle sectionStyle, XSSFCellStyle headerStyle,
+                                              XSSFCellStyle dataEven, XSSFCellStyle dataOdd,
+                                              String labelHeader, String valueHeader) {
+        int titleRowIdx = startRow;
 
-    private CellStyle createMoneyStyle(XSSFWorkbook workbook) {
-        CellStyle style = createBodyStyle(workbook, IndexedColors.WHITE);
-        style.setDataFormat(workbook.createDataFormat().getFormat("#,##0.00"));
-        style.setAlignment(HorizontalAlignment.RIGHT);
-        return style;
-    }
-
-    private void addReportTitle(Sheet sheet, String title, String subtitle, CellStyle metaStyle) {
-        Row titleRow = sheet.createRow(0);
-        titleRow.setHeightInPoints(28f);
+        Row titleRow = sheet.createRow(startRow++);
+        titleRow.setHeightInPoints(22f);
         Cell titleCell = titleRow.createCell(0);
         titleCell.setCellValue(title);
-        CellStyle titleStyle = createReportTitleStyle((XSSFWorkbook) sheet.getWorkbook());
-        titleCell.setCellStyle(titleStyle);
+        titleCell.setCellStyle(sectionStyle);
+
+        Row hdrRow = sheet.createRow(startRow++);
+        hdrRow.setHeightInPoints(20f);
+        Cell lhCell = hdrRow.createCell(0);
+        lhCell.setCellValue(labelHeader);
+        lhCell.setCellStyle(headerStyle);
+        Cell vhCell = hdrRow.createCell(1);
+        vhCell.setCellValue(valueHeader);
+        vhCell.setCellStyle(headerStyle);
+
+        int dataStartRow = startRow;
+        int i = 0;
+        for (Map.Entry<String, Integer> entry : data.entrySet()) {
+            Row row = sheet.createRow(startRow++);
+            row.setHeightInPoints(20f);
+            XSSFCellStyle style = (i % 2 == 0) ? dataEven : dataOdd;
+            Cell lc = row.createCell(0);
+            lc.setCellValue(entry.getKey());
+            lc.setCellStyle(style);
+            Cell vc = row.createCell(1);
+            vc.setCellValue(entry.getValue());
+            vc.setCellStyle(style);
+            i++;
+        }
+        return new SectionBounds(titleRowIdx, dataStartRow, startRow - 1, startRow);
+    }
+
+    // ── Chart builder ─────────────────────────────────────────────────────────
+
+    private void addBarChart(XSSFSheet sheet, int dataStartRow, int dataEndRow,
+                              int col1, int row1, int col2, int row2, String title) {
+        if (dataEndRow < dataStartRow) return;
+        XSSFDrawing drawing = sheet.createDrawingPatriarch();
+        XSSFClientAnchor anchor = drawing.createAnchor(0, 0, 0, 0, col1, row1, col2, row2);
+        XSSFChart chart = drawing.createChart(anchor);
+        chart.setTitleText(title);
+        chart.setTitleOverlay(false);
+        chart.getOrAddLegend().setPosition(LegendPosition.BOTTOM);
+
+        XDDFCategoryAxis catAxis = chart.createCategoryAxis(AxisPosition.BOTTOM);
+        XDDFValueAxis    valAxis = chart.createValueAxis(AxisPosition.LEFT);
+        valAxis.setCrosses(AxisCrosses.AUTO_ZERO);
+
+        XDDFDataSource<String>       categories = XDDFDataSourcesFactory.fromStringCellRange(sheet,
+            new CellRangeAddress(dataStartRow, dataEndRow, 0, 0));
+        XDDFNumericalDataSource<Double> values  = XDDFDataSourcesFactory.fromNumericCellRange(sheet,
+            new CellRangeAddress(dataStartRow, dataEndRow, 1, 1));
+
+        XDDFBarChartData bar = (XDDFBarChartData) chart.createData(ChartTypes.BAR, catAxis, valAxis);
+        bar.setBarDirection(BarDirection.COL);
+        bar.setVaryColors(true);
+        XDDFChartData.Series series = bar.addSeries(categories, values);
+        series.setTitle("Count", null);
+        chart.plot(bar);
+    }
+
+    // ── Cell style builders ───────────────────────────────────────────────────
+
+    private XSSFCellStyle createHeaderStyle(XSSFWorkbook wb) {
+        XSSFCellStyle s = wb.createCellStyle();
+        s.setFillForegroundColor(rgb(RGB_BLUE));
+        s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        s.setBorderTop(BorderStyle.THIN);
+        s.setBorderBottom(BorderStyle.THIN);
+        s.setBorderLeft(BorderStyle.THIN);
+        s.setBorderRight(BorderStyle.THIN);
+        s.setTopBorderColor(rgb(RGB_MED_BLUE));
+        s.setBottomBorderColor(rgb(RGB_MED_BLUE));
+        s.setLeftBorderColor(rgb(RGB_MED_BLUE));
+        s.setRightBorderColor(rgb(RGB_MED_BLUE));
+        s.setAlignment(HorizontalAlignment.CENTER);
+        s.setVerticalAlignment(VerticalAlignment.CENTER);
+        s.setWrapText(true);
+        XSSFFont f = wb.createFont();
+        f.setBold(true);
+        f.setColor(rgb(RGB_WHITE));
+        f.setFontName("Calibri");
+        f.setFontHeightInPoints((short) 10);
+        s.setFont(f);
+        return s;
+    }
+
+    private XSSFCellStyle createMetaStyle(XSSFWorkbook wb) {
+        XSSFCellStyle s = wb.createCellStyle();
+        s.setFillForegroundColor(rgb(RGB_LITE_BLUE));
+        s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        s.setVerticalAlignment(VerticalAlignment.CENTER);
+        XSSFFont f = wb.createFont();
+        f.setFontName("Calibri");
+        f.setFontHeightInPoints((short) 9);
+        f.setColor(rgb(RGB_MED_BLUE));
+        s.setFont(f);
+        return s;
+    }
+
+    private XSSFCellStyle createBodyStyle(XSSFWorkbook wb, boolean alt) {
+        XSSFCellStyle s = wb.createCellStyle();
+        s.setFillForegroundColor(rgb(alt ? RGB_ROW_ALT : RGB_WHITE));
+        s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        s.setBorderBottom(BorderStyle.THIN);
+        s.setBorderLeft(BorderStyle.THIN);
+        s.setBorderRight(BorderStyle.THIN);
+        s.setBottomBorderColor(rgb(RGB_BORDER));
+        s.setLeftBorderColor(rgb(RGB_BORDER));
+        s.setRightBorderColor(rgb(RGB_BORDER));
+        s.setVerticalAlignment(VerticalAlignment.CENTER);
+        XSSFFont f = wb.createFont();
+        f.setFontName("Calibri");
+        f.setFontHeightInPoints((short) 10);
+        f.setColor(rgb(RGB_TEXT_DARK));
+        s.setFont(f);
+        return s;
+    }
+
+    private XSSFCellStyle createDateStyle(XSSFWorkbook wb) {
+        XSSFCellStyle s = createBodyStyle(wb, false);
+        s.setDataFormat(wb.createDataFormat().getFormat("yyyy-mm-dd hh:mm"));
+        return s;
+    }
+
+    private XSSFCellStyle createMoneyStyle(XSSFWorkbook wb) {
+        XSSFCellStyle s = createBodyStyle(wb, false);
+        s.setDataFormat(wb.createDataFormat().getFormat("#,##0.00"));
+        s.setAlignment(HorizontalAlignment.RIGHT);
+        return s;
+    }
+
+    private XSSFCellStyle createReportTitleStyle(XSSFWorkbook wb) {
+        XSSFCellStyle s = wb.createCellStyle();
+        s.setFillForegroundColor(rgb(RGB_NAVY));
+        s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        s.setVerticalAlignment(VerticalAlignment.CENTER);
+        XSSFFont f = wb.createFont();
+        f.setBold(true);
+        f.setFontName("Calibri");
+        f.setFontHeightInPoints((short) 15);
+        f.setColor(rgb(RGB_WHITE));
+        s.setFont(f);
+        return s;
+    }
+
+    private XSSFCellStyle createSectionTitleStyle(XSSFWorkbook wb) {
+        XSSFCellStyle s = wb.createCellStyle();
+        s.setFillForegroundColor(rgb(RGB_MED_BLUE));
+        s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        s.setBorderTop(BorderStyle.THIN);
+        s.setBorderBottom(BorderStyle.THIN);
+        s.setBorderLeft(BorderStyle.THIN);
+        s.setBorderRight(BorderStyle.THIN);
+        s.setTopBorderColor(rgb(RGB_BLUE));
+        s.setBottomBorderColor(rgb(RGB_BLUE));
+        s.setLeftBorderColor(rgb(RGB_BLUE));
+        s.setRightBorderColor(rgb(RGB_BLUE));
+        s.setVerticalAlignment(VerticalAlignment.CENTER);
+        XSSFFont f = wb.createFont();
+        f.setBold(true);
+        f.setColor(rgb(RGB_WHITE));
+        f.setFontName("Calibri");
+        f.setFontHeightInPoints((short) 11);
+        s.setFont(f);
+        return s;
+    }
+
+    private XSSFCellStyle createKpiLabelStyle(XSSFWorkbook wb) {
+        XSSFCellStyle s = wb.createCellStyle();
+        s.setFillForegroundColor(rgb(RGB_LITE_BLUE));
+        s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        s.setAlignment(HorizontalAlignment.RIGHT);
+        s.setVerticalAlignment(VerticalAlignment.CENTER);
+        XSSFFont f = wb.createFont();
+        f.setBold(true);
+        f.setColor(rgb(RGB_BLUE));
+        f.setFontName("Calibri");
+        f.setFontHeightInPoints((short) 11);
+        s.setFont(f);
+        return s;
+    }
+
+    private XSSFCellStyle createKpiValueStyle(XSSFWorkbook wb) {
+        XSSFCellStyle s = wb.createCellStyle();
+        s.setFillForegroundColor(rgb(RGB_BLUE));
+        s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        s.setAlignment(HorizontalAlignment.CENTER);
+        s.setVerticalAlignment(VerticalAlignment.CENTER);
+        XSSFFont f = wb.createFont();
+        f.setBold(true);
+        f.setColor(rgb(RGB_WHITE));
+        f.setFontName("Calibri");
+        f.setFontHeightInPoints((short) 14);
+        s.setFont(f);
+        return s;
+    }
+
+    private void addReportTitle(XSSFSheet sheet, String title, String subtitle, XSSFCellStyle metaStyle, int lastCol) {
+        Row titleRow = sheet.createRow(0);
+        titleRow.setHeightInPoints(38f);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue(title);
+        titleCell.setCellStyle(createReportTitleStyle((XSSFWorkbook) sheet.getWorkbook()));
+
         Row subtitleRow = sheet.createRow(1);
-        subtitleRow.setHeightInPoints(20f);
+        subtitleRow.setHeightInPoints(18f);
         Cell subtitleCell = subtitleRow.createCell(0);
         subtitleCell.setCellValue(subtitle);
         subtitleCell.setCellStyle(metaStyle);
-        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 11));
-        sheet.addMergedRegion(new CellRangeAddress(1, 1, 0, 11));
+
+        int mergeEnd = Math.max(11, lastCol);
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, mergeEnd));
+        sheet.addMergedRegion(new CellRangeAddress(1, 1, 0, mergeEnd));
     }
 
-    private CellStyle createReportTitleStyle(XSSFWorkbook workbook) {
-        CellStyle style = workbook.createCellStyle();
-        style.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
-        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        style.setVerticalAlignment(VerticalAlignment.CENTER);
-        Font font = workbook.createFont();
-        font.setBold(true);
-        font.setFontHeightInPoints((short) 14);
-        font.setColor(IndexedColors.WHITE.getIndex());
-        style.setFont(font);
-        return style;
+    // ── Badge styles ──────────────────────────────────────────────────────────
+
+    private Map<String, XSSFCellStyle> createTicketBadgeStyles(XSSFWorkbook wb) {
+        Map<String, XSSFCellStyle> m = new LinkedHashMap<>();
+        // Service Types
+        m.put("LEADS",        badgeStyle(wb, RGB_PURPLE_BG, RGB_PURPLE_FG));
+        m.put("INSTALLATION", badgeStyle(wb, RGB_INDIGO_BG, RGB_INDIGO_FG));
+        m.put("SERVICE",      badgeStyle(wb, RGB_TEAL_BG,   RGB_TEAL_FG));
+        m.put("AMC",          badgeStyle(wb, RGB_AMBER_BG,  RGB_AMBER_FG));
+        m.put("SITE_VISIT",   badgeStyle(wb, RGB_GREEN_BG,  RGB_GREEN_FG));
+        // Statuses
+        m.put("OPEN",         badgeStyle(wb, RGB_INDIGO_BG, RGB_INDIGO_FG));
+        m.put("SITE_VISITED", badgeStyle(wb, RGB_TEAL_BG,   RGB_TEAL_FG));
+        m.put("IN_PROGRESS",  badgeStyle(wb, RGB_LITE_BLUE, RGB_MED_BLUE));
+        m.put("ON_HOLD",      badgeStyle(wb, RGB_AMBER_BG,  RGB_AMBER_FG));
+        m.put("QUOTED",       badgeStyle(wb, RGB_PURPLE_BG, RGB_PURPLE_FG));
+        m.put("RESOLVED",     badgeStyle(wb, RGB_GREEN_BG,  RGB_GREEN_FG));
+        m.put("CLOSED",       badgeStyle(wb, RGB_GRAY_BG,   RGB_GRAY_FG));
+        m.put("CANCELLED",    badgeStyle(wb, RGB_RED_BG,    RGB_RED_FG));
+        // Priorities
+        m.put("LOW",          badgeStyle(wb, RGB_GREEN_BG,  RGB_GREEN_FG));
+        m.put("MEDIUM",       badgeStyle(wb, RGB_AMBER_BG,  RGB_AMBER_FG));
+        m.put("HIGH",         badgeStyle(wb, RGB_ORANGE_BG, RGB_ORANGE_FG));
+        m.put("CRITICAL",     badgeStyle(wb, RGB_RED_BG,    RGB_RED_FG));
+        return m;
     }
 
-    private void applyBodyStyle(Row row, CellStyle evenStyle, CellStyle oddStyle, Set<Integer> skipColumns) {
-        CellStyle selectedStyle = (row.getRowNum() % 2 == 0) ? evenStyle : oddStyle;
-        for (Cell cell : row) {
-            if (skipColumns.contains(cell.getColumnIndex())) {
-                continue;
-            }
-            cell.setCellStyle(selectedStyle);
-        }
+    private Map<String, XSSFCellStyle> createUserBadgeStyles(XSSFWorkbook wb) {
+        Map<String, XSSFCellStyle> m = new LinkedHashMap<>();
+        m.put("ENABLED",     badgeStyle(wb, RGB_GREEN_BG,  RGB_GREEN_FG));
+        m.put("DISABLED",    badgeStyle(wb, RGB_RED_BG,    RGB_RED_FG));
+        m.put("VERIFIED",    badgeStyle(wb, RGB_GREEN_BG,  RGB_GREEN_FG));
+        m.put("UNVERIFIED",  badgeStyle(wb, RGB_AMBER_BG,  RGB_AMBER_FG));
+        m.put("ROLE_ADMIN",  badgeStyle(wb, RGB_INDIGO_BG, RGB_INDIGO_FG));
+        m.put("ROLE_AGENT",  badgeStyle(wb, RGB_TEAL_BG,   RGB_TEAL_FG));
+        m.put("ROLE_VENDOR", badgeStyle(wb, RGB_ORANGE_BG, RGB_ORANGE_FG));
+        m.put("NO_ROLE",     badgeStyle(wb, RGB_GRAY_BG,   RGB_GRAY_FG));
+        return m;
     }
 
-    private Map<String, CellStyle> createTicketBadgeStyles(XSSFWorkbook workbook) {
-        Map<String, CellStyle> styles = new LinkedHashMap<>();
-        styles.put("LEADS", badgeStyle(workbook, IndexedColors.LAVENDER, IndexedColors.VIOLET));
-        styles.put("INSTALLATION", badgeStyle(workbook, IndexedColors.LIGHT_TURQUOISE, IndexedColors.DARK_TEAL));
-        styles.put("SERVICE", badgeStyle(workbook, IndexedColors.LIGHT_ORANGE, IndexedColors.DARK_YELLOW));
-        styles.put("AMC", badgeStyle(workbook, IndexedColors.PALE_BLUE, IndexedColors.BLUE));
-        styles.put("SITE_VISIT", badgeStyle(workbook, IndexedColors.LIGHT_GREEN, IndexedColors.GREEN));
-        styles.put("OPEN", badgeStyle(workbook, IndexedColors.PALE_BLUE, IndexedColors.BLUE));
-        styles.put("SITE_VISITED", badgeStyle(workbook, IndexedColors.LIGHT_GREEN, IndexedColors.DARK_GREEN));
-        styles.put("IN_PROGRESS", badgeStyle(workbook, IndexedColors.LIGHT_TURQUOISE, IndexedColors.DARK_TEAL));
-        styles.put("ON_HOLD", badgeStyle(workbook, IndexedColors.LEMON_CHIFFON, IndexedColors.BROWN));
-        styles.put("QUOTED", badgeStyle(workbook, IndexedColors.LIGHT_CORNFLOWER_BLUE, IndexedColors.DARK_BLUE));
-        styles.put("RESOLVED", badgeStyle(workbook, IndexedColors.LIGHT_GREEN, IndexedColors.GREEN));
-        styles.put("CLOSED", badgeStyle(workbook, IndexedColors.GREY_25_PERCENT, IndexedColors.GREY_80_PERCENT));
-        styles.put("CANCELLED", badgeStyle(workbook, IndexedColors.ROSE, IndexedColors.DARK_RED));
-        styles.put("LOW", badgeStyle(workbook, IndexedColors.LIGHT_GREEN, IndexedColors.GREEN));
-        styles.put("MEDIUM", badgeStyle(workbook, IndexedColors.LEMON_CHIFFON, IndexedColors.BROWN));
-        styles.put("HIGH", badgeStyle(workbook, IndexedColors.LIGHT_ORANGE, IndexedColors.DARK_YELLOW));
-        styles.put("CRITICAL", badgeStyle(workbook, IndexedColors.ROSE, IndexedColors.DARK_RED));
-        return styles;
+    private XSSFCellStyle badgeStyle(XSSFWorkbook wb, byte[] bg, byte[] fg) {
+        XSSFCellStyle s = wb.createCellStyle();
+        s.setFillForegroundColor(rgb(bg));
+        s.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        s.setAlignment(HorizontalAlignment.CENTER);
+        s.setVerticalAlignment(VerticalAlignment.CENTER);
+        XSSFFont f = wb.createFont();
+        f.setBold(true);
+        f.setColor(rgb(fg));
+        f.setFontName("Calibri");
+        f.setFontHeightInPoints((short) 9);
+        s.setFont(f);
+        return s;
     }
 
-    private Map<String, CellStyle> createUserBadgeStyles(XSSFWorkbook workbook) {
-        Map<String, CellStyle> styles = new LinkedHashMap<>();
-        styles.put("ENABLED", badgeStyle(workbook, IndexedColors.LIGHT_GREEN, IndexedColors.GREEN));
-        styles.put("DISABLED", badgeStyle(workbook, IndexedColors.ROSE, IndexedColors.DARK_RED));
-        styles.put("VERIFIED", badgeStyle(workbook, IndexedColors.LIGHT_GREEN, IndexedColors.GREEN));
-        styles.put("UNVERIFIED", badgeStyle(workbook, IndexedColors.LEMON_CHIFFON, IndexedColors.BROWN));
-        styles.put("ROLE_ADMIN", badgeStyle(workbook, IndexedColors.LIGHT_BLUE, IndexedColors.DARK_BLUE));
-        styles.put("ROLE_AGENT", badgeStyle(workbook, IndexedColors.LIGHT_TURQUOISE, IndexedColors.DARK_TEAL));
-        styles.put("ROLE_VENDOR", badgeStyle(workbook, IndexedColors.LIGHT_ORANGE, IndexedColors.DARK_YELLOW));
-        styles.put("NO_ROLE", badgeStyle(workbook, IndexedColors.GREY_25_PERCENT, IndexedColors.GREY_80_PERCENT));
-        return styles;
-    }
-
-    private CellStyle badgeStyle(XSSFWorkbook workbook, IndexedColors bg, IndexedColors fg) {
-        CellStyle style = workbook.createCellStyle();
-        style.setFillForegroundColor(bg.getIndex());
-        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        style.setAlignment(HorizontalAlignment.CENTER);
-        style.setVerticalAlignment(VerticalAlignment.CENTER);
-        style.setBorderTop(BorderStyle.NONE);
-        style.setBorderBottom(BorderStyle.NONE);
-        style.setBorderLeft(BorderStyle.NONE);
-        style.setBorderRight(BorderStyle.NONE);
-        style.setWrapText(false);
-        Font font = workbook.createFont();
-        font.setBold(true);
-        font.setColor(fg.getIndex());
-        font.setFontHeightInPoints((short) 10);
-        style.setFont(font);
-        return style;
-    }
-
-    private void setBadgeCell(Cell cell, String value, Map<String, CellStyle> styles) {
+    private void setBadgeCell(Cell cell, String value, Map<String, XSSFCellStyle> styles) {
         cell.setCellValue(value == null ? "" : value);
         if (value != null && styles.containsKey(value)) {
             cell.setCellStyle(styles.get(value));
         }
     }
 
-    private void addTicketMetricsSheet(XSSFWorkbook workbook, List<Ticket> tickets) {
-        Sheet metrics = workbook.createSheet("Ticket Metrics");
-        CellStyle headerStyle = createHeaderStyle(workbook);
-        CellStyle metricHeaderStyle = createMetricHeaderStyle(workbook);
-        CellStyle metaStyle = createMetaStyle(workbook);
-
-        addReportTitle(metrics, "Ticket Metrics Dashboard", "Visual breakdown by service type, status and priority", metaStyle);
-        metrics.setColumnWidth(0, 26 * 256);
-        metrics.setColumnWidth(1, 12 * 256);
-        metrics.setColumnWidth(2, 2 * 256);
-        for (int col = 3; col <= 11; col++) {
-            metrics.setColumnWidth(col, 12 * 256);
+    private void applyBodyStyle(Row row, XSSFCellStyle even, XSSFCellStyle odd, Set<Integer> skip) {
+        XSSFCellStyle selected = (row.getRowNum() % 2 == 0) ? even : odd;
+        for (Cell cell : row) {
+            if (!skip.contains(cell.getColumnIndex())) {
+                cell.setCellStyle(selected);
+            }
         }
-
-        int rowIdx = 3;
-        LinkedHashMap<String, Integer> serviceTypeCounts = countBy(tickets, ticket -> ticket.getServiceType() == null ? "UNKNOWN" : ticket.getServiceType().name());
-        SectionBounds serviceSection = writeMetricSection(metrics, rowIdx, "Service Type Counts", serviceTypeCounts, headerStyle, metricHeaderStyle, "Service Type", "Count");
-        addBarChart(metrics, serviceSection.dataStartRow, serviceSection.dataEndRow, 3, serviceSection.titleRow, "Service Type Distribution");
-
-        rowIdx = serviceSection.nextRow + 2;
-        LinkedHashMap<String, Integer> statusCounts = countBy(tickets, ticket -> ticket.getStatus() == null ? "UNKNOWN" : ticket.getStatus().name());
-        SectionBounds statusSection = writeMetricSection(metrics, rowIdx, "Status Counts", statusCounts, headerStyle, metricHeaderStyle, "Status", "Count");
-        addBarChart(metrics, statusSection.dataStartRow, statusSection.dataEndRow, 3, statusSection.titleRow, "Status Distribution");
-
-        rowIdx = statusSection.nextRow + 2;
-        LinkedHashMap<String, Integer> priorityCounts = countBy(tickets, ticket -> ticket.getPriority() == null ? "UNKNOWN" : ticket.getPriority().name());
-        SectionBounds prioritySection = writeMetricSection(metrics, rowIdx, "Priority Counts", priorityCounts, headerStyle, metricHeaderStyle, "Priority", "Count");
-        addBarChart(metrics, prioritySection.dataStartRow, prioritySection.dataEndRow, 3, prioritySection.titleRow, "Priority Distribution");
-
-        rowIdx = prioritySection.nextRow + 2;
-        Row totalHeader = metrics.createRow(rowIdx++);
-        Cell totalCell = totalHeader.createCell(0);
-        totalCell.setCellValue("Total Tickets");
-        totalCell.setCellStyle(headerStyle);
-        Row totalRow = metrics.createRow(rowIdx++);
-        totalRow.createCell(0).setCellValue(tickets.size());
-
-        for (int i = 0; i < 12; i++) {
-            metrics.autoSizeColumn(i);
-        }
-        metrics.createFreezePane(0, 3);
     }
 
-    private void addUserMetricsSheet(XSSFWorkbook workbook, List<AppUser> users) {
-        Sheet metrics = workbook.createSheet("User Metrics");
-        CellStyle headerStyle = createHeaderStyle(workbook);
-        CellStyle metricHeaderStyle = createMetricHeaderStyle(workbook);
-        CellStyle metaStyle = createMetaStyle(workbook);
+    // ── Aggregation helpers ───────────────────────────────────────────────────
 
-        addReportTitle(metrics, "User Metrics Dashboard", "Visual breakdown by user status, verification and role", metaStyle);
-        metrics.setColumnWidth(0, 26 * 256);
-        metrics.setColumnWidth(1, 12 * 256);
-        metrics.setColumnWidth(2, 2 * 256);
-        for (int col = 3; col <= 11; col++) {
-            metrics.setColumnWidth(col, 12 * 256);
-        }
-
-        int rowIdx = 3;
-        LinkedHashMap<String, Integer> userStatusCounts = countBy(users, user -> user.isEnabled() ? "ENABLED" : "DISABLED");
-        SectionBounds userStatusSection = writeMetricSection(metrics, rowIdx, "User Status Counts", userStatusCounts, headerStyle, metricHeaderStyle, "User Status", "Count");
-        addBarChart(metrics, userStatusSection.dataStartRow, userStatusSection.dataEndRow, 3, userStatusSection.titleRow, "User Status Distribution");
-
-        rowIdx = userStatusSection.nextRow + 2;
-        LinkedHashMap<String, Integer> emailStatusCounts = countBy(users, user -> user.isEmailVerified() ? "VERIFIED" : "UNVERIFIED");
-        SectionBounds emailSection = writeMetricSection(metrics, rowIdx, "Email Verification Counts", emailStatusCounts, headerStyle, metricHeaderStyle, "Email Verification", "Count");
-        addBarChart(metrics, emailSection.dataStartRow, emailSection.dataEndRow, 3, emailSection.titleRow, "Email Verification Distribution");
-
-        rowIdx = emailSection.nextRow + 2;
-        LinkedHashMap<String, Integer> roleCounts = countRoles(users);
-        SectionBounds roleSection = writeMetricSection(metrics, rowIdx, "Role Counts", roleCounts, headerStyle, metricHeaderStyle, "Role", "Count");
-        addBarChart(metrics, roleSection.dataStartRow, roleSection.dataEndRow, 3, roleSection.titleRow, "Role Distribution");
-
-        rowIdx = roleSection.nextRow + 2;
-        Row totalHeader = metrics.createRow(rowIdx++);
-        Cell totalCell = totalHeader.createCell(0);
-        totalCell.setCellValue("Total Users");
-        totalCell.setCellStyle(headerStyle);
-        Row totalRow = metrics.createRow(rowIdx++);
-        totalRow.createCell(0).setCellValue(users.size());
-
-        for (int i = 0; i < 12; i++) {
-            metrics.autoSizeColumn(i);
-        }
-        metrics.createFreezePane(0, 3);
-    }
-
-    private CellStyle createMetricHeaderStyle(XSSFWorkbook workbook) {
-        CellStyle style = workbook.createCellStyle();
-        style.setFillForegroundColor(IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex());
-        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        style.setBorderTop(BorderStyle.THIN);
-        style.setBorderBottom(BorderStyle.THIN);
-        style.setBorderLeft(BorderStyle.THIN);
-        style.setBorderRight(BorderStyle.THIN);
-        Font font = workbook.createFont();
-        font.setBold(true);
-        style.setFont(font);
-        return style;
-    }
-
-    private <T> LinkedHashMap<String, Integer> countBy(List<T> values, java.util.function.Function<T, String> classifier) {
+    private <T> LinkedHashMap<String, Integer> countBy(List<T> values, java.util.function.Function<T, String> fn) {
         LinkedHashMap<String, Integer> counts = new LinkedHashMap<>();
-        for (T value : values) {
-            String key = classifier.apply(value);
+        for (T v : values) {
+            String key = fn.apply(v);
             counts.put(key, counts.getOrDefault(key, 0) + 1);
         }
         return counts;
@@ -529,266 +722,176 @@ public class ReportService {
                 continue;
             }
             for (Role role : user.getRoles()) {
-                String roleName = role == null || role.getName() == null ? "UNKNOWN_ROLE" : role.getName();
-                counts.put(roleName, counts.getOrDefault(roleName, 0) + 1);
+                String name = (role == null || role.getName() == null) ? "UNKNOWN_ROLE" : role.getName();
+                counts.put(name, counts.getOrDefault(name, 0) + 1);
             }
         }
         return counts;
     }
 
-    private SectionBounds writeMetricSection(Sheet sheet, int startRow, String title, LinkedHashMap<String, Integer> data,
-                                             CellStyle headerStyle, CellStyle metricHeaderStyle,
-                                             String labelHeader, String valueHeader) {
-        int titleRowIdx = startRow;
-        Row titleRow = sheet.createRow(startRow++);
-        Cell titleCell = titleRow.createCell(0);
-        titleCell.setCellValue(title);
-        titleCell.setCellStyle(metricHeaderStyle);
-
-        Row headerRow = sheet.createRow(startRow++);
-        Cell labelCell = headerRow.createCell(0);
-        labelCell.setCellValue(labelHeader);
-        labelCell.setCellStyle(headerStyle);
-        Cell valueCell = headerRow.createCell(1);
-        valueCell.setCellValue(valueHeader);
-        valueCell.setCellStyle(headerStyle);
-
-        int dataStartRow = startRow;
-        for (Map.Entry<String, Integer> entry : data.entrySet()) {
-            Row row = sheet.createRow(startRow++);
-            row.createCell(0).setCellValue(entry.getKey());
-            row.createCell(1).setCellValue(entry.getValue());
-        }
-        return new SectionBounds(titleRowIdx, dataStartRow, startRow - 1, startRow);
-    }
-
-    private int addBarChart(Sheet sheet, int dataStartRow, int dataEndRow, int chartLeftCol, int chartTopRow, String title) {
-        if (dataEndRow < dataStartRow) {
-            return chartTopRow;
-        }
-        XSSFDrawing drawing = (XSSFDrawing) sheet.createDrawingPatriarch();
-        int height = 12;
-        int width = 8;
-        var anchor = drawing.createAnchor(0, 0, 0, 0, chartLeftCol, chartTopRow, chartLeftCol + width, chartTopRow + height);
-        XSSFChart chart = drawing.createChart(anchor);
-        chart.setTitleText(title);
-        chart.setTitleOverlay(false);
-        chart.getOrAddLegend().setPosition(LegendPosition.BOTTOM);
-
-        XDDFCategoryAxis bottomAxis = chart.createCategoryAxis(AxisPosition.BOTTOM);
-        XDDFValueAxis leftAxis = chart.createValueAxis(AxisPosition.LEFT);
-        leftAxis.setCrosses(org.apache.poi.xddf.usermodel.chart.AxisCrosses.AUTO_ZERO);
-
-        XDDFDataSource<String> categories = org.apache.poi.xddf.usermodel.chart.XDDFDataSourcesFactory.fromStringCellRange(
-                (org.apache.poi.xssf.usermodel.XSSFSheet) sheet,
-                new CellRangeAddress(dataStartRow, dataEndRow, 0, 0));
-        XDDFNumericalDataSource<Double> values = org.apache.poi.xddf.usermodel.chart.XDDFDataSourcesFactory.fromNumericCellRange(
-                (org.apache.poi.xssf.usermodel.XSSFSheet) sheet,
-                new CellRangeAddress(dataStartRow, dataEndRow, 1, 1));
-
-        XDDFChartData data = chart.createData(ChartTypes.BAR, bottomAxis, leftAxis);
-        XDDFBarChartData bar = (XDDFBarChartData) data;
-        bar.setBarDirection(BarDirection.BAR);
-        bar.setVaryColors(true);
-        XDDFChartData.Series series = bar.addSeries(categories, values);
-        series.setTitle("Count", null);
-        chart.plot(data);
-        return chartTopRow + height;
-    }
-
     private record SectionBounds(int titleRow, int dataStartRow, int dataEndRow, int nextRow) {}
 
+    // ── Data filtering ────────────────────────────────────────────────────────
+
     private List<Ticket> getFilteredTickets(String dateRange, String startDate, String endDate,
-                                           String ticketStatus, String ticketPriority, String serviceType) {
-        Specification<Ticket> spec = (root, query, criteriaBuilder) -> {
+                                            String ticketStatus, String ticketPriority, String serviceType) {
+        Specification<Ticket> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            
-            // Date range filter
+
             if (dateRange != null && !dateRange.equals("all")) {
                 LocalDateTime now = LocalDateTime.now();
-                LocalDateTime startDateTime;
-                LocalDateTime endDateTime;
-                
+                LocalDateTime startDT;
+                LocalDateTime endDT;
+
                 switch (dateRange) {
-                    case "today":
-                        startDateTime = now.toLocalDate().atStartOfDay();
-                        endDateTime = now.toLocalDate().atTime(23, 59, 59);
-                        break;
-                    case "yesterday":
-                        LocalDate yesterday = now.toLocalDate().minusDays(1);
-                        startDateTime = yesterday.atStartOfDay();
-                        endDateTime = yesterday.atTime(23, 59, 59);
-                        break;
-                    case "last7days":
-                        startDateTime = now.minusDays(7).toLocalDate().atStartOfDay();
-                        endDateTime = now.toLocalDate().atTime(23, 59, 59);
-                        break;
-                    case "last30days":
-                        startDateTime = now.minusDays(30).toLocalDate().atStartOfDay();
-                        endDateTime = now.toLocalDate().atTime(23, 59, 59);
-                        break;
-                    case "thismonth":
-                        startDateTime = now.toLocalDate().withDayOfMonth(1).atStartOfDay();
-                        endDateTime = now.toLocalDate().atTime(23, 59, 59);
-                        break;
-                    case "lastmonth":
-                        LocalDate lastMonth = now.toLocalDate().minusMonths(1);
-                        startDateTime = lastMonth.withDayOfMonth(1).atStartOfDay();
-                        endDateTime = lastMonth.withDayOfMonth(lastMonth.lengthOfMonth()).atTime(23, 59, 59);
-                        break;
-                    case "custom":
+                    case "today" -> {
+                        startDT = now.toLocalDate().atStartOfDay();
+                        endDT   = now.toLocalDate().atTime(23, 59, 59);
+                    }
+                    case "yesterday" -> {
+                        LocalDate yd = now.toLocalDate().minusDays(1);
+                        startDT = yd.atStartOfDay();
+                        endDT   = yd.atTime(23, 59, 59);
+                    }
+                    case "last7days" -> {
+                        startDT = now.minusDays(7).toLocalDate().atStartOfDay();
+                        endDT   = now.toLocalDate().atTime(23, 59, 59);
+                    }
+                    case "last30days" -> {
+                        startDT = now.minusDays(30).toLocalDate().atStartOfDay();
+                        endDT   = now.toLocalDate().atTime(23, 59, 59);
+                    }
+                    case "thismonth" -> {
+                        startDT = now.toLocalDate().withDayOfMonth(1).atStartOfDay();
+                        endDT   = now.toLocalDate().atTime(23, 59, 59);
+                    }
+                    case "lastmonth" -> {
+                        LocalDate lm = now.toLocalDate().minusMonths(1);
+                        startDT = lm.withDayOfMonth(1).atStartOfDay();
+                        endDT   = lm.withDayOfMonth(lm.lengthOfMonth()).atTime(23, 59, 59);
+                    }
+                    case "custom" -> {
                         if (startDate != null && endDate != null) {
-                            startDateTime = LocalDate.parse(startDate).atStartOfDay();
-                            endDateTime = LocalDate.parse(endDate).atTime(23, 59, 59);
+                            startDT = LocalDate.parse(startDate).atStartOfDay();
+                            endDT   = LocalDate.parse(endDate).atTime(23, 59, 59);
                         } else {
-                            return criteriaBuilder.conjunction();
+                            return cb.conjunction();
                         }
-                        break;
-                    default:
-                        return criteriaBuilder.conjunction();
+                    }
+                    default -> { return cb.conjunction(); }
                 }
-                
-                predicates.add(criteriaBuilder.between(root.get("createdAt"), startDateTime, endDateTime));
+                predicates.add(cb.between(root.get("createdAt"), startDT, endDT));
             }
-            
-            // Status filter
-            if (ticketStatus != null && !ticketStatus.isEmpty()) {
-                predicates.add(criteriaBuilder.equal(root.get("status"), TicketStatus.valueOf(ticketStatus)));
-            }
-            
-            // Priority filter
-            if (ticketPriority != null && !ticketPriority.isEmpty()) {
-                predicates.add(criteriaBuilder.equal(root.get("priority"), TicketPriority.valueOf(ticketPriority)));
-            }
-            
-            // Service type filter
-            if (serviceType != null && !serviceType.isEmpty()) {
-                predicates.add(criteriaBuilder.equal(root.get("serviceType"), TicketServiceType.valueOf(serviceType)));
-            }
-            
-            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+
+            if (ticketStatus != null && !ticketStatus.isEmpty())
+                predicates.add(cb.equal(root.get("status"),      TicketStatus.valueOf(ticketStatus)));
+            if (ticketPriority != null && !ticketPriority.isEmpty())
+                predicates.add(cb.equal(root.get("priority"),    TicketPriority.valueOf(ticketPriority)));
+            if (serviceType != null && !serviceType.isEmpty())
+                predicates.add(cb.equal(root.get("serviceType"), TicketServiceType.valueOf(serviceType)));
+
+            return cb.and(predicates.toArray(new Predicate[0]));
         };
-        
+
         return ticketRepository.findAll(spec);
     }
 
     private List<AppUser> getFilteredUsers(String dateRange, String startDate, String endDate,
-                                         String userStatus, String emailVerified, String userRole) {
-        // Get all users and filter in memory for now
-        // In a production system, you might want to add custom queries to UserRepository
-        List<AppUser> allUsers = userRepository.findAll();
-        List<AppUser> filteredUsers = new ArrayList<>();
-        
-        for (AppUser user : allUsers) {
-            boolean includeUser = true;
-            
-            // Date range filter
+                                           String userStatus, String emailVerified, String userRole) {
+        List<AppUser> all = userRepository.findAll();
+        List<AppUser> result = new ArrayList<>();
+
+        for (AppUser user : all) {
+            boolean include = true;
+
             if (dateRange != null && !dateRange.equals("all")) {
                 LocalDateTime now = LocalDateTime.now();
-                LocalDateTime startDateTime = null;
-                LocalDateTime endDateTime = null;
-                
+                LocalDateTime startDT = null;
+                LocalDateTime endDT   = null;
+
                 switch (dateRange) {
-                    case "today":
-                        startDateTime = now.toLocalDate().atStartOfDay();
-                        endDateTime = now.toLocalDate().atTime(23, 59, 59);
-                        break;
-                    case "yesterday":
-                        LocalDate yesterday = now.toLocalDate().minusDays(1);
-                        startDateTime = yesterday.atStartOfDay();
-                        endDateTime = yesterday.atTime(23, 59, 59);
-                        break;
-                    case "last7days":
-                        startDateTime = now.minusDays(7).toLocalDate().atStartOfDay();
-                        endDateTime = now.toLocalDate().atTime(23, 59, 59);
-                        break;
-                    case "last30days":
-                        startDateTime = now.minusDays(30).toLocalDate().atStartOfDay();
-                        endDateTime = now.toLocalDate().atTime(23, 59, 59);
-                        break;
-                    case "thismonth":
-                        startDateTime = now.toLocalDate().withDayOfMonth(1).atStartOfDay();
-                        endDateTime = now.toLocalDate().atTime(23, 59, 59);
-                        break;
-                    case "lastmonth":
-                        LocalDate lastMonth = now.toLocalDate().minusMonths(1);
-                        startDateTime = lastMonth.withDayOfMonth(1).atStartOfDay();
-                        endDateTime = lastMonth.withDayOfMonth(lastMonth.lengthOfMonth()).atTime(23, 59, 59);
-                        break;
-                    case "custom":
+                    case "today" -> {
+                        startDT = now.toLocalDate().atStartOfDay();
+                        endDT   = now.toLocalDate().atTime(23, 59, 59);
+                    }
+                    case "yesterday" -> {
+                        LocalDate yd = now.toLocalDate().minusDays(1);
+                        startDT = yd.atStartOfDay();
+                        endDT   = yd.atTime(23, 59, 59);
+                    }
+                    case "last7days" -> {
+                        startDT = now.minusDays(7).toLocalDate().atStartOfDay();
+                        endDT   = now.toLocalDate().atTime(23, 59, 59);
+                    }
+                    case "last30days" -> {
+                        startDT = now.minusDays(30).toLocalDate().atStartOfDay();
+                        endDT   = now.toLocalDate().atTime(23, 59, 59);
+                    }
+                    case "thismonth" -> {
+                        startDT = now.toLocalDate().withDayOfMonth(1).atStartOfDay();
+                        endDT   = now.toLocalDate().atTime(23, 59, 59);
+                    }
+                    case "lastmonth" -> {
+                        LocalDate lm = now.toLocalDate().minusMonths(1);
+                        startDT = lm.withDayOfMonth(1).atStartOfDay();
+                        endDT   = lm.withDayOfMonth(lm.lengthOfMonth()).atTime(23, 59, 59);
+                    }
+                    case "custom" -> {
                         if (startDate != null && endDate != null) {
-                            startDateTime = LocalDate.parse(startDate).atStartOfDay();
-                            endDateTime = LocalDate.parse(endDate).atTime(23, 59, 59);
+                            startDT = LocalDate.parse(startDate).atStartOfDay();
+                            endDT   = LocalDate.parse(endDate).atTime(23, 59, 59);
                         } else {
-                            includeUser = false;
+                            include = false;
                         }
-                        break;
-                    default:
-                        includeUser = false;
+                    }
+                    default -> include = false;
                 }
-                
-                if (includeUser && startDateTime != null && endDateTime != null && user.getCreatedAt() != null) {
-                    includeUser = !user.getCreatedAt().isBefore(startDateTime) && !user.getCreatedAt().isAfter(endDateTime);
-                }
+
+                if (include && startDT != null && user.getCreatedAt() != null)
+                    include = !user.getCreatedAt().isBefore(startDT) && !user.getCreatedAt().isAfter(endDT);
             }
-            
-            // User status filter
-            if (includeUser && userStatus != null && !userStatus.isEmpty()) {
-                if ("enabled".equals(userStatus)) {
-                    includeUser = user.isEnabled();
-                } else if ("disabled".equals(userStatus)) {
-                    includeUser = !user.isEnabled();
-                }
+
+            if (include && userStatus != null && !userStatus.isEmpty()) {
+                if ("enabled".equals(userStatus))        include = user.isEnabled();
+                else if ("disabled".equals(userStatus))  include = !user.isEnabled();
             }
-            
-            // Email verification filter
-            if (includeUser && emailVerified != null && !emailVerified.isEmpty()) {
-                if ("verified".equals(emailVerified)) {
-                    includeUser = user.isEmailVerified();
-                } else if ("unverified".equals(emailVerified)) {
-                    includeUser = !user.isEmailVerified();
-                }
+
+            if (include && emailVerified != null && !emailVerified.isEmpty()) {
+                if ("verified".equals(emailVerified))      include = user.isEmailVerified();
+                else if ("unverified".equals(emailVerified)) include = !user.isEmailVerified();
             }
-            
-            // Role filter
-            if (includeUser && userRole != null && !userRole.isEmpty()) {
-                includeUser = user.getRoles().stream()
-                    .anyMatch(role -> userRole.equals(role.getName()));
-            }
-            
-            if (includeUser) {
-                filteredUsers.add(user);
-            }
+
+            if (include && userRole != null && !userRole.isEmpty())
+                include = user.getRoles().stream().anyMatch(r -> userRole.equals(r.getName()));
+
+            if (include) result.add(user);
         }
-        
-        return filteredUsers;
+
+        return result;
     }
+
+    // ── Email helpers ─────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public void emailReport(String reportType, String dateRange, String startDate, String endDate,
-                           String ticketStatus, String ticketPriority, String serviceType,
-                           String userStatus, String emailVerified, String userRole,
-                           String recipientEmail, String emailSubject, String emailMessage, String generatedBy) {
+                            String ticketStatus, String ticketPriority, String serviceType,
+                            String userStatus, String emailVerified, String userRole,
+                            String recipientEmail, String emailSubject, String emailMessage, String generatedBy) {
         try {
-            byte[] reportData = generateReport(
-                reportType, dateRange, startDate, endDate,
-                ticketStatus, ticketPriority, serviceType,
-                userStatus, emailVerified, userRole, generatedBy
-            );
-            
+            byte[] data     = generateReport(reportType, dateRange, startDate, endDate,
+                ticketStatus, ticketPriority, serviceType, userStatus, emailVerified, userRole, generatedBy);
             String filename = getReportFilename(reportType);
-            String subject = emailSubject != null ? emailSubject : reportType + " Report";
-            String message = emailMessage != null ? emailMessage : "Please find the attached report.";
-            
-            emailService.sendReportEmail(recipientEmail, subject, message, reportData, filename);
-            
+            String subject  = emailSubject  != null ? emailSubject  : reportType + " Report";
+            String message  = emailMessage  != null ? emailMessage  : "Please find the attached report.";
+            emailService.sendReportEmail(recipientEmail, subject, message, data, filename);
         } catch (Exception e) {
             log.error("Error sending report email", e);
             throw new RuntimeException("Failed to send report email: " + e.getMessage(), e);
         }
     }
 
-    public void sendGeneratedReport(String recipientEmail, String emailSubject, String emailMessage, byte[] reportData, String filename) {
+    public void sendGeneratedReport(String recipientEmail, String emailSubject, String emailMessage,
+                                    byte[] reportData, String filename) {
         try {
             String subject = emailSubject != null ? emailSubject : "Report";
             String message = emailMessage != null ? emailMessage : "Please find the attached report.";
@@ -800,14 +903,14 @@ public class ReportService {
     }
 
     public void sendGeneratedReportsInSingleEmail(String recipientEmail, String emailSubject, String emailMessage,
-                                                  byte[] ticketsReport, String ticketsFilename,
-                                                  byte[] usersReport, String usersFilename) {
+                                                   byte[] ticketsReport, String ticketsFilename,
+                                                   byte[] usersReport,   String usersFilename) {
         try {
             String subject = emailSubject != null ? emailSubject : "Daily Reports";
             String message = emailMessage != null ? emailMessage : "Please find the attached reports.";
             Map<String, byte[]> attachments = new LinkedHashMap<>();
             attachments.put(ticketsFilename, ticketsReport);
-            attachments.put(usersFilename, usersReport);
+            attachments.put(usersFilename,   usersReport);
             emailService.sendReportEmailWithAttachments(recipientEmail, subject, message, attachments);
         } catch (Exception e) {
             log.error("Error sending combined reports email", e);
@@ -816,20 +919,14 @@ public class ReportService {
     }
 
     public List<Map<String, Object>> getRecentReports() {
-        // This is a placeholder implementation
-        // In a real application, you would store report metadata in a database
         return new ArrayList<>();
     }
 
     public byte[] getReportById(Long reportId) {
-        // This is a placeholder implementation
-        // In a real application, you would retrieve the stored report from the database
         throw new UnsupportedOperationException("Report storage not implemented yet");
     }
 
     public String getReportFilenameById(Long reportId) {
-        // This is a placeholder implementation
-        // In a real application, you would retrieve the stored report filename from the database
         throw new UnsupportedOperationException("Report storage not implemented yet");
     }
 }
