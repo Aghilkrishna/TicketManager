@@ -58,23 +58,22 @@ public class ReportSchedulerService {
             
             String recipientEmails = String.join(",", recipients);
             
-            // Send tickets report
-            String ticketsSubject = "Daily Tickets Report - " + java.time.LocalDate.now();
-            String ticketsMessage = "Please find the daily tickets report attached. This report contains all tickets in the system.";
-            reportService.emailReport(
-                "tickets", "all", null, null, null, null, null, null, null, null,
-                recipientEmails, ticketsSubject, ticketsMessage, "system-scheduler"
+            String ticketsFilename = reportService.getReportFilename("tickets");
+            String usersFilename = reportService.getReportFilename("users");
+            String combinedSubject = "Daily Tickets and Users Reports - " + java.time.LocalDate.now();
+            String combinedMessage = "Please find the daily tickets and users reports attached. These reports contain all tickets and users in the system.";
+            reportService.sendGeneratedReportsInSingleEmail(
+                    recipientEmails,
+                    combinedSubject,
+                    combinedMessage,
+                    ticketsReport,
+                    ticketsFilename,
+                    usersReport,
+                    usersFilename
             );
             
-            // Send users report
-            String usersSubject = "Daily Users Report - " + java.time.LocalDate.now();
-            String usersMessage = "Please find the daily users report attached. This report contains all users in the system.";
-            reportService.emailReport(
-                "users", "all", null, null, null, null, null, null, null, null,
-                recipientEmails, usersSubject, usersMessage, "system-scheduler"
-            );
-            
-            log.info("Successfully generated and sent daily reports to {} recipients", recipients.size());
+            log.info("Successfully generated and sent daily reports to {} recipients. ticketsBytes={}, usersBytes={}",
+                    recipients.size(), ticketsReport.length, usersReport.length);
             
         } catch (Exception e) {
             log.error("Error generating scheduled daily reports", e);
@@ -84,7 +83,11 @@ public class ReportSchedulerService {
     private List<String> getConfiguredEmailRecipients() {
         // Get admin users who have email verified and are enabled
         List<AppUser> adminUsers = userRepository.findByRoleName("ROLE_ADMIN", org.springframework.data.domain.PageRequest.of(0, 1000)).getContent().stream()
-            .filter(user -> user.isEnabled() && user.isEmailVerified())
+            .filter(user -> user.isEnabled()
+                    && user.isEmailVerified()
+                    && user.getEmail() != null
+                    && !user.getEmail().isBlank()
+                    && userService.hasAuthority(user, "FEATURE_ADMIN_REPORTS"))
             .collect(Collectors.toList());
         
         // Extract email addresses
@@ -110,7 +113,7 @@ public class ReportSchedulerService {
             
             // Check if any admin user has the FEATURE_ADMIN_REPORTS authority
             return adminUsers.stream()
-                .anyMatch(adminUser -> userService.hasAuthority(adminUser.getUsername(), "FEATURE_ADMIN_REPORTS"));
+                .anyMatch(adminUser -> userService.hasAuthority(adminUser, "FEATURE_ADMIN_REPORTS"));
                 
         } catch (Exception e) {
             log.error("Error checking if FEATURE_ADMIN_REPORTS is enabled for admin users", e);

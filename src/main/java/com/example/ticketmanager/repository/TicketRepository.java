@@ -28,6 +28,10 @@ public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecif
     @EntityGraph(attributePaths = {"createdBy", "assignedTo", "updatedBy"})
     Page<Ticket> findAll(org.springframework.data.jpa.domain.Specification<Ticket> spec, Pageable pageable);
 
+    @Override
+    @EntityGraph(attributePaths = {"createdBy", "assignedTo", "updatedBy"})
+    List<Ticket> findAll(org.springframework.data.jpa.domain.Specification<Ticket> spec);
+
     Page<Ticket> findByCreatedByOrAssignedToOrServiceUsersContains(AppUser createdBy, AppUser assignedTo, AppUser serviceUser, Pageable pageable);
 
     @Query(

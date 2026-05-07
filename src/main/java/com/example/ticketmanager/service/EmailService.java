@@ -15,6 +15,7 @@ import org.thymeleaf.context.Context;
 
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -124,7 +125,7 @@ public class EmailService {
             helper.setSubject(subject);
             
             // Create HTML content with application theme
-            String htmlContent = createReportEmailTemplate(message, filename);
+            String htmlContent = createReportEmailTemplate(message, List.of(filename));
             helper.setText(htmlContent, true);
             
             // Add attachment
@@ -146,117 +147,117 @@ public class EmailService {
         }
     }
 
-    private String createReportEmailTemplate(String message, String filename) {
+    public void sendReportEmailWithAttachments(String to, String subject, String message, Map<String, byte[]> attachments) {
+        if (!appProperties.mail().enabled()) {
+            log.info("Mail disabled. To: {} Subject: {} Attachments: {}", to, subject, attachments != null ? attachments.keySet() : "none");
+            return;
+        }
+
+        try {
+            var mimeMessage = mailSender.createMimeMessage();
+            var helper = new MimeMessageHelper(mimeMessage, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, StandardCharsets.UTF_8.name());
+
+            String[] recipients = to.split(",");
+            helper.setTo(recipients);
+            helper.setSubject(subject);
+            List<String> attachmentNames = attachments == null ? List.of() : attachments.keySet().stream().toList();
+            helper.setText(createReportEmailTemplate(message, attachmentNames), true);
+
+            if (attachments != null) {
+                for (Map.Entry<String, byte[]> entry : attachments.entrySet()) {
+                    if (entry.getKey() != null && entry.getValue() != null) {
+                        helper.addAttachment(entry.getKey(), new ByteArrayResource(entry.getValue()));
+                    }
+                }
+            }
+
+            String fromAddress = appProperties.mail().fromAddress();
+            String fromName = appProperties.mail().fromName();
+            if (fromAddress != null && !fromAddress.isBlank()) {
+                helper.setFrom(new InternetAddress(fromAddress, fromName == null ? "" : fromName).toString());
+            }
+
+            mailSender.send(mimeMessage);
+            log.info("Report email sent successfully to: {} with attachments: {}", to, attachments != null ? attachments.keySet() : "none");
+        } catch (MessagingException | java.io.UnsupportedEncodingException ex) {
+            log.error("Failed to send report email with attachments", ex);
+            throw new IllegalStateException("Failed to send report email with attachments", ex);
+        }
+    }
+
+    private String createReportEmailTemplate(String message, List<String> filenames) {
+        String attachmentItems = (filenames == null || filenames.isEmpty())
+                ? "<li>No attachments</li>"
+                : filenames.stream()
+                .map(name -> "<li><strong>" + escapeHtml(name) + "</strong> <span style=\"color:#667085;\">(Excel .xlsx)</span></li>")
+                .reduce("", String::concat);
         return """
             <!DOCTYPE html>
             <html lang="en">
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Report - Ticket Manager</title>
+                <title>Ticket Manager Reports</title>
                 <style>
-                    body {
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                        line-height: 1.6;
-                        color: #333;
-                        max-width: 600px;
-                        margin: 0 auto;
-                        padding: 20px;
-                        background-color: #f8f9fa;
-                    }
-                    .container {
-                        background: white;
-                        border-radius: 8px;
-                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                        overflow: hidden;
-                    }
-                    .header {
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        color: white;
-                        padding: 30px 20px;
-                        text-align: center;
-                    }
-                    .header h1 {
-                        margin: 0;
-                        font-size: 24px;
-                        font-weight: 600;
-                    }
-                    .header .brand {
-                        font-size: 18px;
-                        opacity: 0.9;
-                        margin-top: 5px;
-                    }
-                    .content {
-                        padding: 30px 20px;
-                    }
-                    .message {
-                        background-color: #f8f9fa;
-                        border-left: 4px solid #667eea;
-                        padding: 20px;
-                        margin: 20px 0;
-                        border-radius: 0 4px 4px 0;
-                    }
-                    .file-info {
-                        background-color: #e7f3ff;
-                        border: 1px solid #b3d9ff;
-                        padding: 15px;
-                        border-radius: 6px;
-                        margin: 20px 0;
-                    }
-                    .file-info strong {
-                        color: #0066cc;
-                    }
-                    .footer {
-                        background-color: #f8f9fa;
-                        padding: 20px;
-                        text-align: center;
-                        border-top: 1px solid #dee2e6;
-                        font-size: 14px;
-                        color: #6c757d;
-                    }
-                    .footer a {
-                        color: #667eea;
-                        text-decoration: none;
-                    }
-                    .footer a:hover {
-                        text-decoration: underline;
-                    }
+                    body { margin:0; padding:24px; background:#f3f6fb; color:#172b4d; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; }
+                    .card { max-width:680px; margin:0 auto; background:#ffffff; border:1px solid #e6edf5; border-radius:16px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,0.08); }
+                    .header { background:linear-gradient(135deg,#0f172a 0%,#0f6cbd 65%,#14b8a6 100%); color:#fff; padding:28px 24px; }
+                    .header h1 { margin:0; font-size:22px; font-weight:700; }
+                    .header p { margin:6px 0 0; font-size:14px; color:rgba(255,255,255,0.9); }
+                    .content { padding:24px; }
+                    .message { background:#f8fbff; border:1px solid #d6e7ff; border-radius:12px; padding:14px 16px; margin:0 0 16px; color:#243b53; }
+                    .meta { background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:14px 16px; margin-bottom:16px; }
+                    .meta h3 { margin:0 0 8px; font-size:14px; color:#334155; text-transform:uppercase; letter-spacing:0.04em; }
+                    .meta ul { margin:0; padding-left:18px; }
+                    .meta li { margin:6px 0; }
+                    .footer { border-top:1px solid #e6edf5; padding:16px 24px; font-size:12px; color:#667085; background:#fcfdff; }
+                    a { color:#0f6cbd; text-decoration:none; }
                 </style>
             </head>
             <body>
-                <div class="container">
+                <div class="card">
                     <div class="header">
-                        <h1>Report Generated</h1>
-                        <div class="brand">Ticket Manager</div>
+                        <h1>Daily Reports</h1>
+                        <p>Ticket Manager automated reporting</p>
                     </div>
                     <div class="content">
-                        <p>Hello,</p>
-                        <div class="message">
-                            <p>MESSAGE_PLACEHOLDER</p>
-                        </div>
-                        <div class="file-info">
-                            <p><strong>Report Details:</strong></p>
+                        <p>Hello Admin Team,</p>
+                        <div class="message">MESSAGE_PLACEHOLDER</div>
+                        <div class="meta">
+                            <h3>Report Details</h3>
                             <ul>
-                                <li><strong>Filename:</strong> FILENAME_PLACEHOLDER</li>
-                                <li><strong>Format:</strong> Excel (.xlsx)</li>
-                                <li><strong>Generated:</strong> DATE_PLACEHOLDER</li>
+                                <li><strong>Scope:</strong> All tickets and all users</li>
+                                <li><strong>Generated At:</strong> DATE_PLACEHOLDER</li>
+                                <li><strong>Attachments:</strong></li>
                             </ul>
+                            <ul>ATTACHMENTS_PLACEHOLDER</ul>
                         </div>
-                        <p>The report is attached to this email. You can open it using Microsoft Excel or any compatible spreadsheet application.</p>
-                        <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
-                        <p>Best regards,<br>Ticket Manager Team</p>
+                        <p>You can open these files in Microsoft Excel or any compatible spreadsheet tool.</p>
                     </div>
                     <div class="footer">
-                        <p>&copy; 2026 Ticket Manager. All rights reserved.</p>
-                        <p><a href="BASE_URL_PLACEHOLDER">Visit Ticket Manager</a></p>
+                        <div>Ticket Manager</div>
+                        <div><a href="BASE_URL_PLACEHOLDER">Open Application</a></div>
                     </div>
                 </div>
             </body>
             </html>
-            """.replace("MESSAGE_PLACEHOLDER", message)
-             .replace("FILENAME_PLACEHOLDER", filename)
-             .replace("DATE_PLACEHOLDER", java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("MMMM dd, yyyy 'at' hh:mm a")))
-             .replace("BASE_URL_PLACEHOLDER", appProperties.baseUrl());
+            """
+                .replace("MESSAGE_PLACEHOLDER", escapeHtml(message == null ? "" : message))
+                .replace("DATE_PLACEHOLDER", java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("MMMM dd, yyyy 'at' hh:mm a")))
+                .replace("ATTACHMENTS_PLACEHOLDER", attachmentItems)
+                .replace("BASE_URL_PLACEHOLDER", appProperties.baseUrl());
+    }
+
+    private String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
     private String displayName(AppUser user) {
