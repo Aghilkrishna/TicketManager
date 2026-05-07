@@ -67,6 +67,7 @@ services:
 
       # Spring Boot Profile
       SPRING_PROFILES_ACTIVE: prod
+      SPRING_SQL_INIT_MODE: never
       TZ: Asia/Kolkata
     volumes:
       - /opt/ticket_manager_app/uploads:/app/uploads
