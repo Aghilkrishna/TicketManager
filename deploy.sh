@@ -9,9 +9,13 @@ ENV_FILE=".env"
 
 # Load production environment values if present
 if [ -f "$ENV_FILE" ]; then
-    set -a
-    source "$ENV_FILE"
-    set +a
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "${line// }" ]] && continue
+        if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+            export "${BASH_REMATCH[1]}"="${BASH_REMATCH[2]}"
+        fi
+    done < "$ENV_FILE"
 fi
 
 DB_CONTAINER_NAME="${DB_CONTAINER_NAME:-ticketmanager-db}"
