@@ -485,6 +485,7 @@ public class TicketService {
         ticket.setAddress(request.address() == null || request.address().isBlank() ? null : request.address().trim());
         ticket.setServiceType(request.serviceType() == null || request.serviceType().isBlank()
                 ? null : TicketServiceType.valueOf(request.serviceType()));
+        ticket.setLeadFrom(resolveLeadFrom(request));
         ticket.setLocationLink(request.locationLink() == null || request.locationLink().isBlank()
                 ? null : request.locationLink().trim());
         if (isCreate) {
@@ -595,6 +596,28 @@ public class TicketService {
             ticket.setActualCost(request.actualCost());
         }
         ticket.setAdditionalNotes(request.additionalNotes() == null || request.additionalNotes().isBlank() ? null : request.additionalNotes().trim());
+    }
+
+    private String resolveLeadFrom(AuthDtos.TicketRequest request) {
+        if (request.serviceType() == null || request.serviceType().isBlank()) {
+            return null;
+        }
+        TicketServiceType type = TicketServiceType.valueOf(request.serviceType());
+        if (type != TicketServiceType.LEADS) {
+            return null;
+        }
+        String leadFrom = request.leadFrom() == null ? null : request.leadFrom().trim();
+        if (leadFrom == null || leadFrom.isBlank()) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Lead from is required when service type is Leads");
+        }
+        if ("OTHERS".equalsIgnoreCase(leadFrom)) {
+            String other = request.leadFromOther() == null ? null : request.leadFromOther().trim();
+            if (other == null || other.isBlank()) {
+                throw new AppException(HttpStatus.BAD_REQUEST, "Please enter Lead from when Others is selected");
+            }
+            return other;
+        }
+        return leadFrom;
     }
 
     private void applyAgentSiteVisitUpdate(Ticket ticket, AuthDtos.TicketRequest request, AppUser actor) {
@@ -745,6 +768,7 @@ public class TicketService {
                 null,
                 ticket.getServiceType() == null ? null : ticket.getServiceType().name(),
                 ticket.getServiceType() == null ? null : ticket.getServiceType().label(),
+                ticket.getLeadFrom(),
                 null,
                 ticket.getSiteVisits(),
                 null,
@@ -806,6 +830,7 @@ public class TicketService {
                 ticket.getAddress(),
                 ticket.getServiceType() == null ? null : ticket.getServiceType().name(),
                 ticket.getServiceType() == null ? null : ticket.getServiceType().label(),
+                ticket.getLeadFrom(),
                 ticket.getLocationLink(),
                 ticket.getSiteVisits(),
                 ticket.getParentTicket() == null ? null : ticket.getParentTicket().getId(),

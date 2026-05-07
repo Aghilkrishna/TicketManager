@@ -36,6 +36,10 @@
                                 <div class="small text-muted text-uppercase mb-1">Type of Service</div>
                                 <div class="fw-semibold" th:text="${ticket.serviceTypeLabel != null ? ticket.serviceTypeLabel : 'Not provided'}"></div>
                             </div>
+                            <div class="col-md-3" th:if="${ticket.leadFrom != null and !#strings.isEmpty(ticket.leadFrom)}">
+                                <div class="small text-muted text-uppercase mb-1">Lead From</div>
+                                <div class="fw-semibold" th:text="${ticket.leadFrom}"></div>
+                            </div>
                             <div class="col-md-3">
                                 <div class="small text-muted text-uppercase mb-1">Schedule Date</div>
                                 <div class="fw-semibold" th:text="${ticket.scheduleDate != null ? ticket.scheduleDate : 'Not scheduled'}"></div>
