@@ -15,6 +15,7 @@ spring:
       connection-timeout: 20000
       max-lifetime: 1200000
       leak-detection-threshold: 60000
+      auto-commit: false
 
   jpa:
     hibernate:
