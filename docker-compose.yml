@@ -44,6 +44,9 @@ services:
       APP_MAIL_ENABLED: ${APP_MAIL_ENABLED:-false}
       APP_UPLOAD_DIR: /app/uploads
       APP_MASKING_ENABLED: ${APP_MASKING_ENABLED:-true}
+      LOGS_DIR: ${APP_LOGS_DIR}
+      APP_REPORTS_SCHEDULE_ENABLED: ${APP_REPORTS_SCHEDULE_ENABLED:-true}
+      APP_REPORTS_SCHEDULE_CRON: ${APP_REPORTS_SCHEDULE_CRON:0 0 1 * * ?}
 
       # Mail configuration
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
