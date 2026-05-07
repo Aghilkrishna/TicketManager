@@ -44,8 +44,7 @@ services:
       APP_MAIL_ENABLED: ${APP_MAIL_ENABLED:-false}
       APP_UPLOAD_DIR: /app/uploads
       APP_MASKING_ENABLED: ${APP_MASKING_ENABLED:-true}
-      LOGS_DIR: /app/logs
-      
+
       # Mail configuration
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
@@ -62,13 +61,13 @@ services:
       APP_SMS_API_KEY: ${APP_SMS_API_KEY}
       APP_SMS_SENDER: ${APP_SMS_SENDER}
       APP_SMS_API_URL: ${APP_SMS_API_URL}
-      
+
       # Spring Boot Profile
       SPRING_PROFILES_ACTIVE: prod
       TZ: Asia/Kolkata
     volumes:
-      - /opt/ticket_manager_app/uploads:/app/uploads
-      - /opt/ticket_manager_app/logs:/app/logs
+      - ./uploads:/opt/ticket_manager_app/TicketManager/uploads/
+      - ./logs:/opt/ticket_manager_app/TicketManager/logs/
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     networks:
@@ -90,8 +89,8 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
       - /opt/nginx/maintenance:/usr/share/nginx/html/maintenance
-#    depends_on:
-#      - app
+    depends_on:
+      - app
     networks:
       - app-network
 
