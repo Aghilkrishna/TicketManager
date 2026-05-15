@@ -349,6 +349,9 @@ public class UserService {
         boolean hasPan = userIdProofs.stream().anyMatch(id -> "PAN Card".equals(id.getIdProofType()));
         boolean hasMandatoryIdProofs = hasAadhar && hasPan;
         boolean idProofVerified = userIdProofs.stream().anyMatch(id -> Boolean.TRUE.equals(id.getVerified()));
+        boolean aadharVerified = userIdProofs.stream().anyMatch(id -> "Aadhar Card".equals(id.getIdProofType()) && Boolean.TRUE.equals(id.getVerified()));
+        boolean panVerified = userIdProofs.stream().anyMatch(id -> "PAN Card".equals(id.getIdProofType()) && Boolean.TRUE.equals(id.getVerified()));
+        boolean allIdProofsVerified = aadharVerified && panVerified;
         boolean hasPendingVerification = userIdProofs.stream().anyMatch(id -> "PENDING_VERIFICATION".equals(id.getUploadStatus()));
         
         return new AdminDtos.UserDetailsResponse(
@@ -358,6 +361,9 @@ public class UserService {
                 user.getPhone(),
                 user.getFirstName(),
                 user.getLastName(),
+                user.getCompanyName(),
+                user.getContactPerson(),
+                user.getGstNumber(),
                 user.getFlat(),
                 user.getBuilding(),
                 user.getArea(),
@@ -377,6 +383,7 @@ public class UserService {
                 hasPan,
                 hasMandatoryIdProofs,
                 idProofVerified,
+                allIdProofsVerified,
                 hasPendingVerification
         );
     }
