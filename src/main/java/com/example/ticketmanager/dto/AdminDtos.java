@@ -92,6 +92,9 @@ public final class AdminDtos {
             String phone,
             String firstName,
             String lastName,
+            String companyName,
+            String contactPerson,
+            String gstNumber,
             String flat,
             String building,
             String area,
@@ -111,6 +114,7 @@ public final class AdminDtos {
             boolean hasPanCard,
             boolean hasMandatoryIdProofs,
             boolean idProofVerified,
+            boolean allIdProofsVerified,
             boolean hasPendingVerification
     ) {
     }

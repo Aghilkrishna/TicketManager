@@ -57,7 +57,7 @@ public class TicketRestController {
         return ticketService.update(ticketId, principal.getName(), request, files);
     }
 
-    @PreAuthorize("hasAuthority('FEATURE_TICKETS_VIEW')")
+    @PreAuthorize("hasAnyAuthority('FEATURE_TICKETS_VIEW','FEATURE_TICKETS_CREATED_VIEW')")
     @GetMapping
     public Page<AuthDtos.TicketSummary> list(Principal principal,
                                              @RequestParam(defaultValue = "false") boolean adminScope,

@@ -236,7 +236,8 @@ function showSuggestionState(target, content, visible = true) {
 
 async function searchUsers(query, target, filterFn, onSelect) {
   if (!query || query.trim().length < 2) {
-    document.getElementById('vendorUserId').value = '';
+    const vendorUserIdEl = document.getElementById('vendorUserId');
+    if (vendorUserIdEl) vendorUserIdEl.value = '';
     showSuggestionState(target, '', false);
     return;
   }
@@ -296,7 +297,7 @@ async function loadTickets() {
     search: document.getElementById('search').value,
     statuses: document.getElementById('status').value || forcedStatuses.join(','),
     priority: document.getElementById('priority').value,
-    vendorUserId: document.getElementById('vendorUserId').value,
+    vendorUserId: document.getElementById('vendorUserId')?.value ?? '',
     sortBy: currentSortBy,
     direction: currentDirection
   });
@@ -401,7 +402,7 @@ document.getElementById('pageSize').addEventListener('change', event => {
   currentPage = 0;
   loadTickets();
 });
-document.getElementById('vendorSearch').addEventListener('input', debounce(event => searchUsers(
+document.getElementById('vendorSearch')?.addEventListener('input', debounce(event => searchUsers(
   event.target.value,
   document.getElementById('vendorResults'),
   user => hasRole(user, 'ROLE_VENDOR'),

@@ -334,11 +334,23 @@ public class TicketService {
     }
 
     private Specification<Ticket> vendorVisibleSpecification(Long userId) {
-        return (root, query, cb) -> cb.or(
-                cb.equal(root.get("createdBy").get("id"), userId),
-                cb.equal(root.get("assignedTo").get("id"), userId),
-                cb.equal(root.get("vendorUser").get("id"), userId)
-        );
+        return (root, query, cb) -> {
+            var createdByPath = root.get("createdBy");
+            var assignedToPath = root.get("assignedTo");
+            var vendorUserPath = root.get("vendorUser");
+
+            return cb.or(
+                cb.equal(createdByPath.get("id"), userId),
+                cb.and(
+                    assignedToPath.isNotNull(),
+                    cb.equal(assignedToPath.get("id"), userId)
+                ),
+                cb.and(
+                    vendorUserPath.isNotNull(),
+                    cb.equal(vendorUserPath.get("id"), userId)
+                )
+            );
+        };
     }
 
     private Specification<Ticket> statusesSpecification(Set<TicketStatus> statuses) {
@@ -359,17 +371,29 @@ public class TicketService {
         if (assignedToId == null) {
             return Specification.where(null);
         }
-        return (root, query, cb) -> cb.equal(root.get("assignedTo").get("id"), assignedToId);
+        return (root, query, cb) -> {
+            var assignedToPath = root.get("assignedTo");
+            return cb.and(
+                assignedToPath.isNotNull(),
+                cb.equal(assignedToPath.get("id"), assignedToId)
+            );
+        };
     }
 
     private Specification<Ticket> vendorSpecification(Long vendorUserId) {
         if (vendorUserId == null) {
             return Specification.where(null);
         }
-        return (root, query, cb) -> cb.or(
-                cb.equal(root.get("vendorUser").get("id"), vendorUserId),
+        return (root, query, cb) -> {
+            var vendorUserPath = root.get("vendorUser");
+            return cb.or(
+                cb.and(
+                    vendorUserPath.isNotNull(),
+                    cb.equal(vendorUserPath.get("id"), vendorUserId)
+                ),
                 cb.equal(root.get("createdBy").get("id"), vendorUserId)
-        );
+            );
+        };
     }
 
     private Specification<Ticket> searchSpecification(String search) {
@@ -397,16 +421,24 @@ public class TicketService {
         return (root, query, cb) -> {
             query.distinct(true);
             var serviceUsers = root.join("serviceUsers", JoinType.LEFT);
+            var assignedToPath = root.get("assignedTo");
+
             if (assignedOnly) {
                 return cb.or(
-                        cb.equal(root.get("assignedTo").get("id"), userId),
-                        cb.equal(serviceUsers.get("id"), userId)
+                    cb.and(
+                        assignedToPath.isNotNull(),
+                        cb.equal(assignedToPath.get("id"), userId)
+                    ),
+                    cb.equal(serviceUsers.get("id"), userId)
                 );
             }
             return cb.or(
-                    cb.equal(root.get("createdBy").get("id"), userId),
-                    cb.equal(root.get("assignedTo").get("id"), userId),
-                    cb.equal(serviceUsers.get("id"), userId)
+                cb.equal(root.get("createdBy").get("id"), userId),
+                cb.and(
+                    assignedToPath.isNotNull(),
+                    cb.equal(assignedToPath.get("id"), userId)
+                ),
+                cb.equal(serviceUsers.get("id"), userId)
             );
         };
     }
