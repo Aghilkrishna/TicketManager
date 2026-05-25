@@ -450,29 +450,65 @@ function showSuggestionState(target, content, visible = true) {
     return;
   }
   
-  // For assigned user dropdown, move to body to avoid clipping issues
-  if (target.id === 'assignedResults' && visible) {
-    // Move dropdown to body level
+  // Map suggestion panels to their input fields
+  const inputMap = {
+    assignedResults: 'assignedSearch',
+    vendorResults: 'vendorSearch',
+    parentTicketResults: 'parentTicketSearch'
+  };
+
+  const inputId = inputMap[target.id];
+  if (inputId && visible) {
+    // Move dropdown to body once to avoid parent container clipping
     if (!target.dataset.movedToBody) {
       document.body.appendChild(target);
       target.dataset.movedToBody = 'true';
     }
     
-    // Position it relative to the input field
-    const inputField = document.getElementById('assignedSearch');
-    if (inputField) {
+    // Attach anchor so we can reposition on scroll/resize
+    target.dataset.anchorInputId = inputId;
+
+    const reposition = () => {
+      const inputField = document.getElementById(inputId);
+      if (!inputField) return;
       const rect = inputField.getBoundingClientRect();
+      // Use fixed positioning and include page scroll offsets
       target.style.position = 'fixed';
       target.style.top = (rect.bottom + window.scrollY) + 'px';
       target.style.left = (rect.left + window.scrollX) + 'px';
       target.style.width = rect.width + 'px';
-      target.style.zIndex = '999999';
+      // z-index: 20 puts panel below topbar (z-index: 30) but above form content
+      target.style.zIndex = '20';
+    };
+
+    // Store the reposition function and call once now
+    if (!target._repositionHandler) {
+      target._repositionHandler = () => reposition();
+      window.addEventListener('scroll', target._repositionHandler, {passive: true});
+      window.addEventListener('resize', target._repositionHandler);
     }
+    reposition();
   }
   
   target.innerHTML = content;
   target.hidden = !visible;
   
+  // If we're hiding the panel, remove any reposition listeners to avoid leaks
+  if (!visible && target._repositionHandler) {
+    try {
+      window.removeEventListener('scroll', target._repositionHandler, {passive: true});
+    } catch (e) {
+      // ignore
+    }
+    try {
+      window.removeEventListener('resize', target._repositionHandler);
+    } catch (e) {
+      // ignore
+    }
+    delete target._repositionHandler;
+    delete target.dataset.anchorInputId;
+  }
+
   // Add mouse-out hiding logic for customer search suggestion containers
   if (visible && (target.id === 'customerAddressSuggestions' || target.id === 'customerAddressSuggestionsMobile')) {
     // Remove any existing event listeners first

@@ -409,8 +409,71 @@ function parentTicketSuggestionMarkup(ticket) {
 }
 
 function showSuggestionState(target, content, visible = true) {
+  if (!target) {
+    console.error('Target element is null!');
+    return;
+  }
+
+  // Map suggestion panels to their input fields so we can move them to body
+  // and position them absolutely/fixed to avoid clipping and overlap issues.
+  const inputMap = {
+    assignedResults: 'assignedSearch',
+    vendorResults: 'vendorSearch',
+    parentTicketResults: 'parentTicketSearch'
+  };
+
+  const inputId = inputMap[target.id];
+  if (inputId && visible) {
+    // Move dropdown to body once to avoid parent container clipping
+    if (!target.dataset.movedToBody) {
+      document.body.appendChild(target);
+      target.dataset.movedToBody = 'true';
+    }
+
+    // Attach anchor so we can reposition on scroll/resize
+    target.dataset.anchorInputId = inputId;
+
+    const reposition = () => {
+      const inputField = document.getElementById(inputId);
+      if (!inputField) return;
+      const rect = inputField.getBoundingClientRect();
+      // Use fixed positioning and include page scroll offsets to match existing "create" page behavior
+      target.style.position = 'fixed';
+      target.style.top = (rect.bottom + window.scrollY) + 'px';
+      target.style.left = (rect.left + window.scrollX) + 'px';
+      target.style.width = rect.width + 'px';
+      // z-index: 20 puts panel below topbar (z-index: 30) but above form content (z-index: 0)
+      target.style.zIndex = '20';
+    };
+
+    // Store the reposition function for later use and call once now
+    if (!target._repositionHandler) {
+      target._repositionHandler = () => reposition();
+      window.addEventListener('scroll', target._repositionHandler, {passive: true});
+      window.addEventListener('resize', target._repositionHandler);
+    }
+    reposition();
+  }
+
+  // Render content and show/hide the panel
   target.innerHTML = content;
   target.hidden = !visible;
+
+  // If we're hiding the panel, remove any reposition listeners to avoid leaks
+  if (!visible && target._repositionHandler) {
+    try {
+      window.removeEventListener('scroll', target._repositionHandler, {passive: true});
+    } catch (e) {
+      // ignore
+    }
+    try {
+      window.removeEventListener('resize', target._repositionHandler);
+    } catch (e) {
+      // ignore
+    }
+    delete target._repositionHandler;
+    delete target.dataset.anchorInputId;
+  }
 }
 
 function updateAddressPreview() {
