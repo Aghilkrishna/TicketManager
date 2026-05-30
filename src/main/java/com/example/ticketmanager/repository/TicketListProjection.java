@@ -1,6 +1,5 @@
 package com.example.ticketmanager.repository;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public interface TicketListProjection {
@@ -10,7 +9,7 @@ public interface TicketListProjection {
     String getServiceType();
     String getStatus();
     String getPriority();
-    LocalDate getScheduleDate();
+    LocalDateTime getScheduleDate();
     String getCreatedBy();
     String getAssignedTo();
     LocalDateTime getCreatedAt();

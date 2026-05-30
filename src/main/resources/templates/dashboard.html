@@ -95,6 +95,10 @@
     </div>
 </div>
 
+<style>
+.metric-card-clickable { cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.metric-card-clickable:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.13); }
+</style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <script th:src="@{/js/app.js}"></script>
 <script>
@@ -104,6 +108,8 @@ const KNOWN_COLORS = {
   STATUS_SITE_VISITED: '#0F766E',
   STATUS_IN_PROGRESS: '#E69F00',
   STATUS_ON_HOLD: '#CC79A7',
+  STATUS_FOLLOW_UP: '#EA580C',
+  STATUS_SITE_REVISIT: '#166534',
   STATUS_RESOLVED: '#009E73',
   STATUS_CLOSED: '#4B5563',
   STATUS_CANCELLED: '#D55E00'
@@ -212,6 +218,8 @@ const DASHBOARD_METRICS = [
   {key: 'open', title: 'Open Ticket', icon: 'bi bi-folder2-open', statusKey: 'OPEN', tone: 'metric-tone-open'},
   {key: 'inProgress', title: 'Inprogress Ticket', icon: 'bi bi-tools', statusKey: 'IN_PROGRESS', tone: 'metric-tone-progress'},
   {key: 'onHold', title: 'Onhold Ticket', icon: 'bi bi-pause-circle', statusKey: 'ON_HOLD', tone: 'metric-tone-hold'},
+  {key: 'followUp', title: 'Follow Up', icon: 'bi bi-arrow-repeat', statusKey: 'FOLLOW_UP', tone: 'metric-tone-followup'},
+  {key: 'siteRevisit', title: 'Site Revisit', icon: 'bi bi-geo-alt', statusKey: 'SITE_REVISIT', tone: 'metric-tone-revisit'},
   {key: 'quoted', title: 'Quoted Ticket', icon: 'bi bi-file-text', statusKey: 'QUOTED', tone: 'metric-tone-quoted'},
   {key: 'resolved', title: 'Resolved Ticket', icon: 'bi bi-check2-circle', statusKey: 'RESOLVED', tone: 'metric-tone-resolved'},
   {key: 'closed', title: 'Closed Ticket', icon: 'bi bi-lock', statusKey: 'CLOSED', tone: 'metric-tone-closed'},
@@ -226,6 +234,29 @@ function formatMetricValue(value) {
   return new Intl.NumberFormat().format(numericValue);
 }
 
+function getMetricCardUrl(metric) {
+  const isAdmin = /*[[${currentRoles.contains('ROLE_ADMIN')}]]*/ false;
+  const isVendor = /*[[${currentRoles.contains('ROLE_VENDOR')}]]*/ false;
+  const scope = getDashboardScope();
+
+  if (metric.statusKey) {
+    if (isVendor) return `/tickets/created?statuses=${metric.statusKey}`;
+    if (isAdmin && scope === 'all') return `/tickets/all?statuses=${metric.statusKey}`;
+    return `/tickets/pending?statuses=${metric.statusKey}`;
+  }
+
+  if (metric.key === 'totalTickets') {
+    if (isVendor) return '/tickets/created';
+    if (isAdmin && scope === 'all') return '/tickets/all';
+    return '/tickets/pending';
+  }
+
+  if (metric.key === 'activeUsers') return '/admin/users';
+  if (metric.key === 'activeVendors') return '/admin/users?role=ROLE_VENDOR';
+
+  return null;
+}
+
 function renderMetricCards(payload) {
   const container = document.getElementById('dashboardMetrics');
   if (!container) return;
@@ -235,8 +266,9 @@ function renderMetricCards(payload) {
     .filter(metric => visibleCards.has(metric.key))
     .map(metric => {
       const value = metric.statusKey ? (statusCounts[metric.statusKey] ?? 0) : (payload[metric.valueKey] ?? 0);
+      const url = getMetricCardUrl(metric);
       return `
-        <article class="metric-card dashboard-metric-card ${metric.tone}">
+        <article class="metric-card dashboard-metric-card ${metric.tone}${url ? ' metric-card-clickable' : ''}" ${url ? `data-url="${url}"` : ''}>
           <div class="dashboard-metric-icon"><i class="${metric.icon}"></i></div>
           <div class="dashboard-metric-copy">
             <div class="dashboard-metric-title">${metric.title}</div>
@@ -245,6 +277,12 @@ function renderMetricCards(payload) {
         </article>`;
     })
     .join('');
+
+  container.querySelectorAll('[data-url]').forEach(card => {
+    card.addEventListener('click', () => {
+      window.location.href = card.dataset.url;
+    });
+  });
 }
 
 async function loadDashboardMetrics() {
