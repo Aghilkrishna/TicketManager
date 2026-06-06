@@ -23,6 +23,19 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class EmailService {
+
+    public record TicketDigestRow(
+            Long id,
+            String title,
+            String statusLabel,
+            String statusColor,
+            String priorityLabel,
+            String assignedToName,
+            String customerName,
+            String updatedAt,
+            String ticketUrl
+    ) {}
+
     private final JavaMailSender mailSender;
     private final AppProperties appProperties;
     private final TemplateEngine templateEngine;
@@ -111,6 +124,37 @@ public class EmailService {
         sendHtmlWithCc(assignedUser.getEmail(), subject, html, ccEmails);
     }
 
+    public void sendOpenTicketsDigest(AppUser user, List<TicketDigestRow> tickets, String generatedDate) {
+        Context context = new Context();
+        context.setVariable("baseUrl", appProperties.baseUrl());
+        context.setVariable("userDisplayName", displayName(user));
+        context.setVariable("tickets", tickets);
+        context.setVariable("totalCount", tickets.size());
+        context.setVariable("generatedDate", generatedDate);
+        String subject = "Your Open Tickets — " + generatedDate + " | Ticket Manager";
+        String html = templateEngine.process("email/open-tickets-digest", context);
+        if (!appProperties.mail().enabled()) {
+            log.info("Mail disabled. Open tickets digest skipped. To: {} Tickets: {}", user.getEmail(), tickets.size());
+            return;
+        }
+        sendHtml(user.getEmail(), subject, html);
+    }
+
+    public void sendFollowupAdminDigest(List<String> adminEmails, List<TicketDigestRow> tickets, String generatedDate) {
+        Context context = new Context();
+        context.setVariable("baseUrl", appProperties.baseUrl());
+        context.setVariable("tickets", tickets);
+        context.setVariable("totalCount", tickets.size());
+        context.setVariable("generatedDate", generatedDate);
+        String subject = "Follow-up & Site Revisit Tickets — " + generatedDate + " | Ticket Manager";
+        String html = templateEngine.process("email/followup-admin-digest", context);
+        if (!appProperties.mail().enabled()) {
+            log.info("Mail disabled. Admin follow-up digest skipped. To: {} Tickets: {}", adminEmails, tickets.size());
+            return;
+        }
+        sendHtmlToMultiple(adminEmails, subject, html);
+    }
+
     public void send(String to, String subject, String text) {
         if (!appProperties.mail().enabled()) {
             log.info("Mail disabled. To: {} Subject: {} Body: {}", to, subject, text);
@@ -149,6 +193,20 @@ public class EmailService {
             mailSender.send(message);
         } catch (MessagingException | java.io.UnsupportedEncodingException ex) {
             throw new IllegalStateException("Failed to send email", ex);
+        }
+    }
+
+    private void sendHtmlToMultiple(List<String> toEmails, String subject, String html) {
+        try {
+            var message = mailSender.createMimeMessage();
+            var helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, StandardCharsets.UTF_8.name());
+            helper.setFrom(appProperties.mail().fromAddress(), appProperties.mail().fromName());
+            helper.setTo(toEmails.toArray(String[]::new));
+            helper.setSubject(subject);
+            helper.setText(html, true);
+            mailSender.send(message);
+        } catch (MessagingException | java.io.UnsupportedEncodingException e) {
+            log.error("Failed to send multi-recipient email to {}: {}", toEmails, e.getMessage(), e);
         }
     }
 
