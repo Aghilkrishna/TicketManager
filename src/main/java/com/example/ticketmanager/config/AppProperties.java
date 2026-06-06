@@ -31,6 +31,6 @@ public record AppProperties(
     public record Schedule(boolean enabled, String cron) {
     }
 
-    public record ScheduleReminder(boolean enabled, String dayBeforeCron, String onDayCron) {
+    public record ScheduleReminder(boolean enabled, String dayBeforeCron, String onDayCron, String dailyDigestCron) {
     }
 }

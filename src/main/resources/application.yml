@@ -50,3 +50,4 @@ app:
     enabled: ${APP_SCHEDULE_REMINDER_ENABLED:true}
     day-before-cron: ${APP_SCHEDULE_REMINDER_DAY_BEFORE_CRON:0 0 18 * * ?}
     on-day-cron: ${APP_SCHEDULE_REMINDER_ON_DAY_CRON:0 0 9 * * ?}
+    daily-digest-cron: ${APP_DAILY_DIGEST_CRON:0 0 6 * * ?}
