@@ -382,6 +382,11 @@ public class DataInitializer {
                         setting.setEmailEnabled(false);
                         setting.setSmsEnabled(true);
                         break;
+                    case SCHEDULE_REMINDER_DAY_BEFORE:
+                    case SCHEDULE_REMINDER_ON_DAY:
+                        setting.setEmailEnabled(true);
+                        setting.setSmsEnabled(false);
+                        break;
                 }
                 
                 emailNotificationSettingRepository.save(setting);

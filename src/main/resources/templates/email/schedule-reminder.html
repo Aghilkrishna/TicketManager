@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,sans-serif;color:#1f2937;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f7fb;padding:24px 0;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="640" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,0.08);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#0f766e,#0f6cbd);padding:28px 32px;color:#ffffff;">
+            <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.85;margin-bottom:6px;">Ticket Manager</div>
+            <h1 style="margin:0 0 8px;font-size:26px;font-weight:700;" th:text="${headline}">Schedule Reminder</h1>
+            <span th:if="${isDayBefore}"
+                  style="display:inline-block;background:rgba(255,255,255,0.2);color:#fff;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:.05em;">
+              TOMORROW
+            </span>
+            <span th:unless="${isDayBefore}"
+                  style="display:inline-block;background:rgba(255,255,255,0.25);color:#fff;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:.05em;">
+              TODAY
+            </span>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:32px;">
+            <p style="margin:0 0 20px;font-size:16px;">
+              Hi <strong th:text="${userDisplayName}">User</strong>,
+            </p>
+            <p th:if="${isDayBefore}" style="margin:0 0 24px;line-height:1.7;font-size:15px;color:#374151;">
+              This is a reminder that the following ticket is scheduled for <strong>tomorrow</strong>. Please make sure you are prepared and have everything in order before the visit.
+            </p>
+            <p th:unless="${isDayBefore}" style="margin:0 0 24px;line-height:1.7;font-size:15px;color:#374151;">
+              This is your <strong>day-of reminder</strong> for a ticket scheduled for today. Please check the details below and proceed accordingly.
+            </p>
+
+            <!-- Ticket details card -->
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
+                   style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:28px;">
+              <tr>
+                <td style="padding:14px 18px;background:#f1f5f9;border-bottom:1px solid #e2e8f0;">
+                  <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;">Ticket Details</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0;">
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td style="padding:12px 18px;font-size:13px;color:#64748b;font-weight:600;width:38%;border-bottom:1px solid #f1f5f9;">Ticket ID</td>
+                      <td style="padding:12px 18px;font-size:14px;color:#0f172a;font-weight:700;border-bottom:1px solid #f1f5f9;">
+                        #<span th:text="${ticketId}">0</span>
+                      </td>
+                    </tr>
+                    <tr style="background:#fafbfc;">
+                      <td style="padding:12px 18px;font-size:13px;color:#64748b;font-weight:600;border-bottom:1px solid #f1f5f9;">Title</td>
+                      <td style="padding:12px 18px;font-size:14px;color:#0f172a;border-bottom:1px solid #f1f5f9;" th:text="${ticketTitle}">Title</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:12px 18px;font-size:13px;color:#64748b;font-weight:600;border-bottom:1px solid #f1f5f9;">Scheduled At</td>
+                      <td style="padding:12px 18px;font-size:14px;color:#0f6cbd;font-weight:700;border-bottom:1px solid #f1f5f9;" th:text="${scheduleDateTime}">-</td>
+                    </tr>
+                    <tr style="background:#fafbfc;">
+                      <td style="padding:12px 18px;font-size:13px;color:#64748b;font-weight:600;border-bottom:1px solid #f1f5f9;">Service Type</td>
+                      <td style="padding:12px 18px;font-size:14px;color:#0f172a;border-bottom:1px solid #f1f5f9;" th:text="${serviceTypeLabel}">-</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:12px 18px;font-size:13px;color:#64748b;font-weight:600;border-bottom:1px solid #f1f5f9;">Status</td>
+                      <td style="padding:12px 18px;font-size:14px;color:#0f172a;border-bottom:1px solid #f1f5f9;" th:text="${ticketStatus}">-</td>
+                    </tr>
+                    <tr style="background:#fafbfc;">
+                      <td style="padding:12px 18px;font-size:13px;color:#64748b;font-weight:600;border-bottom:1px solid #f1f5f9;">Priority</td>
+                      <td style="padding:12px 18px;font-size:14px;color:#0f172a;border-bottom:1px solid #f1f5f9;" th:text="${ticketPriority}">-</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:12px 18px;font-size:13px;color:#64748b;font-weight:600;border-bottom:1px solid #f1f5f9;">Customer</td>
+                      <td style="padding:12px 18px;font-size:14px;color:#0f172a;border-bottom:1px solid #f1f5f9;" th:text="${customerName}">-</td>
+                    </tr>
+                    <tr style="background:#fafbfc;">
+                      <td style="padding:12px 18px;font-size:13px;color:#64748b;font-weight:600;">Address</td>
+                      <td style="padding:12px 18px;font-size:14px;color:#0f172a;" th:text="${address}">-</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <!-- CTA Button -->
+            <p style="margin:0 0 24px;text-align:center;">
+              <a th:href="${actionUrl}" style="display:inline-block;background:linear-gradient(135deg,#0f766e,#0f6cbd);color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:15px;">
+                Open Ticket
+              </a>
+            </p>
+
+            <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
+              You are receiving this reminder because this ticket is assigned to you. Admin users are copied on this notification.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="border-top:1px solid #e5e7eb;padding:16px 32px;background:#f8fafc;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+              <tr>
+                <td style="font-size:12px;color:#9ca3af;">Ticket Manager &mdash; Automated Schedule Reminder</td>
+                <td align="right" style="font-size:12px;">
+                  <a th:href="${baseUrl}" style="color:#0f6cbd;text-decoration:none;">Open Application</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

@@ -2,6 +2,7 @@ package com.example.ticketmanager.service;
 
 import com.example.ticketmanager.config.AppProperties;
 import com.example.ticketmanager.entity.AppUser;
+import com.example.ticketmanager.entity.Ticket;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
 import lombok.RequiredArgsConstructor;
@@ -71,6 +72,45 @@ public class EmailService {
         );
     }
 
+    public void sendScheduleReminderEmail(Ticket ticket, AppUser assignedUser, List<String> ccEmails, String reminderType) {
+        boolean isDayBefore = "DAY_BEFORE".equals(reminderType);
+        String headline = isDayBefore ? "Reminder: Scheduled Visit Tomorrow" : "Reminder: Scheduled Visit Today";
+        String badgeLabel = isDayBefore ? "Tomorrow" : "Today";
+        String subject = isDayBefore
+                ? "Ticket #" + ticket.getId() + " is scheduled for tomorrow"
+                : "Ticket #" + ticket.getId() + " is scheduled today";
+
+        String scheduledStr = ticket.getScheduleDate() != null
+                ? ticket.getScheduleDate().format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a"))
+                : "Not set";
+
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("userDisplayName", displayName(assignedUser));
+        variables.put("headline", headline);
+        variables.put("badgeLabel", badgeLabel);
+        variables.put("isDayBefore", isDayBefore);
+        variables.put("ticketId", ticket.getId());
+        variables.put("ticketTitle", ticket.getTitle());
+        variables.put("ticketStatus", ticket.getStatus().name().replace('_', ' '));
+        variables.put("ticketPriority", ticket.getPriority().name());
+        variables.put("serviceTypeLabel", ticket.getServiceType() != null ? ticket.getServiceType().label() : "-");
+        variables.put("scheduleDateTime", scheduledStr);
+        variables.put("customerName", ticket.getCustomerName() != null ? ticket.getCustomerName() : "-");
+        variables.put("address", ticket.getAddress() != null ? ticket.getAddress() : "-");
+        variables.put("actionUrl", appProperties.baseUrl() + "/tickets/view?id=" + ticket.getId());
+
+        Context context = new Context();
+        context.setVariable("baseUrl", appProperties.baseUrl());
+        variables.forEach(context::setVariable);
+        String html = templateEngine.process("email/schedule-reminder", context);
+
+        if (!appProperties.mail().enabled()) {
+            log.info("Mail disabled. Schedule reminder skipped. To: {} Ticket: #{}", assignedUser.getEmail(), ticket.getId());
+            return;
+        }
+        sendHtmlWithCc(assignedUser.getEmail(), subject, html, ccEmails);
+    }
+
     public void send(String to, String subject, String text) {
         if (!appProperties.mail().enabled()) {
             log.info("Mail disabled. To: {} Subject: {} Body: {}", to, subject, text);
@@ -89,6 +129,27 @@ public class EmailService {
             return;
         }
         sendHtml(to, subject, html);
+    }
+
+    private void sendHtmlWithCc(String to, String subject, String html, List<String> ccEmails) {
+        try {
+            var message = mailSender.createMimeMessage();
+            var helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, StandardCharsets.UTF_8.name());
+            helper.setTo(to);
+            if (ccEmails != null && !ccEmails.isEmpty()) {
+                helper.setCc(ccEmails.stream().filter(e -> !e.equalsIgnoreCase(to)).distinct().toArray(String[]::new));
+            }
+            helper.setSubject(subject);
+            helper.setText(html, true);
+            String fromAddress = appProperties.mail().fromAddress();
+            String fromName = appProperties.mail().fromName();
+            if (fromAddress != null && !fromAddress.isBlank()) {
+                helper.setFrom(new InternetAddress(fromAddress, fromName == null ? "" : fromName).toString());
+            }
+            mailSender.send(message);
+        } catch (MessagingException | java.io.UnsupportedEncodingException ex) {
+            throw new IllegalStateException("Failed to send email", ex);
+        }
     }
 
     private void sendHtml(String to, String subject, String html) {

@@ -182,6 +182,7 @@ public class UserService {
         }
         AppUser user = token.getUser();
         user.setPassword(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
         token.setUsed(true);
     }
 
@@ -238,6 +239,14 @@ public class UserService {
     @Transactional(readOnly = true)
     public List<AppUser> getAdmins() {
         return userRepository.findEnabledUsersByActiveRoleNames(List.of("ROLE_ADMIN"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> getAdminEmails() {
+        return userRepository.findEnabledUsersByActiveRoleNames(List.of("ROLE_ADMIN")).stream()
+                .filter(u -> u.getEmail() != null && !u.getEmail().isBlank())
+                .map(AppUser::getEmail)
+                .toList();
     }
 
     @Transactional(readOnly = true)
