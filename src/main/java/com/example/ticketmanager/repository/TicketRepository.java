@@ -318,4 +318,10 @@ public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecif
             Pageable pageable
     );
 
+    @Query("select distinct t.assignedTo from Ticket t where t.assignedTo is not null and t.status in :statuses")
+    List<AppUser> findDistinctAssignedUsersWithActiveTickets(@Param("statuses") Collection<TicketStatus> statuses);
+
+    @EntityGraph(attributePaths = {"assignedTo", "createdBy"})
+    List<Ticket> findByStatusInOrderByUpdatedAtDesc(Collection<TicketStatus> statuses);
+
 }
