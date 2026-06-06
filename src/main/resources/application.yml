@@ -45,9 +45,9 @@ app:
   reports:
     schedule:
       enabled: ${APP_REPORTS_SCHEDULE_ENABLED:true}
-      cron: ${APP_REPORTS_SCHEDULE_CRON:0 0 1 * * ?}
+      cron: ${APP_REPORTS_SCHEDULE_CRON:0 0 6 * * ?}
   schedule-reminder:
     enabled: ${APP_SCHEDULE_REMINDER_ENABLED:true}
     day-before-cron: ${APP_SCHEDULE_REMINDER_DAY_BEFORE_CRON:0 0 18 * * ?}
-    on-day-cron: ${APP_SCHEDULE_REMINDER_ON_DAY_CRON:0 0 9 * * ?}
+    on-day-cron: ${APP_SCHEDULE_REMINDER_ON_DAY_CRON:0 0 6 * * ?}
     daily-digest-cron: ${APP_DAILY_DIGEST_CRON:0 0 6 * * ?}
