@@ -384,6 +384,8 @@ public class DataInitializer {
                         break;
                     case SCHEDULE_REMINDER_DAY_BEFORE:
                     case SCHEDULE_REMINDER_ON_DAY:
+                    case OPEN_TICKETS_DAILY_REMINDER:
+                    case FOLLOWUP_ADMIN_DAILY_REMINDER:
                         setting.setEmailEnabled(true);
                         setting.setSmsEnabled(false);
                         break;
