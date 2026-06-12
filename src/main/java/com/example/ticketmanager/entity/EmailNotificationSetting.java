@@ -18,7 +18,7 @@ import lombok.Setter;
 public class EmailNotificationSetting {
     @Id
     @Enumerated(EnumType.STRING)
-    @Column(name = "action_name", nullable = false, length = 60)
+    @Column(name = "action_name", nullable = false, columnDefinition = "varchar(60)")
     private EmailNotificationAction action;
 
     @Column(name = "email_enabled", nullable = false)
