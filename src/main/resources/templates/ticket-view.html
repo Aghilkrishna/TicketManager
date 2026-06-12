@@ -42,7 +42,7 @@
                             </div>
                             <div class="col-md-3">
                                 <div class="small text-muted text-uppercase mb-1">Schedule Date</div>
-                                <div class="fw-semibold" th:text="${ticket.scheduleDate != null ? ticket.scheduleDate : 'Not scheduled'}"></div>
+                                <div class="fw-semibold" th:text="${ticket.scheduleDate != null ? #temporals.format(ticket.scheduleDate, 'dd MMM yyyy, HH:mm') : 'Not scheduled'}"></div>
                             </div>
                             <div class="col-md-3">
                                 <div class="small text-muted text-uppercase mb-1">Site Visits</div>

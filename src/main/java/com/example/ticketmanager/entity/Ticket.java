@@ -21,7 +21,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -121,7 +120,7 @@ public class Ticket {
     @Column(length = 3000)
     private String additionalNotes;
 
-    private LocalDate scheduleDate;
+    private LocalDateTime scheduleDate;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

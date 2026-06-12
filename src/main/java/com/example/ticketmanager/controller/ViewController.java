@@ -129,7 +129,7 @@ public class ViewController {
         if (statuses != null && !statuses.isBlank()) {
             model.addAttribute("forcedStatuses", java.util.List.of(statuses));
         } else {
-            model.addAttribute("forcedStatuses", java.util.List.of("LEADS", "OPEN", "SITE_VISITED", "IN_PROGRESS", "ON_HOLD"));
+            model.addAttribute("forcedStatuses", java.util.List.of("LEADS", "OPEN", "SITE_VISITED", "IN_PROGRESS", "ON_HOLD", "FOLLOW_UP", "SITE_REVISIT"));
         }
         
         model.addAttribute("assignedOnly", true);

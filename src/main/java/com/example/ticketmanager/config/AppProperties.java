@@ -10,7 +10,8 @@ public record AppProperties(
         String uploadDir,
         Masking masking,
         Sms sms,
-        Reports reports
+        Reports reports,
+        ScheduleReminder scheduleReminder
 ) {
     public record Jwt(String secret, long expiration) {
     }
@@ -28,5 +29,8 @@ public record AppProperties(
     }
 
     public record Schedule(boolean enabled, String cron) {
+    }
+
+    public record ScheduleReminder(boolean enabled, String dayBeforeCron, String onDayCron, String dailyDigestCron) {
     }
 }

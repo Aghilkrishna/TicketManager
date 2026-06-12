@@ -90,7 +90,7 @@
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Schedule Date</label>
-                                        <input class="form-control" type="date" name="scheduleDate" th:value="${ticket.scheduleDate}">
+                                        <input class="form-control" type="datetime-local" name="scheduleDate" th:value="${ticket.scheduleDate}">
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Site Visits Counter</label>
@@ -110,6 +110,8 @@
                                             <option value="SITE_VISITED" th:selected="${ticket.status == 'SITE_VISITED'}">Site Visited</option>
                                             <option value="IN_PROGRESS" th:selected="${ticket.status == 'IN_PROGRESS'}">In Progress</option>
                                             <option value="ON_HOLD" th:selected="${ticket.status == 'ON_HOLD'}">On Hold</option>
+                                            <option value="FOLLOW_UP" th:selected="${ticket.status == 'FOLLOW_UP'}">Follow Up</option>
+                                            <option value="SITE_REVISIT" th:selected="${ticket.status == 'SITE_REVISIT'}">Site Revisit</option>
                                             <option value="QUOTED" th:selected="${ticket.status == 'QUOTED'}">Quoted</option>
                                             <option value="RESOLVED" th:selected="${ticket.status == 'RESOLVED'}">Resolved</option>
                                             <option value="CLOSED" th:selected="${ticket.status == 'CLOSED'}">Closed</option>
@@ -692,7 +694,7 @@ if (agentEditor) {
       return;
     }
     if (field.id === 'ticketStatus') {
-      const allowed = ['SITE_VISITED', 'IN_PROGRESS', 'ON_HOLD', 'QUOTED', 'RESOLVED', 'CANCELLED'];
+      const allowed = ['SITE_VISITED', 'IN_PROGRESS', 'ON_HOLD', 'FOLLOW_UP', 'SITE_REVISIT', 'QUOTED', 'RESOLVED', 'CANCELLED'];
       Array.from(field.options).forEach(opt => {
         if (!allowed.includes(opt.value) && !opt.selected) {
            opt.disabled = true;
