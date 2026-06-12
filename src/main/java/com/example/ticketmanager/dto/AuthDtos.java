@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.util.List;
@@ -151,7 +150,7 @@ public final class AuthDtos {
             BigDecimal actualCost,
             @Size(max = 3000) String additionalNotes,
             @Size(max = 2000) String initialComment,
-            LocalDate scheduleDate,
+            LocalDateTime scheduleDate,
             String priority,
             String status,
             Long assignedToId,
@@ -193,7 +192,7 @@ public final class AuthDtos {
             String additionalNotes,
             String status,
             String priority,
-            LocalDate scheduleDate,
+            LocalDateTime scheduleDate,
             String createdBy,
             String updatedBy,
             Long assignedToId,

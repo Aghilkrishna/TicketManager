@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -294,7 +293,7 @@ public class DataInitializer {
         ticket.setPricingModel(TicketPricingModel.FIXED_PRICE);
         ticket.setEstimatedCost(estimatedCost);
         ticket.setBillingStatus(TicketBillingStatus.UNPAID);
-        ticket.setScheduleDate(LocalDate.now().plusDays((int)(Math.random() * 10) + 1));
+        ticket.setScheduleDate(LocalDateTime.now().plusDays((int)(Math.random() * 10) + 1));
         
         // Set customer details from address
         ticket.setCustomerName(address.getCustomerName());
@@ -382,6 +381,13 @@ public class DataInitializer {
                     case CHAT_MESSAGE:
                         setting.setEmailEnabled(false);
                         setting.setSmsEnabled(true);
+                        break;
+                    case SCHEDULE_REMINDER_DAY_BEFORE:
+                    case SCHEDULE_REMINDER_ON_DAY:
+                    case OPEN_TICKETS_DAILY_REMINDER:
+                    case FOLLOWUP_ADMIN_DAILY_REMINDER:
+                        setting.setEmailEnabled(true);
+                        setting.setSmsEnabled(false);
                         break;
                 }
                 

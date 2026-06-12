@@ -12,8 +12,9 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
+import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 
 public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecificationExecutor<Ticket> {
 
@@ -288,6 +289,10 @@ public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecif
     @EntityGraph(attributePaths = {"assignedTo", "assignedTo.roles"})
     List<Ticket> findByAssignedToIsNotNullAndStatusIn(Collection<TicketStatus> statuses);
 
+    @Query("select t from Ticket t where t.assignedTo is not null and t.scheduleDate >= :start and t.scheduleDate < :end and t.status not in :excludedStatuses")
+    @EntityGraph(attributePaths = {"assignedTo", "createdBy"})
+    List<Ticket> findScheduledTicketsForReminder(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, @Param("excludedStatuses") Collection<TicketStatus> excludedStatuses);
+
     @EntityGraph(attributePaths = {"assignedTo", "assignedTo.roles", "createdBy"})
     List<Ticket> findByAssignedToIdAndStatusInOrderByUpdatedAtDesc(Long assignedToId, Collection<TicketStatus> statuses);
 
@@ -312,5 +317,11 @@ public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecif
             @Param("excludeTicketId") Long excludeTicketId,
             Pageable pageable
     );
+
+    @Query("select distinct t.assignedTo from Ticket t where t.assignedTo is not null and t.status in :statuses")
+    List<AppUser> findDistinctAssignedUsersWithActiveTickets(@Param("statuses") Collection<TicketStatus> statuses);
+
+    @EntityGraph(attributePaths = {"assignedTo", "createdBy"})
+    List<Ticket> findByStatusInOrderByUpdatedAtDesc(Collection<TicketStatus> statuses);
 
 }

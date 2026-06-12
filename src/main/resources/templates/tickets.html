@@ -28,7 +28,7 @@
                         <input id="search" class="form-control" placeholder="Search by Ticket ID, Type, Title, Priority, Status, Vendor, Created By, Created Date, Scheduled Date, Updated Date, Assigned To, Customer name, Customer mobile">
                         <select id="status" class="form-select">
                             <option value="">All status</option>
-                            <option>LEADS</option><option>OPEN</option><option>SITE_VISITED</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>QUOTED</option><option>RESOLVED</option><option>CLOSED</option><option>CANCELLED</option>
+                            <option>LEADS</option><option>OPEN</option><option>SITE_VISITED</option><option>IN_PROGRESS</option><option>ON_HOLD</option><option>FOLLOW_UP</option><option>SITE_REVISIT</option><option>QUOTED</option><option>RESOLVED</option><option>CLOSED</option><option>CANCELLED</option>
                         </select>
                         <select id="priority" class="form-select">
                             <option value="">All priority</option>
@@ -320,7 +320,7 @@ async function loadTickets() {
         <td>${ticket.vendorCompanyName || '-'}</td>
         <td>${ticket.createdBy || '-'}</td>
         <td>${formatDateTime(ticket.createdAt)}</td>
-        <td>${formatDate(ticket.scheduleDate)}</td>
+        <td>${formatDateTime(ticket.scheduleDate)}</td>
         <!-- <td>${formatDateTime(ticket.updatedAt)}</td> -->
         <td><span class="status-pill ${ticket.status}">${ticket.status}</span></td>
         <td><span class="priority-pill ${ticket.priority}">${ticket.priority}</span></td>
@@ -413,10 +413,9 @@ document.getElementById('vendorSearch')?.addEventListener('input', debounce(even
     loadTickets();
   }
 ), 220));
-loadTickets();
-
-// Initialize URL parameters after page load
+// Initialize URL parameters before loading so filters are applied on first fetch
 initializeFromUrlParams();
+loadTickets();
 
 if (typeof SockJS !== 'undefined' && typeof Stomp !== 'undefined') {
   const socket = new SockJS('/ws');
