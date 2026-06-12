@@ -227,31 +227,130 @@
                     </section>
                 </div>
 
-                <div class="col-xl-5" th:if="${adminTicketScope}">
+                <div class="col-xl-5" th:if="${adminTicketScope or agentEditorView or vendorOnlyEditor}"
+                     th:with="clientPmt=${ticket.paymentByType('CLIENT')},techPmt=${ticket.paymentByType('TECHNICIAN')},vendorPmt=${ticket.paymentByType('VENDOR')}">
                     <section class="form-card glass-card h-100">
-                        <div class="section-title mb-3">Price Section</div>
-                        <div class="row g-3">
-                            <div class="col-12">
-                                <label class="form-label">Pricing Model</label>
-                                <select class="form-select" name="pricingModel">
-                                    <option value="" th:selected="${ticket.pricingModel == null}">Select pricing model</option>
-                                    <option value="FIXED_PRICE" th:selected="${ticket.pricingModel == 'FIXED_PRICE'}">Fixed Price</option>
-                                    <option value="HOURLY_RATE" th:selected="${ticket.pricingModel == 'HOURLY_RATE'}">Hourly Rate</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Estimated Cost</label>
-                                <input class="form-control" name="estimatedCost" type="number" step="0.01" min="0" th:value="${ticket.estimatedCost}">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Actual Cost</label>
-                                <input class="form-control" name="actualCost" type="number" step="0.01" min="0" th:value="${ticket.actualCost}">
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">Additional Notes</label>
-                                <textarea class="form-control" name="additionalNotes" rows="8" maxlength="3000" th:text="${ticket.additionalNotes}"></textarea>
+                        <div class="section-title mb-3">Payment</div>
+
+                        <!-- Client Payment -->
+                        <div th:if="${adminTicketScope or agentEditorView}" class="mb-4">
+                            <div class="mb-2"><span class="badge bg-primary-subtle text-primary">Client Payment</span></div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label small mb-1">Expected Price</label>
+                                    <input class="form-control form-control-sm" name="clientExpectedPrice" type="number" step="0.01" min="0" placeholder="0.00"
+                                           th:value="${clientPmt != null ? clientPmt.expectedPrice() : null}">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-1">Actual Price</label>
+                                    <input class="form-control form-control-sm" name="clientActualPrice" type="number" step="0.01" min="0" placeholder="0.00"
+                                           th:value="${clientPmt != null ? clientPmt.actualPrice() : null}">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-1">Mode</label>
+                                    <select class="form-select form-select-sm" name="clientPaymentMode">
+                                        <option value="">Mode</option>
+                                        <option value="CASH" th:selected="${clientPmt != null and 'CASH' == clientPmt.paymentMode()}">Cash</option>
+                                        <option value="BANK_TRANSFER" th:selected="${clientPmt != null and 'BANK_TRANSFER' == clientPmt.paymentMode()}">Bank Transfer</option>
+                                        <option value="UPI" th:selected="${clientPmt != null and 'UPI' == clientPmt.paymentMode()}">UPI</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-1">Status</label>
+                                    <select class="form-select form-select-sm" name="clientPaymentStatus">
+                                        <option value="">Status</option>
+                                        <option value="PENDING" th:selected="${clientPmt != null and 'PENDING' == clientPmt.status()}">Pending</option>
+                                        <option value="PAID_TO_YUBIX" th:selected="${clientPmt != null and 'PAID_TO_YUBIX' == clientPmt.status()}">Paid to Yubix</option>
+                                        <option value="PAID_TO_TECHNICIAN" th:selected="${clientPmt != null and 'PAID_TO_TECHNICIAN' == clientPmt.status()}">Paid to Technician</option>
+                                        <option value="PAID_TO_VENDOR" th:selected="${clientPmt != null and 'PAID_TO_VENDOR' == clientPmt.status()}">Paid to Vendor</option>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small mb-1">Payment Date &amp; Time</label>
+                                    <input class="form-control form-control-sm" name="clientPaymentDatetime" type="datetime-local"
+                                           th:value="${clientPmt != null and clientPmt.paymentDatetime() != null ? #temporals.format(clientPmt.paymentDatetime(), 'yyyy-MM-dd''T''HH:mm') : ''}">
+                                </div>
                             </div>
                         </div>
+
+                        <!-- Technician Payment -->
+                        <div th:if="${adminTicketScope or agentEditorView}" class="mb-4">
+                            <div class="mb-2"><span class="badge bg-success-subtle text-success">Technician Payment</span></div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label small mb-1">Expected Price</label>
+                                    <input class="form-control form-control-sm" name="technicianExpectedPrice" type="number" step="0.01" min="0" placeholder="0.00"
+                                           th:value="${techPmt != null ? techPmt.expectedPrice() : null}">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-1">Actual Price</label>
+                                    <input class="form-control form-control-sm" name="technicianActualPrice" type="number" step="0.01" min="0" placeholder="0.00"
+                                           th:value="${techPmt != null ? techPmt.actualPrice() : null}">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-1">Mode</label>
+                                    <select class="form-select form-select-sm" name="technicianPaymentMode">
+                                        <option value="">Mode</option>
+                                        <option value="CASH" th:selected="${techPmt != null and 'CASH' == techPmt.paymentMode()}">Cash</option>
+                                        <option value="BANK_TRANSFER" th:selected="${techPmt != null and 'BANK_TRANSFER' == techPmt.paymentMode()}">Bank Transfer</option>
+                                        <option value="UPI" th:selected="${techPmt != null and 'UPI' == techPmt.paymentMode()}">UPI</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-1">Status</label>
+                                    <select class="form-select form-select-sm" name="technicianPaymentStatus">
+                                        <option value="">Status</option>
+                                        <option value="PENDING" th:selected="${techPmt != null and 'PENDING' == techPmt.status()}">Pending</option>
+                                        <option value="PAID" th:selected="${techPmt != null and 'PAID' == techPmt.status()}">Paid</option>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small mb-1">Payment Date &amp; Time</label>
+                                    <input class="form-control form-control-sm" name="technicianPaymentDatetime" type="datetime-local"
+                                           th:value="${techPmt != null and techPmt.paymentDatetime() != null ? #temporals.format(techPmt.paymentDatetime(), 'yyyy-MM-dd''T''HH:mm') : ''}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Vendor Payment -->
+                        <div th:if="${adminTicketScope or vendorOnlyEditor}">
+                            <div class="mb-2"><span class="badge bg-warning-subtle text-warning-emphasis">Vendor Payment</span></div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label small mb-1">Expected Price</label>
+                                    <input class="form-control form-control-sm" name="vendorExpectedPrice" type="number" step="0.01" min="0" placeholder="0.00"
+                                           th:value="${vendorPmt != null ? vendorPmt.expectedPrice() : null}">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-1">Actual Price</label>
+                                    <input class="form-control form-control-sm" name="vendorActualPrice" type="number" step="0.01" min="0" placeholder="0.00"
+                                           th:value="${vendorPmt != null ? vendorPmt.actualPrice() : null}">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-1">Mode</label>
+                                    <select class="form-select form-select-sm" name="vendorPaymentMode">
+                                        <option value="">Mode</option>
+                                        <option value="CASH" th:selected="${vendorPmt != null and 'CASH' == vendorPmt.paymentMode()}">Cash</option>
+                                        <option value="BANK_TRANSFER" th:selected="${vendorPmt != null and 'BANK_TRANSFER' == vendorPmt.paymentMode()}">Bank Transfer</option>
+                                        <option value="UPI" th:selected="${vendorPmt != null and 'UPI' == vendorPmt.paymentMode()}">UPI</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-1">Status</label>
+                                    <select class="form-select form-select-sm" name="vendorPaymentStatus">
+                                        <option value="">Status</option>
+                                        <option value="PENDING" th:selected="${vendorPmt != null and 'PENDING' == vendorPmt.status()}">Pending</option>
+                                        <option value="PAID" th:selected="${vendorPmt != null and 'PAID' == vendorPmt.status()}">Paid</option>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small mb-1">Payment Date &amp; Time</label>
+                                    <input class="form-control form-control-sm" name="vendorPaymentDatetime" type="datetime-local"
+                                           th:value="${vendorPmt != null and vendorPmt.paymentDatetime() != null ? #temporals.format(vendorPmt.paymentDatetime(), 'yyyy-MM-dd''T''HH:mm') : ''}">
+                                </div>
+                            </div>
+                        </div>
+
                     </section>
                 </div>
 
