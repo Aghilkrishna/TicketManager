@@ -4,6 +4,8 @@ import com.example.ticketmanager.dto.AdminDtos;
 import com.example.ticketmanager.entity.AppUser;
 import com.example.ticketmanager.entity.Ticket;
 import com.example.ticketmanager.entity.TicketBillingStatus;
+import com.example.ticketmanager.entity.TicketPayment;
+import com.example.ticketmanager.entity.TicketPaymentType;
 import com.example.ticketmanager.entity.TicketStatus;
 import com.example.ticketmanager.exception.AppException;
 import com.example.ticketmanager.repository.TicketRepository;
@@ -22,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -83,13 +86,26 @@ public class StaffBillingService {
             boolean isUnpaidClosed = ticket.getStatus() == TicketStatus.CLOSED
                     && ticket.getBillingStatus() != TicketBillingStatus.PAID;
             if (isResolved || isUnpaidClosed) {
+                Optional<TicketPayment> techPmt = getTechnicianPayment(ticket);
+                String paymentMode = techPmt
+                        .map(p -> p.getPaymentMode() == null ? null : p.getPaymentMode().name())
+                        .orElse(null);
+                LocalDateTime paymentDatetime = techPmt
+                        .map(TicketPayment::getPaymentDatetime)
+                        .orElse(null);
+                String paymentStatus = techPmt
+                        .map(TicketPayment::getStatus)
+                        .orElse(null);
                 lines.add(new AdminDtos.StaffBillingTicketLine(
                         ticket.getId(),
                         ticket.getTitle(),
                         ticket.getStatus().name(),
                         resolveBillAmount(ticket),
                         toBillingStatusLabel(ticket.getBillingStatus()),
-                        ticket.getUpdatedAt()
+                        ticket.getUpdatedAt(),
+                        paymentMode,
+                        paymentDatetime,
+                        paymentStatus
                 ));
             }
         }
@@ -173,13 +189,21 @@ public class StaffBillingService {
     }
 
     private BigDecimal resolveBillAmount(Ticket ticket) {
-        if (ticket.getActualCost() != null) {
-            return ticket.getActualCost();
+        Optional<TicketPayment> techPayment = getTechnicianPayment(ticket);
+        if (techPayment.isPresent()) {
+            TicketPayment tp = techPayment.get();
+            if (tp.getActualPrice() != null) return tp.getActualPrice();
+            if (tp.getExpectedPrice() != null) return tp.getExpectedPrice();
         }
-        if (ticket.getEstimatedCost() != null) {
-            return ticket.getEstimatedCost();
-        }
+        if (ticket.getActualCost() != null) return ticket.getActualCost();
+        if (ticket.getEstimatedCost() != null) return ticket.getEstimatedCost();
         return BigDecimal.ZERO;
+    }
+
+    private Optional<TicketPayment> getTechnicianPayment(Ticket ticket) {
+        return ticket.getPayments().stream()
+                .filter(p -> p.getPaymentType() == TicketPaymentType.TECHNICIAN)
+                .findFirst();
     }
 
     private String toBillingStatusLabel(TicketBillingStatus status) {

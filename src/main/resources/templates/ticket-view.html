@@ -161,26 +161,98 @@
                         </div>
                     </section>
 
-                    <section class="form-card glass-card mb-4" th:if="${adminTicketScope}">
-                        <div class="section-title mb-3">Price Section</div>
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <div class="small text-muted text-uppercase mb-1">Pricing Model</div>
-                                <div class="fw-semibold" th:text="${ticket.pricingModelLabel != null ? ticket.pricingModelLabel : 'Not provided'}"></div>
+                    <section class="form-card glass-card mb-4"
+                             th:if="${adminTicketScope or agentViewer or vendorOnlyViewer}"
+                             th:with="clientPmt=${ticket.paymentByType('CLIENT')},techPmt=${ticket.paymentByType('TECHNICIAN')},vendorPmt=${ticket.paymentByType('VENDOR')}">
+                        <div class="section-title mb-3">Payment</div>
+
+                        <!-- Client Payment -->
+                        <div th:if="${adminTicketScope or agentViewer}" class="mb-4">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <span class="badge bg-primary-subtle text-primary">Client Payment</span>
+                                <span th:if="${clientPmt != null and clientPmt.status() != null}"
+                                      th:class="${'badge ' + (clientPmt.status() == 'PENDING' ? 'bg-warning text-dark' : 'bg-primary')}"
+                                      th:text="${clientPmt.status() == 'PENDING' ? 'Pending' : (clientPmt.status() == 'PAID_TO_YUBIX' ? 'Paid to Yubix' : (clientPmt.status() == 'PAID_TO_TECHNICIAN' ? 'Paid to Technician' : 'Paid to Vendor'))}">
+                                </span>
                             </div>
-                            <div class="col-md-4">
-                                <div class="small text-muted text-uppercase mb-1">Estimated Cost</div>
-                                <div class="fw-semibold" th:text="${ticket.estimatedCost != null ? ticket.estimatedCost : '-'}"></div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="small text-muted text-uppercase mb-1">Actual Cost</div>
-                                <div class="fw-semibold" th:text="${ticket.actualCost != null ? ticket.actualCost : '-'}"></div>
-                            </div>
-                            <div class="col-12">
-                                <div class="small text-muted text-uppercase mb-1">Additional Notes</div>
-                                <div class="p-3 rounded-4 border bg-white" style="white-space: pre-wrap;" th:text="${ticket.additionalNotes != null && !ticket.additionalNotes.isEmpty() ? ticket.additionalNotes : 'No additional notes added.'}"></div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="small text-muted text-uppercase mb-1">Expected Price</div>
+                                    <div class="fw-semibold" th:text="${clientPmt != null and clientPmt.expectedPrice() != null ? clientPmt.expectedPrice() : '-'}">-</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="small text-muted text-uppercase mb-1">Actual Price</div>
+                                    <div class="fw-semibold" th:text="${clientPmt != null and clientPmt.actualPrice() != null ? clientPmt.actualPrice() : '-'}">-</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="small text-muted text-uppercase mb-1">Mode</div>
+                                    <div class="fw-semibold" th:text="${clientPmt != null and clientPmt.paymentMode() != null ? (clientPmt.paymentMode() == 'CASH' ? 'Cash' : (clientPmt.paymentMode() == 'BANK_TRANSFER' ? 'Bank Transfer' : 'UPI')) : '-'}">-</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="small text-muted text-uppercase mb-1">Paid On</div>
+                                    <div class="fw-semibold" th:text="${clientPmt != null and clientPmt.paymentDatetime() != null ? #temporals.format(clientPmt.paymentDatetime(), 'dd MMM yyyy, HH:mm') : '-'}">-</div>
+                                </div>
                             </div>
                         </div>
+
+                        <!-- Technician Payment -->
+                        <div th:if="${adminTicketScope or agentViewer}" class="mb-4">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <span class="badge bg-success-subtle text-success">Technician Payment</span>
+                                <span th:if="${techPmt != null and techPmt.status() != null}"
+                                      th:class="${'badge ' + (techPmt.status() == 'PENDING' ? 'bg-warning text-dark' : 'bg-success')}"
+                                      th:text="${techPmt.status() == 'PENDING' ? 'Pending' : 'Paid'}">
+                                </span>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="small text-muted text-uppercase mb-1">Expected Price</div>
+                                    <div class="fw-semibold" th:text="${techPmt != null and techPmt.expectedPrice() != null ? techPmt.expectedPrice() : '-'}">-</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="small text-muted text-uppercase mb-1">Actual Price</div>
+                                    <div class="fw-semibold" th:text="${techPmt != null and techPmt.actualPrice() != null ? techPmt.actualPrice() : '-'}">-</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="small text-muted text-uppercase mb-1">Mode</div>
+                                    <div class="fw-semibold" th:text="${techPmt != null and techPmt.paymentMode() != null ? (techPmt.paymentMode() == 'CASH' ? 'Cash' : (techPmt.paymentMode() == 'BANK_TRANSFER' ? 'Bank Transfer' : 'UPI')) : '-'}">-</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="small text-muted text-uppercase mb-1">Paid On</div>
+                                    <div class="fw-semibold" th:text="${techPmt != null and techPmt.paymentDatetime() != null ? #temporals.format(techPmt.paymentDatetime(), 'dd MMM yyyy, HH:mm') : '-'}">-</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Vendor Payment -->
+                        <div th:if="${adminTicketScope or vendorOnlyViewer}">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <span class="badge bg-warning-subtle text-warning-emphasis">Vendor Payment</span>
+                                <span th:if="${vendorPmt != null and vendorPmt.status() != null}"
+                                      th:class="${'badge ' + (vendorPmt.status() == 'PENDING' ? 'bg-warning text-dark' : 'bg-success')}"
+                                      th:text="${vendorPmt.status() == 'PENDING' ? 'Pending' : 'Paid'}">
+                                </span>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="small text-muted text-uppercase mb-1">Expected Price</div>
+                                    <div class="fw-semibold" th:text="${vendorPmt != null and vendorPmt.expectedPrice() != null ? vendorPmt.expectedPrice() : '-'}">-</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="small text-muted text-uppercase mb-1">Actual Price</div>
+                                    <div class="fw-semibold" th:text="${vendorPmt != null and vendorPmt.actualPrice() != null ? vendorPmt.actualPrice() : '-'}">-</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="small text-muted text-uppercase mb-1">Mode</div>
+                                    <div class="fw-semibold" th:text="${vendorPmt != null and vendorPmt.paymentMode() != null ? (vendorPmt.paymentMode() == 'CASH' ? 'Cash' : (vendorPmt.paymentMode() == 'BANK_TRANSFER' ? 'Bank Transfer' : 'UPI')) : '-'}">-</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="small text-muted text-uppercase mb-1">Paid On</div>
+                                    <div class="fw-semibold" th:text="${vendorPmt != null and vendorPmt.paymentDatetime() != null ? #temporals.format(vendorPmt.paymentDatetime(), 'dd MMM yyyy, HH:mm') : '-'}">-</div>
+                                </div>
+                            </div>
+                        </div>
+
                     </section>
 
                     <section class="form-card glass-card">
