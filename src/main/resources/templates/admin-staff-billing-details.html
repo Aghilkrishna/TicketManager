@@ -184,6 +184,9 @@
                                     <th>Ticket</th>
                                     <th>Status</th>
                                     <th>Price</th>
+                                    <th>Payment Mode</th>
+                                    <th>Payment Date</th>
+                                    <th>Payment Status</th>
                                     <th>Billing</th>
                                     <th>Last Updated</th>
                                     <th class="text-end">Actions</th>
@@ -191,7 +194,7 @@
                                 </thead>
                                 <tbody>
                                 <tr th:if="${#lists.isEmpty(billingDetails.tickets)}">
-                                    <td colspan="6" class="text-center text-muted py-5">
+                                    <td colspan="9" class="text-center text-muted py-5">
                                         <i class="bi bi-check2-all me-2 text-success"></i>All closed tickets have been paid, and there are no resolved tickets pending.
                                     </td>
                                 </tr>
@@ -206,6 +209,14 @@
                                               th:text="${ticket.status}">CLOSED</span>
                                     </td>
                                     <td th:text="${ticket.amount}">0</td>
+                                    <td th:text="${ticket.paymentMode != null ? (ticket.paymentMode == 'CASH' ? 'Cash' : (ticket.paymentMode == 'BANK_TRANSFER' ? 'Bank Transfer' : 'UPI')) : '—'}">—</td>
+                                    <td th:text="${ticket.paymentDatetime != null ? #temporals.format(ticket.paymentDatetime, 'dd MMM yyyy, hh:mm a') : '—'}">—</td>
+                                    <td>
+                                        <span th:if="${ticket.paymentStatus != null}"
+                                              class="badge text-bg-secondary"
+                                              th:text="${ticket.paymentStatus}">—</span>
+                                        <span th:if="${ticket.paymentStatus == null}">—</span>
+                                    </td>
                                     <td>
                                         <span class="badge rounded-pill"
                                               th:classappend="${ticket.billingStatus == 'Paid'} ? ' text-bg-success' : ' text-bg-danger'"
@@ -241,11 +252,11 @@
                                 </tbody>
                                 <tfoot th:if="${!#lists.isEmpty(billingDetails.tickets)}">
                                 <tr class="table-success">
-                                    <th colspan="4" class="text-end text-success">Already Paid (closed tickets)</th>
+                                    <th colspan="7" class="text-end text-success">Already Paid (closed tickets)</th>
                                     <th colspan="2" class="text-end text-success" th:text="${billingDetails.totalPaidAmount}">0</th>
                                 </tr>
                                 <tr class="table-active fw-bold">
-                                    <th colspan="4" class="text-end">Total Pending Amount</th>
+                                    <th colspan="7" class="text-end">Total Pending Amount</th>
                                     <th colspan="2" class="text-end" th:text="${billingDetails.totalUnpaidAmount}">0</th>
                                 </tr>
                                 </tfoot>
