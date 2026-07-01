@@ -158,6 +158,9 @@ public class Ticket {
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TicketSiteVisit> siteVisitHistory = new ArrayList<>();
 
+    @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TicketPayment> payments = new ArrayList<>();
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 

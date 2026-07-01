@@ -7,6 +7,9 @@ import com.example.ticketmanager.entity.NotificationType;
 import com.example.ticketmanager.entity.Ticket;
 import com.example.ticketmanager.entity.TicketAttachment;
 import com.example.ticketmanager.entity.TicketComment;
+import com.example.ticketmanager.entity.TicketPayment;
+import com.example.ticketmanager.entity.TicketPaymentMode;
+import com.example.ticketmanager.entity.TicketPaymentType;
 import com.example.ticketmanager.entity.TicketPricingModel;
 import com.example.ticketmanager.entity.TicketPriority;
 import com.example.ticketmanager.entity.TicketServiceType;
@@ -14,6 +17,7 @@ import com.example.ticketmanager.entity.TicketSiteVisit;
 import com.example.ticketmanager.entity.TicketStatus;
 import com.example.ticketmanager.exception.AppException;
 import com.example.ticketmanager.repository.TicketCommentRepository;
+import com.example.ticketmanager.repository.TicketPaymentRepository;
 import com.example.ticketmanager.repository.TicketRepository;
 import com.example.ticketmanager.repository.TicketSiteVisitRepository;
 import jakarta.persistence.criteria.JoinType;
@@ -31,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -50,6 +55,7 @@ public class TicketService {
     private final TicketRepository ticketRepository;
     private final TicketCommentRepository commentRepository;
     private final TicketSiteVisitRepository ticketSiteVisitRepository;
+    private final TicketPaymentRepository ticketPaymentRepository;
     private final UserService userService;
     private final NotificationService notificationService;
     private final EmailNotificationSettingsService emailNotificationSettingsService;
@@ -66,6 +72,7 @@ public class TicketService {
         storeFiles(ticket, files);
         Ticket saved = ticketRepository.save(ticket);
         addInitialComment(saved, creatorUsername, request.initialComment());
+        saveOrUpdatePayments(saved, request, creator);
         publishTicketListRefreshEvent("CREATED", saved);
         notifyStakeholders(saved, "Ticket created: " + saved.getTitle(), NotificationType.TICKET_UPDATED, EmailNotificationAction.TICKET_CREATED);
         notifyAdditionalTicketAudiences(saved, "Ticket created: " + saved.getTitle(), NotificationType.TICKET_UPDATED);
@@ -76,11 +83,13 @@ public class TicketService {
     @Transactional
     public AuthDtos.TicketSummary update(Long ticketId, String actorUsername, AuthDtos.TicketRequest request, MultipartFile[] files) {
         Ticket ticket = getTicket(ticketId);
-        ensureCanUpdate(ticket, userService.getByEmail(actorUsername));
+        AppUser actor = userService.getByEmail(actorUsername);
+        ensureCanUpdate(ticket, actor);
         applyRequest(ticket, request, ticket.getCreatedBy(), actorUsername, false);
         ticket.setUpdatedAt(LocalDateTime.now());
         storeFiles(ticket, files);
         Ticket saved = ticketRepository.save(ticket);
+        saveOrUpdatePayments(saved, request, actor);
         publishTicketListRefreshEvent("UPDATED", saved);
         notifyStakeholders(saved, "Ticket updated: " + saved.getTitle(), NotificationType.TICKET_UPDATED, EmailNotificationAction.TICKET_UPDATED);
         notifyAdditionalTicketAudiences(saved, "Ticket updated: " + saved.getTitle(), NotificationType.TICKET_UPDATED);
@@ -630,6 +639,46 @@ public class TicketService {
         ticket.setAdditionalNotes(request.additionalNotes() == null || request.additionalNotes().isBlank() ? null : request.additionalNotes().trim());
     }
 
+    private void saveOrUpdatePayments(Ticket ticket, AuthDtos.TicketRequest request, AppUser actor) {
+        boolean isVendor = userService.hasRole(actor, "ROLE_VENDOR");
+        boolean isAgent = userService.hasRole(actor, "ROLE_AGENT");
+        if (!isVendor) {
+            upsertPayment(ticket, TicketPaymentType.CLIENT,
+                    request.clientExpectedPrice(), request.clientActualPrice(),
+                    request.clientPaymentMode(), request.clientPaymentDatetime(), request.clientPaymentStatus());
+            upsertPayment(ticket, TicketPaymentType.TECHNICIAN,
+                    request.technicianExpectedPrice(), request.technicianActualPrice(),
+                    request.technicianPaymentMode(), request.technicianPaymentDatetime(), request.technicianPaymentStatus());
+        }
+        if (!isAgent) {
+            upsertPayment(ticket, TicketPaymentType.VENDOR,
+                    request.vendorExpectedPrice(), request.vendorActualPrice(),
+                    request.vendorPaymentMode(), request.vendorPaymentDatetime(), request.vendorPaymentStatus());
+        }
+    }
+
+    private void upsertPayment(Ticket ticket, TicketPaymentType type,
+            BigDecimal expectedPrice, BigDecimal actualPrice,
+            String paymentMode, LocalDateTime paymentDatetime, String status) {
+        boolean hasData = expectedPrice != null || actualPrice != null
+                || (paymentMode != null && !paymentMode.isBlank())
+                || paymentDatetime != null
+                || (status != null && !status.isBlank());
+        if (!hasData) return;
+        TicketPayment payment = ticketPaymentRepository
+                .findByTicketIdAndPaymentType(ticket.getId(), type)
+                .orElse(new TicketPayment());
+        payment.setTicket(ticket);
+        payment.setPaymentType(type);
+        payment.setExpectedPrice(expectedPrice);
+        payment.setActualPrice(actualPrice);
+        payment.setPaymentMode(paymentMode == null || paymentMode.isBlank()
+                ? null : TicketPaymentMode.valueOf(paymentMode));
+        payment.setPaymentDatetime(paymentDatetime);
+        payment.setStatus(status == null || status.isBlank() ? null : status);
+        ticketPaymentRepository.save(payment);
+    }
+
     private String resolveLeadFrom(AuthDtos.TicketRequest request) {
         if (request.serviceType() == null || request.serviceType().isBlank()) {
             return null;
@@ -838,6 +887,7 @@ public class TicketService {
                 ticket.getUpdatedAt(),
                 List.<String>of(),
                 !ticket.getAttachments().isEmpty(),
+                List.of(),
                 List.of()
         );
     }
@@ -902,6 +952,14 @@ public class TicketService {
                 !ticket.getAttachments().isEmpty(),
                 ticket.getAttachments().stream()
                         .map(this::toAttachmentInfo)
+                        .toList(),
+                ticket.getPayments().stream()
+                        .map(p -> new AuthDtos.TicketPaymentInfo(
+                                p.getId(), p.getPaymentType().name(),
+                                p.getExpectedPrice(), p.getActualPrice(),
+                                p.getPaymentMode() == null ? null : p.getPaymentMode().name(),
+                                p.getPaymentDatetime(), p.getStatus()
+                        ))
                         .toList()
         );
     }

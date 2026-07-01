@@ -154,7 +154,22 @@ public final class AuthDtos {
             String priority,
             String status,
             Long assignedToId,
-            Set<Long> serviceUserIds
+            Set<Long> serviceUserIds,
+            BigDecimal clientExpectedPrice,
+            BigDecimal clientActualPrice,
+            String clientPaymentMode,
+            LocalDateTime clientPaymentDatetime,
+            String clientPaymentStatus,
+            BigDecimal technicianExpectedPrice,
+            BigDecimal technicianActualPrice,
+            String technicianPaymentMode,
+            LocalDateTime technicianPaymentDatetime,
+            String technicianPaymentStatus,
+            BigDecimal vendorExpectedPrice,
+            BigDecimal vendorActualPrice,
+            String vendorPaymentMode,
+            LocalDateTime vendorPaymentDatetime,
+            String vendorPaymentStatus
     ) {
     }
 
@@ -203,8 +218,15 @@ public final class AuthDtos {
             LocalDateTime updatedAt,
             List<String> attachmentNames,
             boolean hasAttachments,
-            List<TicketAttachmentInfo> attachments
+            List<TicketAttachmentInfo> attachments,
+            List<TicketPaymentInfo> payments
     ) {
+        public TicketPaymentInfo paymentByType(String type) {
+            if (payments == null) return null;
+            return payments.stream()
+                    .filter(p -> type.equals(p.paymentType()))
+                    .findFirst().orElse(null);
+        }
     }
 
     public record TicketAttachmentInfo(
@@ -214,6 +236,16 @@ public final class AuthDtos {
             long fileSize
     ) {
     }
+
+    public record TicketPaymentInfo(
+            Long id,
+            String paymentType,
+            BigDecimal expectedPrice,
+            BigDecimal actualPrice,
+            String paymentMode,
+            LocalDateTime paymentDatetime,
+            String status
+    ) {}
 
     public record TicketCommentRequest(
             Long parentId,

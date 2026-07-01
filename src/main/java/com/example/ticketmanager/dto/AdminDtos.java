@@ -151,7 +151,10 @@ public final class AdminDtos {
             String status,
             BigDecimal amount,
             String billingStatus,
-            LocalDateTime updatedAt
+            LocalDateTime updatedAt,
+            String paymentMode,
+            LocalDateTime paymentDatetime,
+            String paymentStatus
     ) {
     }
 

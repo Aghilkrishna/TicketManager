@@ -31,18 +31,6 @@
             line-height: 1.1;
         }
 
-        /* Detail row pattern (matches admin-user-details.html) */
-        .detail-row {
-            display: flex;
-            margin-bottom: 1.1rem;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 0.9rem;
-        }
-        .detail-row:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
         .detail-label {
             width: 130px;
             font-weight: 600;
@@ -119,37 +107,33 @@
                 </div>
             </div>
 
-            <!-- Main content row: details + ticket table -->
-            <div class="row g-4">
-
-                <!-- Left: Basic details panel -->
-                <div class="col-lg-4">
-                    <section class="glass-card h-100">
-                        <h3 class="h5 fw-bold mb-4">
-                            <i class="bi bi-person-badge me-2 text-primary"></i>Staff Details
-                        </h3>
-
-                        <div class="detail-row">
+            <!-- Staff Details horizontal strip -->
+<!--            <section class="glass-card mb-4">
+                <div class="d-flex flex-wrap align-items-start justify-content-between gap-4">
+                    <div class="d-flex flex-wrap gap-4">
+                        <div>
                             <div class="detail-label">Name</div>
                             <div class="detail-value fw-semibold" th:text="${billingDetails.username}">—</div>
                         </div>
-                        <div class="detail-row">
+                        <div>
                             <div class="detail-label">Email</div>
                             <div class="detail-value" th:text="${billingDetails.email}">—</div>
                         </div>
-                        <div class="detail-row">
+                        <div>
                             <div class="detail-label">Phone</div>
                             <div class="detail-value" th:text="${billingDetails.phone != null && !billingDetails.phone.isBlank() ? billingDetails.phone : 'Not provided'}">—</div>
                         </div>
-                        <div class="detail-row">
+                        <div>
                             <div class="detail-label">Roles</div>
                             <div class="detail-value">
                                 <span th:each="role : ${billingDetails.roleLabels}"
-                                      class="badge text-bg-secondary me-1 mb-1"
+                                      class="badge text-bg-secondary me-1"
                                       th:text="${role}">Agent</span>
                             </div>
                         </div>
-                        <div class="detail-row">
+                    </div>
+                    <div class="d-flex flex-wrap gap-4">
+                        <div>
                             <div class="detail-label">Billing Status</div>
                             <div class="detail-value">
                                 <span class="badge rounded-pill"
@@ -157,103 +141,112 @@
                                       th:text="${billingDetails.billingStatusLabel}">Unpaid</span>
                             </div>
                         </div>
-                        <div class="detail-row">
+                        <div>
                             <div class="detail-label">Paid</div>
                             <div class="detail-value fw-semibold text-success" th:text="${billingDetails.totalPaidAmount}">0</div>
                         </div>
-                        <div class="detail-row">
+                        <div>
                             <div class="detail-label">Pending</div>
                             <div class="detail-value fw-semibold text-danger" th:text="${billingDetails.totalUnpaidAmount}">0</div>
                         </div>
-                    </section>
+                    </div>
                 </div>
+            </section>-->
 
-                <!-- Right: Ticket table -->
-                <div class="col-lg-8">
-                    <section class="glass-card h-100">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h3 class="h5 fw-bold mb-0">
-                                <i class="bi bi-calculator me-2 text-primary"></i>Resolved &amp; Unpaid Closed Tickets
-                            </h3>
-                            <span class="metric-trend"><i class="bi bi-receipt"></i> Billing calculator</span>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table align-middle">
-                                <thead>
-                                <tr>
-                                    <th>Ticket</th>
-                                    <th>Status</th>
-                                    <th>Price</th>
-                                    <th>Billing</th>
-                                    <th>Last Updated</th>
-                                    <th class="text-end">Actions</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr th:if="${#lists.isEmpty(billingDetails.tickets)}">
-                                    <td colspan="6" class="text-center text-muted py-5">
-                                        <i class="bi bi-check2-all me-2 text-success"></i>All closed tickets have been paid, and there are no resolved tickets pending.
-                                    </td>
-                                </tr>
-                                <tr th:each="ticket : ${billingDetails.tickets}" th:id="${'ticket-row-' + ticket.ticketId}">
-                                    <td>
-                                        <div class="fw-semibold" th:text="${ticket.title}">Ticket Title</div>
-                                        <div class="text-muted small">#<span th:text="${ticket.ticketId}">1</span></div>
-                                    </td>
-                                    <td>
-                                        <span class="status-pill"
-                                              th:classappend="' ' + ${ticket.status}"
-                                              th:text="${ticket.status}">CLOSED</span>
-                                    </td>
-                                    <td th:text="${ticket.amount}">0</td>
-                                    <td>
-                                        <span class="badge rounded-pill"
-                                              th:classappend="${ticket.billingStatus == 'Paid'} ? ' text-bg-success' : ' text-bg-danger'"
-                                              th:id="${'billing-badge-' + ticket.ticketId}"
-                                              th:text="${ticket.billingStatus}">Unpaid</span>
-                                    </td>
-                                    <td th:text="${#temporals.format(ticket.updatedAt, 'dd MMM yyyy, hh:mm a')}">—</td>
-                                    <td class="text-end">
-                                        <div class="d-flex gap-1 justify-content-end flex-wrap">
-                                            <a class="btn btn-sm btn-outline-secondary"
-                                               th:href="@{|/tickets/view?id=${ticket.ticketId}&tab=all|}">
-                                                <i class="bi bi-eye"></i>
-                                            </a>
-                                            <th:block th:if="${ticket.status == 'CLOSED'}">
-                                                <button th:if="${ticket.billingStatus == 'Unpaid'}"
-                                                        class="btn btn-sm btn-outline-success"
-                                                        type="button"
-                                                        th:onclick="|updateTicketStatus(${ticket.ticketId}, 'PAID')|"
-                                                        title="Mark as paid">
-                                                    <i class="bi bi-check-circle"></i>
-                                                </button>
-                                                <button th:if="${ticket.billingStatus == 'Paid'}"
-                                                        class="btn btn-sm btn-outline-danger"
-                                                        type="button"
-                                                        th:onclick="|updateTicketStatus(${ticket.ticketId}, 'UNPAID')|"
-                                                        title="Mark as unpaid">
-                                                    <i class="bi bi-x-circle"></i>
-                                                </button>
-                                            </th:block>
-                                        </div>
-                                    </td>
-                                </tr>
-                                </tbody>
-                                <tfoot th:if="${!#lists.isEmpty(billingDetails.tickets)}">
-                                <tr class="table-success">
-                                    <th colspan="4" class="text-end text-success">Already Paid (closed tickets)</th>
-                                    <th colspan="2" class="text-end text-success" th:text="${billingDetails.totalPaidAmount}">0</th>
-                                </tr>
-                                <tr class="table-active fw-bold">
-                                    <th colspan="4" class="text-end">Total Pending Amount</th>
-                                    <th colspan="2" class="text-end" th:text="${billingDetails.totalUnpaidAmount}">0</th>
-                                </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </section>
+            <!-- Full-width ticket table -->
+            <section class="glass-card">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3 class="h5 fw-bold mb-0">
+                        <i class="bi bi-calculator me-2 text-primary"></i>Resolved &amp; Unpaid Closed Tickets
+                    </h3>
+                    <span class="metric-trend"><i class="bi bi-receipt"></i> Billing calculator</span>
                 </div>
-            </div>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Status</th>
+                            <th>Price</th>
+                            <th>Payment Mode</th>
+                            <th>Payment Date</th>
+                            <th>Payment Status</th>
+                            <th>Billing</th>
+                            <th>Last Updated</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(billingDetails.tickets)}">
+                            <td colspan="9" class="text-center text-muted py-5">
+                                <i class="bi bi-check2-all me-2 text-success"></i>All closed tickets have been paid, and there are no resolved tickets pending.
+                            </td>
+                        </tr>
+                        <tr th:each="ticket : ${billingDetails.tickets}" th:id="${'ticket-row-' + ticket.ticketId}">
+                            <td>
+                                <div class="fw-semibold" th:text="${ticket.title}">Ticket Title</div>
+                                <div class="text-muted small">#<span th:text="${ticket.ticketId}">1</span></div>
+                            </td>
+                            <td>
+                                <span class="status-pill"
+                                      th:classappend="' ' + ${ticket.status}"
+                                      th:text="${ticket.status}">CLOSED</span>
+                            </td>
+                            <td th:text="${ticket.amount}">0</td>
+                            <td th:text="${ticket.paymentMode != null ? (ticket.paymentMode == 'CASH' ? 'Cash' : (ticket.paymentMode == 'BANK_TRANSFER' ? 'Bank Transfer' : 'UPI')) : '—'}">—</td>
+                            <td th:text="${ticket.paymentDatetime != null ? #temporals.format(ticket.paymentDatetime, 'dd MMM yyyy, hh:mm a') : '—'}">—</td>
+                            <td>
+                                <span th:if="${ticket.paymentStatus != null}"
+                                      class="badge text-bg-secondary"
+                                      th:text="${ticket.paymentStatus}">—</span>
+                                <span th:unless="${ticket.paymentStatus != null}">—</span>
+                            </td>
+                            <td>
+                                <span class="badge rounded-pill"
+                                      th:classappend="${ticket.billingStatus == 'Paid'} ? ' text-bg-success' : ' text-bg-danger'"
+                                      th:id="${'billing-badge-' + ticket.ticketId}"
+                                      th:text="${ticket.billingStatus}">Unpaid</span>
+                            </td>
+                            <td th:text="${#temporals.format(ticket.updatedAt, 'dd MMM yyyy, hh:mm a')}">—</td>
+                            <td class="text-end">
+                                <div class="d-flex gap-1 justify-content-end flex-wrap">
+                                    <a class="btn btn-sm btn-outline-secondary"
+                                       th:href="@{|/tickets/view?id=${ticket.ticketId}&tab=all|}">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <th:block th:if="${ticket.status == 'CLOSED'}">
+                                        <button th:if="${ticket.billingStatus == 'Unpaid'}"
+                                                class="btn btn-sm btn-outline-success"
+                                                type="button"
+                                                th:onclick="|updateTicketStatus(${ticket.ticketId}, 'PAID')|"
+                                                title="Mark as paid">
+                                            <i class="bi bi-check-circle"></i>
+                                        </button>
+                                        <button th:if="${ticket.billingStatus == 'Paid'}"
+                                                class="btn btn-sm btn-outline-danger"
+                                                type="button"
+                                                th:onclick="|updateTicketStatus(${ticket.ticketId}, 'UNPAID')|"
+                                                title="Mark as unpaid">
+                                            <i class="bi bi-x-circle"></i>
+                                        </button>
+                                    </th:block>
+                                </div>
+                            </td>
+                        </tr>
+                        </tbody>
+                        <tfoot th:if="${!#lists.isEmpty(billingDetails.tickets)}">
+                        <tr class="table-success">
+                            <th colspan="7" class="text-end text-success">Already Paid (closed tickets)</th>
+                            <th colspan="2" class="text-end text-success" th:text="${billingDetails.totalPaidAmount}">0</th>
+                        </tr>
+                        <tr class="table-active fw-bold">
+                            <th colspan="7" class="text-end">Total Pending Amount</th>
+                            <th colspan="2" class="text-end" th:text="${billingDetails.totalUnpaidAmount}">0</th>
+                        </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </section>
 
         </main>
     </div>
