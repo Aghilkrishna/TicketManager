@@ -90,18 +90,22 @@
                     <th>Ticket ID</th>
                     <th>Title</th>
                     <th>Last Updated</th>
+                    <th>Payment Mode</th>
+                    <th>Payment Date</th>
                     <th>Billing Status</th>
                     <th class="text-end">Amount</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr th:if="${#lists.isEmpty(invoiceTickets)}">
-                    <td colspan="5" class="text-center text-muted py-4">No closed tickets are currently available for invoice generation.</td>
+                    <td colspan="7" class="text-center text-muted py-4">No closed tickets are currently available for invoice generation.</td>
                 </tr>
                 <tr th:each="ticket : ${invoiceTickets}">
                     <td>#<span th:text="${ticket.ticketId}">1</span></td>
                     <td th:text="${ticket.title}">Ticket title</td>
                     <td th:text="${#temporals.format(ticket.updatedAt, 'dd MMM yyyy, hh:mm a')}">-</td>
+                    <td th:text="${ticket.paymentMode != null ? (ticket.paymentMode == 'CASH' ? 'Cash' : (ticket.paymentMode == 'BANK_TRANSFER' ? 'Bank Transfer' : 'UPI')) : '—'}">—</td>
+                    <td th:text="${ticket.paymentDatetime != null ? #temporals.format(ticket.paymentDatetime, 'dd MMM yyyy, hh:mm a') : '—'}">—</td>
                     <td>
                         <span th:class="${ticket.billingStatus == 'Paid'} ? 'badge-paid' : 'badge-unpaid'"
                               th:text="${ticket.billingStatus}">Unpaid</span>
@@ -111,15 +115,15 @@
                 </tbody>
                 <tfoot>
                 <tr>
-                    <th colspan="4" class="text-end text-success">Total Paid</th>
+                    <th colspan="6" class="text-end text-success">Total Paid</th>
                     <th class="text-end text-success" th:text="${billingDetails.totalPaidAmount}">0</th>
                 </tr>
                 <tr>
-                    <th colspan="4" class="text-end text-danger">Total Unpaid</th>
+                    <th colspan="6" class="text-end text-danger">Total Unpaid</th>
                     <th class="text-end text-danger" th:text="${billingDetails.totalUnpaidAmount}">0</th>
                 </tr>
                 <tr class="table-active">
-                    <th colspan="4" class="text-end">Total Closed Ticket Amount</th>
+                    <th colspan="6" class="text-end">Total Closed Ticket Amount</th>
                     <th class="text-end" th:text="${billingDetails.totalClosedAmount}">0</th>
                 </tr>
                 </tfoot>
