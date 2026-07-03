@@ -22,6 +22,7 @@ import com.example.ticketmanager.repository.TicketRepository;
 import com.example.ticketmanager.repository.TicketSiteVisitRepository;
 import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -189,6 +190,7 @@ public class TicketService {
     }
 
     @Transactional
+    @CacheEvict(value = "ticketComments", key = "#ticketId")
     public AuthDtos.TicketCommentResponse addComment(Long ticketId, String username, AuthDtos.TicketCommentRequest request) {
         Ticket ticket = getTicket(ticketId);
         if (!canAccess(ticket, username)) {
@@ -276,6 +278,7 @@ public class TicketService {
     }
 
     @Transactional
+    @CacheEvict(value = "ticketComments", key = "#ticketId")
     public AuthDtos.TicketCommentResponse updateComment(Long ticketId, Long commentId, String username, AuthDtos.TicketCommentUpdateRequest request) {
         TicketComment comment = getComment(ticketId, commentId);
         if (!comment.getAuthor().getEmail().equals(username)) {
@@ -288,6 +291,7 @@ public class TicketService {
     }
 
     @Transactional
+    @CacheEvict(value = "ticketComments", key = "#ticketId")
     public void deleteComment(Long ticketId, Long commentId, String username) {
         TicketComment comment = getComment(ticketId, commentId);
         if (!comment.getAuthor().getEmail().equals(username)) {
