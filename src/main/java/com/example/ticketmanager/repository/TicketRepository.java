@@ -274,14 +274,6 @@ public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecif
             """)
     List<Object[]> countAssignedByStatus(@Param("userId") Long userId);
 
-    /** Tickets created by the user grouped by status. Used for vendor "My Ticket Status". */
-    @Query("""
-            select t.status, count(distinct t.id) from Ticket t
-            where t.createdBy.id = :userId
-            group by t.status
-            """)
-    List<Object[]> countCreatedByStatus(@Param("userId") Long userId);
-
     /** All tickets grouped by status. Used for admin/manager "All Ticket Status". */
     @Query("select t.status, count(t.id) from Ticket t group by t.status")
     List<Object[]> countAllByStatus();
