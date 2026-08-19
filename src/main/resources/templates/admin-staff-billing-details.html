@@ -137,8 +137,8 @@
                             <div class="detail-label">Billing Status</div>
                             <div class="detail-value">
                                 <span class="badge rounded-pill"
-                                      th:classappend="${billingDetails.billingStatusLabel == 'Paid'} ? ' text-bg-success' : (${billingDetails.billingStatusLabel == 'Partially Paid'} ? ' text-bg-warning' : (${billingDetails.billingStatusLabel == 'No Closed Tickets'} ? ' text-bg-secondary' : ' text-bg-danger'))"
-                                      th:text="${billingDetails.billingStatusLabel}">Unpaid</span>
+                                    th:classappend="${billingDetails.billingStatusLabel == 'Settled'} ? ' text-bg-success' : (${billingDetails.billingStatusLabel == 'Partially Settled'} ? ' text-bg-warning' : (${billingDetails.billingStatusLabel == 'No Closed Tickets'} ? ' text-bg-secondary' : ' text-bg-danger'))"
+                                    th:text="${billingDetails.billingStatusLabel}">UnSettled</span>
                             </div>
                         </div>
                         <div>
@@ -203,9 +203,9 @@
                             </td>
                             <td>
                                 <span class="badge rounded-pill"
-                                      th:classappend="${ticket.billingStatus == 'Paid'} ? ' text-bg-success' : ' text-bg-danger'"
+                                      th:classappend="${ticket.billingStatus == 'Settled'} ? ' text-bg-success' : ' text-bg-danger'"
                                       th:id="${'billing-badge-' + ticket.ticketId}"
-                                      th:text="${ticket.billingStatus}">Unpaid</span>
+                                      th:text="${ticket.billingStatus}">UnSettled</span>
                             </td>
                             <td th:text="${#temporals.format(ticket.updatedAt, 'dd MMM yyyy, hh:mm a')}">—</td>
                             <td class="text-end">
@@ -215,18 +215,18 @@
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     <th:block th:if="${ticket.status == 'CLOSED'}">
-                                        <button th:if="${ticket.billingStatus == 'Unpaid'}"
+                                        <button th:if="${ticket.billingStatus == 'UnSettled'}"
                                                 class="btn btn-sm btn-outline-success"
                                                 type="button"
                                                 th:onclick="|updateTicketStatus(${ticket.ticketId}, 'PAID')|"
-                                                title="Mark as paid">
+                                                title="Mark as settled">
                                             <i class="bi bi-check-circle"></i>
                                         </button>
-                                        <button th:if="${ticket.billingStatus == 'Paid'}"
+                                        <button th:if="${ticket.billingStatus == 'Settled'}"
                                                 class="btn btn-sm btn-outline-danger"
                                                 type="button"
                                                 th:onclick="|updateTicketStatus(${ticket.ticketId}, 'UNPAID')|"
-                                                title="Mark as unpaid">
+                                                title="Mark as unsettled">
                                             <i class="bi bi-x-circle"></i>
                                         </button>
                                     </th:block>

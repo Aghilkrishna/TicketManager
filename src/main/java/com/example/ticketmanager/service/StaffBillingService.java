@@ -207,7 +207,7 @@ public class StaffBillingService {
     }
 
     private String toBillingStatusLabel(TicketBillingStatus status) {
-        return status == TicketBillingStatus.PAID ? "Paid" : "Unpaid";
+        return status == TicketBillingStatus.PAID ? "Settled" : "UnSettled";
     }
 
     private final class BillingAccumulator {
@@ -252,12 +252,12 @@ public class StaffBillingService {
                 return "No Closed Tickets";
             }
             if (paidClosedCount == 0) {
-                return "Unpaid";
+                return "UnSettled";
             }
             if (paidClosedCount == closedCount) {
-                return "Paid";
+                return "Settled";
             }
-            return "Partially Paid";
+            return "Partially Settled";
         }
 
         private AdminDtos.StaffBillingSummary toSummary() {
