@@ -137,8 +137,8 @@
                             <div class="detail-label">Billing Status</div>
                             <div class="detail-value">
                                 <span class="badge rounded-pill"
-                                      th:classappend="${billingDetails.billingStatusLabel == 'Paid'} ? ' text-bg-success' : (${billingDetails.billingStatusLabel == 'Partially Paid'} ? ' text-bg-warning' : (${billingDetails.billingStatusLabel == 'No Closed Tickets'} ? ' text-bg-secondary' : ' text-bg-danger'))"
-                                      th:text="${billingDetails.billingStatusLabel}">Unpaid</span>
+                                    th:classappend="${billingDetails.billingStatusLabel == 'Settled'} ? ' text-bg-success' : (${billingDetails.billingStatusLabel == 'Partially Settled'} ? ' text-bg-warning' : (${billingDetails.billingStatusLabel == 'No Closed Tickets'} ? ' text-bg-secondary' : ' text-bg-danger'))"
+                                    th:text="${billingDetails.billingStatusLabel}">UnSettled</span>
                             </div>
                         </div>
                         <div>
@@ -203,9 +203,9 @@
                             </td>
                             <td>
                                 <span class="badge rounded-pill"
-                                      th:classappend="${ticket.billingStatus == 'Paid'} ? ' text-bg-success' : ' text-bg-danger'"
+                                      th:classappend="${ticket.billingStatus == 'Settled'} ? ' text-bg-success' : ' text-bg-danger'"
                                       th:id="${'billing-badge-' + ticket.ticketId}"
-                                      th:text="${ticket.billingStatus}">Unpaid</span>
+                                      th:text="${ticket.billingStatus}">UnSettled</span>
                             </td>
                             <td th:text="${#temporals.format(ticket.updatedAt, 'dd MMM yyyy, hh:mm a')}">—</td>
                             <td class="text-end">
@@ -215,18 +215,18 @@
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     <th:block th:if="${ticket.status == 'CLOSED'}">
-                                        <button th:if="${ticket.billingStatus == 'Unpaid'}"
+                                        <button th:if="${ticket.billingStatus == 'UnSettled'}"
                                                 class="btn btn-sm btn-outline-success"
                                                 type="button"
                                                 th:onclick="|updateTicketStatus(${ticket.ticketId}, 'PAID')|"
-                                                title="Mark as paid">
+                                                title="Mark as settled">
                                             <i class="bi bi-check-circle"></i>
                                         </button>
-                                        <button th:if="${ticket.billingStatus == 'Paid'}"
+                                        <button th:if="${ticket.billingStatus == 'Settled'}"
                                                 class="btn btn-sm btn-outline-danger"
                                                 type="button"
                                                 th:onclick="|updateTicketStatus(${ticket.ticketId}, 'UNPAID')|"
-                                                title="Mark as unpaid">
+                                                title="Mark as unsettled">
                                             <i class="bi bi-x-circle"></i>
                                         </button>
                                     </th:block>
@@ -244,6 +244,79 @@
                             <th colspan="2" class="text-end" th:text="${billingDetails.totalUnpaidAmount}">0</th>
                         </tr>
                         </tfoot>
+                    </table>
+                </div>
+            </section>
+
+            <section class="glass-card mt-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3 class="h5 fw-bold mb-0">
+                        <i class="bi bi-clock-history me-2 text-success"></i>Settled Billing History
+                    </h3>
+                    <span class="metric-trend"><i class="bi bi-currency-dollar"></i> Paid records</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Status</th>
+                            <th>Price</th>
+                            <th>Payment Mode</th>
+                            <th>Payment Date</th>
+                            <th>Payment Status</th>
+                            <th>Billing</th>
+                            <th>Last Updated</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(billingDetails.settledTickets)}">
+                            <td colspan="9" class="text-center text-muted py-5">
+                                <i class="bi bi-file-earmark-check me-2 text-success"></i>No settled ticket billing history yet.
+                            </td>
+                        </tr>
+                        <tr th:each="ticket : ${billingDetails.settledTickets}" th:id="${'settled-ticket-row-' + ticket.ticketId}">
+                            <td>
+                                <div class="fw-semibold" th:text="${ticket.title}">Ticket Title</div>
+                                <div class="text-muted small">#<span th:text="${ticket.ticketId}">1</span></div>
+                            </td>
+                            <td>
+                                <span class="status-pill"
+                                      th:classappend="' ' + ${ticket.status}"
+                                      th:text="${ticket.status}">CLOSED</span>
+                            </td>
+                            <td th:text="${ticket.amount}">0</td>
+                            <td th:text="${ticket.paymentMode != null ? (ticket.paymentMode == 'CASH' ? 'Cash' : (ticket.paymentMode == 'BANK_TRANSFER' ? 'Bank Transfer' : 'UPI')) : '—'}">—</td>
+                            <td th:text="${ticket.paymentDatetime != null ? #temporals.format(ticket.paymentDatetime, 'dd MMM yyyy, hh:mm a') : '—'}">—</td>
+                            <td>
+                                <span th:if="${ticket.paymentStatus != null}"
+                                      class="badge text-bg-secondary"
+                                      th:text="${ticket.paymentStatus}">—</span>
+                                <span th:unless="${ticket.paymentStatus != null}">—</span>
+                            </td>
+                            <td>
+                                <span class="badge rounded-pill text-bg-success"
+                                      th:id="${'settled-billing-badge-' + ticket.ticketId}"
+                                      th:text="${ticket.billingStatus}">Settled</span>
+                            </td>
+                            <td th:text="${#temporals.format(ticket.updatedAt, 'dd MMM yyyy, hh:mm a')}">—</td>
+                            <td class="text-end">
+                                <div class="d-flex gap-1 justify-content-end flex-wrap">
+                                    <a class="btn btn-sm btn-outline-secondary"
+                                       th:href="@{|/tickets/view?id=${ticket.ticketId}&tab=all|}">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            type="button"
+                                            th:onclick="|updateTicketStatus(${ticket.ticketId}, 'UNPAID')|"
+                                            title="Mark as unsettled">
+                                        <i class="bi bi-x-circle"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        </tbody>
                     </table>
                 </div>
             </section>

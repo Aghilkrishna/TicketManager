@@ -43,7 +43,8 @@ public final class AdminDtos {
             @NotBlank @Email String email,
             @Pattern(regexp = "^$|^[0-9+\\-() ]{7,20}$", message = "Invalid phone number") String phone,
             boolean enabled,
-            Set<Long> roleIds
+            Set<Long> roleIds,
+            @Size(min = 6, max = 100) String password
     ) {
     }
 
@@ -174,7 +175,8 @@ public final class AdminDtos {
             BigDecimal totalPaidAmount,
             BigDecimal totalUnpaidAmount,
             String billingStatusLabel,
-            List<StaffBillingTicketLine> tickets
+            List<StaffBillingTicketLine> tickets,
+            List<StaffBillingTicketLine> settledTickets
     ) {
     }
 

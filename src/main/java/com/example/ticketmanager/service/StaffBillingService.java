@@ -79,34 +79,18 @@ public class StaffBillingService {
         List<Ticket> allTickets = ticketRepository.findByAssignedToIdAndStatusInOrderByUpdatedAtDesc(userId, BILLING_RELEVANT_STATUSES);
         BillingAccumulator accumulator = new BillingAccumulator(user);
         List<AdminDtos.StaffBillingTicketLine> lines = new ArrayList<>();
+        List<AdminDtos.StaffBillingTicketLine> settledLines = new ArrayList<>();
         for (Ticket ticket : allTickets) {
             accumulator.add(ticket);
-            // Only include resolved tickets and UNPAID closed tickets in the visible list
+            // Only include resolved tickets and UNPAID closed tickets in the visible list.
             boolean isResolved = ticket.getStatus() == TicketStatus.RESOLVED;
             boolean isUnpaidClosed = ticket.getStatus() == TicketStatus.CLOSED
                     && ticket.getBillingStatus() != TicketBillingStatus.PAID;
             if (isResolved || isUnpaidClosed) {
-                Optional<TicketPayment> techPmt = getTechnicianPayment(ticket);
-                String paymentMode = techPmt
-                        .map(p -> p.getPaymentMode() == null ? null : p.getPaymentMode().name())
-                        .orElse(null);
-                LocalDateTime paymentDatetime = techPmt
-                        .map(TicketPayment::getPaymentDatetime)
-                        .orElse(null);
-                String paymentStatus = techPmt
-                        .map(TicketPayment::getStatus)
-                        .orElse(null);
-                lines.add(new AdminDtos.StaffBillingTicketLine(
-                        ticket.getId(),
-                        ticket.getTitle(),
-                        ticket.getStatus().name(),
-                        resolveBillAmount(ticket),
-                        toBillingStatusLabel(ticket.getBillingStatus()),
-                        ticket.getUpdatedAt(),
-                        paymentMode,
-                        paymentDatetime,
-                        paymentStatus
-                ));
+                lines.add(toTicketLine(ticket));
+            }
+            if (ticket.getStatus() == TicketStatus.CLOSED && ticket.getBillingStatus() == TicketBillingStatus.PAID) {
+                settledLines.add(toTicketLine(ticket));
             }
         }
 
@@ -130,7 +114,8 @@ public class StaffBillingService {
                 accumulator.paidAmount,
                 unpaidClosedAmount,
                 accumulator.billingStatusLabel(),
-                lines
+                lines,
+                settledLines
         );
     }
 
@@ -200,6 +185,31 @@ public class StaffBillingService {
         return BigDecimal.ZERO;
     }
 
+    private AdminDtos.StaffBillingTicketLine toTicketLine(Ticket ticket) {
+        Optional<TicketPayment> techPmt = getTechnicianPayment(ticket);
+        String paymentMode = techPmt
+                .map(p -> p.getPaymentMode() == null ? null : p.getPaymentMode().name())
+                .orElse(null);
+        LocalDateTime paymentDatetime = techPmt
+                .map(TicketPayment::getPaymentDatetime)
+                .orElse(null);
+        String paymentStatus = techPmt
+                .map(TicketPayment::getStatus)
+                .orElse(null);
+
+        return new AdminDtos.StaffBillingTicketLine(
+                ticket.getId(),
+                ticket.getTitle(),
+                ticket.getStatus().name(),
+                resolveBillAmount(ticket),
+                toBillingStatusLabel(ticket.getBillingStatus()),
+                ticket.getUpdatedAt(),
+                paymentMode,
+                paymentDatetime,
+                paymentStatus
+        );
+    }
+
     private Optional<TicketPayment> getTechnicianPayment(Ticket ticket) {
         return ticket.getPayments().stream()
                 .filter(p -> p.getPaymentType() == TicketPaymentType.TECHNICIAN)
@@ -207,7 +217,7 @@ public class StaffBillingService {
     }
 
     private String toBillingStatusLabel(TicketBillingStatus status) {
-        return status == TicketBillingStatus.PAID ? "Paid" : "Unpaid";
+        return status == TicketBillingStatus.PAID ? "Settled" : "UnSettled";
     }
 
     private final class BillingAccumulator {
@@ -252,12 +262,12 @@ public class StaffBillingService {
                 return "No Closed Tickets";
             }
             if (paidClosedCount == 0) {
-                return "Unpaid";
+                return "UnSettled";
             }
             if (paidClosedCount == closedCount) {
-                return "Paid";
+                return "Settled";
             }
-            return "Partially Paid";
+            return "Partially Settled";
         }
 
         private AdminDtos.StaffBillingSummary toSummary() {

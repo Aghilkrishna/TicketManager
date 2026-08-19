@@ -143,7 +143,16 @@ public class TicketService {
         Specification<Ticket> scope = Specification.where(null);
         if (!effectiveAdminScope) {
             AppUser user = userService.getByEmail(username);
-            scope = scope.and(scopeForUser(user.getId(), false));
+            // If the dashboard is in "mine" scope, we should narrow counts to
+            // tickets assigned to the current user. Vendor users historically
+            // expect counts for tickets they created, so handle vendors specially.
+            if (userService.hasRole(user, "ROLE_VENDOR")) {
+                scope = scope.and(createdByUserSpecification(user.getId()));
+            } else {
+                // assignedOnly=true — include tickets assigned to the user or where
+                // the user is a serviceUser (matches tickets list behaviour for "mine").
+                scope = scope.and(scopeForUser(user.getId(), true));
+            }
         }
         return Map.of(
                 "open", countByStatus(scope, TicketStatus.OPEN),
@@ -152,6 +161,33 @@ public class TicketService {
                 "resolved", countByStatus(scope, TicketStatus.RESOLVED),
                 "closed", countByStatus(scope, TicketStatus.CLOSED)
         );
+    }
+
+    /**
+     * Count tickets grouped by every declared TicketStatus using the same
+     * scope rules as the ticket list (adminScope vs user-scoped). This
+     * ensures dashboard metric counts are computed using the same
+     * visibility rules as the tickets list pages and prevents
+     * discrepancies caused by differing query logic.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Long> countStatusMap(String username, boolean allTicketScope) {
+        return countStatusMap(username, allTicketScope, true);
+    }
+
+    public Map<String, Long> countStatusMap(String username, boolean allTicketScope, boolean assignedOnly) {
+        boolean effectiveAdminScope = allTicketScope && canManageAllTickets(username);
+        Specification<Ticket> scope = Specification.where(null);
+        if (!effectiveAdminScope) {
+            AppUser user = userService.getByEmail(username);
+            scope = scope.and(scopeForUser(user.getId(), assignedOnly));
+        }
+        java.util.Map<String, Long> result = new java.util.LinkedHashMap<>();
+        for (TicketStatus s : TicketStatus.values()) {
+            long c = countByStatus(scope, s);
+            result.put(s.name(), c);
+        }
+        return result;
     }
 
     @Transactional(readOnly = true)

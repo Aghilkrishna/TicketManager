@@ -1,0 +1,9 @@
+/target/
+/.claude/
+/.idea/
+/.mvn/
+/.superpowers/
+/logs/
+/uploads/
+/.env
+/.prod_env

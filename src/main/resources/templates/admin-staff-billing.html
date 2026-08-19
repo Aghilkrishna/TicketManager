@@ -91,8 +91,8 @@
                             <td th:text="${item.closedAmount}">0</td>
                             <td>
                                 <span class="badge rounded-pill"
-                                      th:classappend="${item.billingStatusLabel == 'Paid'} ? ' text-bg-success' : (${item.billingStatusLabel == 'Partially Paid'} ? ' text-bg-warning' : (${item.billingStatusLabel == 'No Closed Tickets'} ? ' text-bg-secondary' : ' text-bg-danger'))"
-                                      th:text="${item.billingStatusLabel}">Unpaid</span>
+                                      th:classappend="${item.billingStatusLabel == 'Settled'} ? ' text-bg-success' : (${item.billingStatusLabel == 'Partially Settled'} ? ' text-bg-warning' : (${item.billingStatusLabel == 'No Closed Tickets'} ? ' text-bg-secondary' : ' text-bg-danger'))"
+                                      th:text="${item.billingStatusLabel}">UnSettled</span>
                             </td>
                             <td class="text-end">
                                 <a class="btn btn-sm btn-outline-primary" th:href="@{|/admin/staff-billing/${item.userId}|}">

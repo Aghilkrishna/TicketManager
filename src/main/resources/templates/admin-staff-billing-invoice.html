@@ -77,7 +77,7 @@
 
         <div class="d-flex align-items-center gap-3 mb-3">
             <div class="fs-5 fw-bold">Billing Status</div>
-            <span th:classappend="${billingDetails.billingStatusLabel == 'Paid'} ? 'badge-paid' : (${billingDetails.billingStatusLabel == 'Partially Paid'} ? 'badge text-bg-warning' : (${billingDetails.billingStatusLabel == 'No Closed Tickets'} ? 'badge text-bg-secondary' : 'badge-unpaid'))"
+            <span th:classappend="${billingDetails.billingStatusLabel == 'Settled'} ? 'badge-paid' : (${billingDetails.billingStatusLabel == 'Partially Settled'} ? 'badge text-bg-warning' : (${billingDetails.billingStatusLabel == 'No Closed Tickets'} ? 'badge text-bg-secondary' : 'badge-unpaid'))"
                   th:text="${billingDetails.billingStatusLabel}">Unpaid</span>
         </div>
 
@@ -107,8 +107,8 @@
                     <td th:text="${ticket.paymentMode != null ? (ticket.paymentMode == 'CASH' ? 'Cash' : (ticket.paymentMode == 'BANK_TRANSFER' ? 'Bank Transfer' : 'UPI')) : '—'}">—</td>
                     <td th:text="${ticket.paymentDatetime != null ? #temporals.format(ticket.paymentDatetime, 'dd MMM yyyy, hh:mm a') : '—'}">—</td>
                     <td>
-                        <span th:class="${ticket.billingStatus == 'Paid'} ? 'badge-paid' : 'badge-unpaid'"
-                              th:text="${ticket.billingStatus}">Unpaid</span>
+                        <span th:class="${ticket.billingStatus == 'Settled'} ? 'badge-paid' : 'badge-unpaid'"
+                              th:text="${ticket.billingStatus}">UnSettled</span>
                     </td>
                     <td class="text-end fw-semibold" th:text="${ticket.amount}">0</td>
                 </tr>

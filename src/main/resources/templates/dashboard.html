@@ -29,26 +29,27 @@
                 </div>
             </section>
 
-            <!-- Card metrics section with admin toggle -->
+            <!-- Card metrics section -->
             <div class="mb-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h2 class="h5 mb-0 fw-semibold">Card Metrics</h2>
-                    <!-- Admin-only scope toggle -->
-                    <div th:if="${currentRoles.contains('ROLE_ADMIN')}" class="d-flex align-items-center gap-2">
-                        <span class="small text-muted me-2">View:</span>
-                        <div class="btn-group btn-group-sm" role="group" id="dashboardScopeToggle">
-                            <input type="radio" class="btn-check" name="dashboardScope" id="scopeOrganization" autocomplete="off" checked>
-                            <label class="btn btn-outline-primary" for="scopeOrganization">
-                                <i class="bi bi-building me-1"></i>Organization
-                            </label>
-                            <input type="radio" class="btn-check" name="dashboardScope" id="scopeMine" autocomplete="off">
-                            <label class="btn btn-outline-primary" for="scopeMine">
-                                <i class="bi bi-person me-1"></i>Mine
-                            </label>
-                        </div>
+                    <!-- Admin-only tab toggle -->
+                    <div th:if="${currentRoles.contains('ROLE_ADMIN')}" class="btn-group btn-group-sm" role="group">
+                        <button id="tabOrg" type="button" class="btn btn-primary" onclick="switchMetricTab('org')">
+                            <i class="bi bi-building me-1"></i>Organization
+                        </button>
+                        <button id="tabUser" type="button" class="btn btn-outline-primary" onclick="switchMetricTab('user')">
+                            <i class="bi bi-person me-1"></i>My Tickets
+                        </button>
                     </div>
                 </div>
-                <section class="metric-grid dashboard-metric-grid" id="dashboardMetrics"></section>
+                <!-- Org metrics grid: admin only, shown by default -->
+                <section th:if="${currentRoles.contains('ROLE_ADMIN')}"
+                         id="orgMetricsGrid"
+                         class="metric-grid dashboard-metric-grid"></section>
+                <!-- User metrics grid: all roles; hidden for admin until tab is clicked -->
+                <section id="userMetricsGrid"
+                         th:class="${currentRoles.contains('ROLE_ADMIN')} ? 'metric-grid dashboard-metric-grid d-none' : 'metric-grid dashboard-metric-grid'"></section>
             </div>
 
             <!-- Charts grid — each section gated by its role-feature -->
@@ -175,108 +176,118 @@ function makeDoughnut(canvas, labels, values, colors, chartType) {
   return chart;
 }
 
+function getDashboardScope() {
+  const orgGrid = document.getElementById('orgMetricsGrid');
+  const userGrid = document.getElementById('userMetricsGrid');
+  if (orgGrid && !orgGrid.classList.contains('d-none')) return 'all';
+  if (userGrid && !userGrid.classList.contains('d-none')) return 'mine';
+  return 'all';
+}
+
 function handleChartClick(chartType, label) {
   // Convert display label back to status/role key
   const key = label.toUpperCase().replace(/\s+/g, '_');
-  
+  // Read runtime flags and scope
+  const isVendor = /*[[${currentRoles.contains('ROLE_VENDOR')}]]*/ false;
+  const isAdmin = /*[[${currentRoles.contains('ROLE_ADMIN')}]]*/ false;
+  const scope = getDashboardScope();
+
   switch (chartType) {
-    case 'myStatus':
-      // For My Ticket Status chart, navigate based on user role
-      const isVendor = /*[[${currentRoles.contains('ROLE_VENDOR')}]]*/ false;
+    case 'myStatus': {
       if (isVendor) {
-        // For vendor users, filter by status AND created by user
+        // Vendor: show tickets created by the vendor
         window.location.href = `/tickets?statuses=${key}&createdOnly=true`;
+      } else if (isAdmin && scope === 'all') {
+        // Admin viewing organization scope: show all tickets for the status
+        window.location.href = `/tickets?statuses=${key}&adminScope=true`;
       } else {
-        // For admin, manager, agent users, filter by status AND assigned to logged-in user
+        // Default: show assigned/pending tickets for the logged-in user
         window.location.href = `/tickets?statuses=${key}&assignedOnly=true`;
       }
-      return; // Important: prevent fall-through to default navigation
-      break;
-      
-    case 'allStatus':
-      // For All Ticket Status chart, redirect to All Tickets page with status filter
-      window.location.href = `/tickets/all?statuses=${key}`;
-      return; // Important: prevent fall-through to default navigation
-      break;
-      
-    case 'userCount':
-      // For User Count chart, navigate to user management page with role filter
+      return;
+    }
+
+    case 'allStatus': {
+      // All-ticket status chart should navigate to a tickets view filtered by status
+      if (isAdmin && scope === 'all') {
+        window.location.href = `/tickets?statuses=${key}&adminScope=true`;
+      } else if (isVendor) {
+        window.location.href = `/tickets?statuses=${key}&createdOnly=true`;
+      } else {
+        window.location.href = `/tickets?statuses=${key}&assignedOnly=true`;
+      }
+      return;
+    }
+
+    case 'userCount': {
       const userRoleKey = label.toUpperCase().replace(/\s+/g, '_');
       window.location.href = `/admin/users?role=ROLE_${userRoleKey}`;
-      return; // Important: prevent fall-through to default navigation
-      break;
-      
+      return;
+    }
+
     default:
-      return; // Don't navigate if chart type is unknown
+      return;
   }
 }
 
 let myStatusChart = null, allStatusChart = null, userCountChart = null;
 
-const DASHBOARD_METRICS = [
-  {key: 'enquiry', title: 'Enquiry', icon: 'bi bi-megaphone', statusKey: 'LEADS', tone: 'metric-tone-enquiry'},
-  {key: 'open', title: 'Open Ticket', icon: 'bi bi-folder2-open', statusKey: 'OPEN', tone: 'metric-tone-open'},
-  {key: 'inProgress', title: 'Inprogress Ticket', icon: 'bi bi-tools', statusKey: 'IN_PROGRESS', tone: 'metric-tone-progress'},
-  {key: 'onHold', title: 'Onhold Ticket', icon: 'bi bi-pause-circle', statusKey: 'ON_HOLD', tone: 'metric-tone-hold'},
-  {key: 'followUp', title: 'Follow Up', icon: 'bi bi-arrow-repeat', statusKey: 'FOLLOW_UP', tone: 'metric-tone-followup'},
-  {key: 'siteRevisit', title: 'Site Revisit', icon: 'bi bi-geo-alt', statusKey: 'SITE_REVISIT', tone: 'metric-tone-revisit'},
-  {key: 'quoted', title: 'Quoted Ticket', icon: 'bi bi-file-text', statusKey: 'QUOTED', tone: 'metric-tone-quoted'},
-  {key: 'resolved', title: 'Resolved Ticket', icon: 'bi bi-check2-circle', statusKey: 'RESOLVED', tone: 'metric-tone-resolved'},
-  {key: 'closed', title: 'Closed Ticket', icon: 'bi bi-lock', statusKey: 'CLOSED', tone: 'metric-tone-closed'},
-  {key: 'cancelled', title: 'Cancelled Ticket', icon: 'bi bi-x-circle', statusKey: 'CANCELLED', tone: 'metric-tone-cancelled'},
-  {key: 'totalTickets', title: 'Total Ticket', icon: 'bi bi-ticket-detailed', valueKey: 'totalTickets', tone: 'metric-tone-total'},
-  {key: 'activeUsers', title: 'Active Users', icon: 'bi bi-people', valueKey: 'activeUsers', tone: 'metric-tone-users'},
-  {key: 'activeVendors', title: 'Active Vendors', icon: 'bi bi-person-badge', valueKey: 'activeVendors', tone: 'metric-tone-vendors'}
+const STATUS_CARDS = [
+  {title: 'Enquiry', icon: 'bi bi-megaphone', statusKey: 'LEADS', tone: 'metric-tone-enquiry'},
+  {title: 'Open', icon: 'bi bi-folder2-open', statusKey: 'OPEN', tone: 'metric-tone-open'},
+  {title: 'Site Visited', icon: 'bi bi-geo-alt-fill', statusKey: 'SITE_VISITED', tone: 'metric-tone-revisit'},
+  {title: 'In Progress', icon: 'bi bi-tools', statusKey: 'IN_PROGRESS', tone: 'metric-tone-progress'},
+  {title: 'On Hold', icon: 'bi bi-pause-circle', statusKey: 'ON_HOLD', tone: 'metric-tone-hold'},
+  {title: 'Follow Up', icon: 'bi bi-arrow-repeat', statusKey: 'FOLLOW_UP', tone: 'metric-tone-followup'},
+  {title: 'Site Revisit', icon: 'bi bi-geo-alt', statusKey: 'SITE_REVISIT', tone: 'metric-tone-revisit'},
+  {title: 'Quoted', icon: 'bi bi-file-text', statusKey: 'QUOTED', tone: 'metric-tone-quoted'},
+  {title: 'Resolved', icon: 'bi bi-check2-circle', statusKey: 'RESOLVED', tone: 'metric-tone-resolved'},
+  {title: 'Closed', icon: 'bi bi-lock', statusKey: 'CLOSED', tone: 'metric-tone-closed'},
+  {title: 'Cancelled', icon: 'bi bi-x-circle', statusKey: 'CANCELLED', tone: 'metric-tone-cancelled'},
+  {title: 'Total Tickets', icon: 'bi bi-ticket-detailed', statusKey: null, tone: 'metric-tone-total'}
 ];
 
-function formatMetricValue(value) {
-  const numericValue = Number(value || 0);
-  return new Intl.NumberFormat().format(numericValue);
+const ORG_EXTRA_CARDS = [
+  {title: 'Technicians', icon: 'bi bi-person-gear', valueKey: 'technicianCount', tone: 'metric-tone-users', url: '/admin/users?role=ROLE_AGENT'},
+  {title: 'Vendors', icon: 'bi bi-person-badge', valueKey: 'vendorCount', tone: 'metric-tone-vendors', url: '/admin/users?role=ROLE_VENDOR'}
+];
+
+let orgData = null;
+let userData = null;
+
+function formatNum(v) {
+  return new Intl.NumberFormat().format(Number(v || 0));
 }
 
-function getMetricCardUrl(metric) {
-  const isAdmin = /*[[${currentRoles.contains('ROLE_ADMIN')}]]*/ false;
-  const isVendor = /*[[${currentRoles.contains('ROLE_VENDOR')}]]*/ false;
-  const scope = getDashboardScope();
-
-  if (metric.statusKey) {
-    if (isVendor) return `/tickets/created?statuses=${metric.statusKey}`;
-    if (isAdmin && scope === 'all') return `/tickets/all?statuses=${metric.statusKey}`;
-    return `/tickets/pending?statuses=${metric.statusKey}`;
-  }
-
-  if (metric.key === 'totalTickets') {
-    if (isVendor) return '/tickets/created';
-    if (isAdmin && scope === 'all') return '/tickets/all';
-    return '/tickets/pending';
-  }
-
-  if (metric.key === 'activeUsers') return '/admin/users';
-  if (metric.key === 'activeVendors') return '/admin/users?role=ROLE_VENDOR';
-
-  return null;
+function buildCardHtml(title, icon, value, tone, url) {
+  const attr = url ? ` data-url="${url}"` : '';
+  const cls = url ? ' metric-card-clickable' : '';
+  return `<article class="metric-card dashboard-metric-card ${tone}${cls}"${attr}>
+    <div class="dashboard-metric-icon"><i class="${icon}"></i></div>
+    <div class="dashboard-metric-copy">
+      <div class="dashboard-metric-title">${title}</div>
+      <div class="metric-value">${formatNum(value)}</div>
+    </div>
+  </article>`;
 }
 
-function renderMetricCards(payload) {
-  const container = document.getElementById('dashboardMetrics');
+function renderCards(containerId, payload, urlBuilder) {
+  const container = document.getElementById(containerId);
   if (!container) return;
+
   const statusCounts = payload.statusCounts || {};
-  const visibleCards = new Set(payload.visibleCards || DASHBOARD_METRICS.map(metric => metric.key));
-  container.innerHTML = DASHBOARD_METRICS
-    .filter(metric => visibleCards.has(metric.key))
-    .map(metric => {
-      const value = metric.statusKey ? (statusCounts[metric.statusKey] ?? 0) : (payload[metric.valueKey] ?? 0);
-      const url = getMetricCardUrl(metric);
-      return `
-        <article class="metric-card dashboard-metric-card ${metric.tone}${url ? ' metric-card-clickable' : ''}" ${url ? `data-url="${url}"` : ''}>
-          <div class="dashboard-metric-icon"><i class="${metric.icon}"></i></div>
-          <div class="dashboard-metric-copy">
-            <div class="dashboard-metric-title">${metric.title}</div>
-            <div class="metric-value">${formatMetricValue(value)}</div>
-          </div>
-        </article>`;
-    })
-    .join('');
+  const statusHtml = STATUS_CARDS.map(card => {
+    const value = card.statusKey ? (statusCounts[card.statusKey] ?? 0) : (payload.totalTickets ?? 0);
+    const url = card.statusKey ? urlBuilder(card.statusKey) : urlBuilder(null);
+    return buildCardHtml(card.title, card.icon, value, card.tone, url);
+  }).join('');
+
+  const extraHtml = (containerId === 'orgMetricsGrid' ? ORG_EXTRA_CARDS : []).map(card => {
+    const value = payload[card.valueKey] ?? 0;
+    return buildCardHtml(card.title, card.icon, value, card.tone, card.url);
+  }).join('');
+
+  container.innerHTML = statusHtml + extraHtml;
 
   container.querySelectorAll('[data-url]').forEach(card => {
     card.addEventListener('click', () => {
@@ -285,65 +296,92 @@ function renderMetricCards(payload) {
   });
 }
 
-async function loadDashboardMetrics() {
-  const container = document.getElementById('dashboardMetrics');
+async function loadOrgMetrics() {
+  const container = document.getElementById('orgMetricsGrid');
   if (!container) return;
   try {
-    // Get current scope from toggle (for admin users) or default to 'all'
-    const scope = getDashboardScope();
-    const res = await fetch(`/api/dashboard/metrics?scope=${scope}`);
+    const res = await fetch('/api/dashboard/org-metrics');
     if (!res.ok) return;
-    const data = await res.json();
-    renderMetricCards(data);
-  } catch (e) { console.warn('Dashboard metrics load failed', e); }
+    orgData = await res.json();
+    renderCards('orgMetricsGrid', orgData, sk => sk
+      ? `/tickets?statuses=${sk}&adminScope=true`
+      : '/tickets?adminScope=true');
+  } catch (e) { console.warn('Org metrics load failed', e); }
 }
 
-function getDashboardScope() {
-  // Check if admin scope toggle exists
-  const scopeToggle = document.getElementById('dashboardScopeToggle');
-  if (scopeToggle) {
-    const organizationRadio = document.getElementById('scopeOrganization');
-    const mineRadio = document.getElementById('scopeMine');
-    if (mineRadio && mineRadio.checked) {
-      return 'mine';
-    }
-  }
-  return 'all'; // Default to organization view
+async function loadUserMetrics() {
+  const container = document.getElementById('userMetricsGrid');
+  if (!container) return;
+  try {
+    const res = await fetch('/api/dashboard/user-metrics');
+    if (!res.ok) return;
+    userData = await res.json();
+    renderCards('userMetricsGrid', userData, sk => sk
+      ? `/tickets?statuses=${sk}&assignedOnly=true`
+      : '/tickets?assignedOnly=true');
+  } catch (e) { console.warn('User metrics load failed', e); }
 }
 
-// Add event listener for scope toggle
-document.addEventListener('DOMContentLoaded', function() {
-  const scopeToggle = document.getElementById('dashboardScopeToggle');
-  if (scopeToggle) {
-    const radios = scopeToggle.querySelectorAll('input[type="radio"]');
-    radios.forEach(radio => {
-      radio.addEventListener('change', function() {
-        // Refresh all dashboard data when scope changes
-        refreshAll();
-      });
-    });
+function switchMetricTab(tab) {
+  const orgGrid = document.getElementById('orgMetricsGrid');
+  const userGrid = document.getElementById('userMetricsGrid');
+  const tabOrg = document.getElementById('tabOrg');
+  const tabUser = document.getElementById('tabUser');
+
+  if (tab === 'org') {
+    orgGrid && orgGrid.classList.remove('d-none');
+    userGrid && userGrid.classList.add('d-none');
+    tabOrg && (tabOrg.className = 'btn btn-primary btn-sm');
+    tabUser && (tabUser.className = 'btn btn-outline-primary btn-sm');
+    if (!orgData) loadOrgMetrics();
+  } else {
+    orgGrid && orgGrid.classList.add('d-none');
+    userGrid && userGrid.classList.remove('d-none');
+    tabOrg && (tabOrg.className = 'btn btn-outline-primary btn-sm');
+    tabUser && (tabUser.className = 'btn btn-primary btn-sm');
+    if (!userData) loadUserMetrics();
   }
-});
+
+  refreshAll();
+}
+
+async function loadCurrentScopeStatusMetrics() {
+  const isAdmin = /*[[${currentRoles.contains('ROLE_ADMIN')}]]*/ false;
+  const scope = getDashboardScope();
+  const endpoint = (isAdmin && scope === 'all') ? '/api/dashboard/org-metrics' : '/api/dashboard/user-metrics';
+  const res = await fetch(endpoint);
+  if (!res.ok) return null;
+  return await res.json();
+}
+
+function buildStatusChartSeries(data) {
+  const statusCounts = data && typeof data.statusCounts === 'object' ? data.statusCounts : (data || {});
+  const keys = Object.keys(statusCounts);
+  const labels = keys.map(k => toDisplayLabel(k));
+  const values = keys.map(k => Number(statusCounts[k] ?? 0));
+  const colors = keys.map((k, i) => generateColorForKey(`STATUS_${k}`, i));
+  return { keys, labels, values, colors };
+}
+
+function upsertDoughnutChart(chartRef, canvas, chartType, labels, values, colors) {
+  if (chartRef) {
+    chartRef.data.labels = labels;
+    chartRef.data.datasets[0].data = values;
+    chartRef.data.datasets[0].backgroundColor = colors;
+    chartRef.update();
+    return chartRef;
+  }
+  return makeDoughnut(canvas, labels, values, colors, chartType);
+}
 
 async function loadMyTicketStatus() {
   const canvas = document.getElementById('myStatusChart');
   if (!canvas) return;
   try {
-    const res = await fetch('/api/dashboard/my-ticket-status');
-    if (!res.ok) return;
-    const data = await res.json();
-    const keys = Object.keys(data);
-    const labels = keys.map(k => toDisplayLabel(k));
-    const values = keys.map(k => data[k] ?? 0);
-    const colors = keys.map((k, i) => generateColorForKey(`STATUS_${k}`, i));
-    if (myStatusChart) {
-      myStatusChart.data.labels = labels;
-      myStatusChart.data.datasets[0].data = values;
-      myStatusChart.data.datasets[0].backgroundColor = colors;
-      myStatusChart.update();
-    } else {
-      myStatusChart = makeDoughnut(canvas, labels, values, colors, 'myStatus');
-    }
+    const payload = await loadCurrentScopeStatusMetrics();
+    if (!payload) return;
+    const { labels, values, colors } = buildStatusChartSeries(payload);
+    myStatusChart = upsertDoughnutChart(myStatusChart, canvas, 'myStatus', labels, values, colors);
   } catch (e) { console.warn('My ticket status load failed', e); }
 }
 
@@ -351,21 +389,10 @@ async function loadAllTicketStatus() {
   const canvas = document.getElementById('allStatusChart');
   if (!canvas) return;
   try {
-    const res = await fetch('/api/dashboard/all-ticket-status');
-    if (!res.ok) return;
-    const data = await res.json();
-    const keys = Object.keys(data);
-    const labels = keys.map(k => toDisplayLabel(k));
-    const values = keys.map(k => data[k] ?? 0);
-    const colors = keys.map((k, i) => generateColorForKey(`STATUS_${k}`, i));
-    if (allStatusChart) {
-      allStatusChart.data.labels = labels;
-      allStatusChart.data.datasets[0].data = values;
-      allStatusChart.data.datasets[0].backgroundColor = colors;
-      allStatusChart.update();
-    } else {
-      allStatusChart = makeDoughnut(canvas, labels, values, colors, 'allStatus');
-    }
+    const payload = await loadCurrentScopeStatusMetrics();
+    if (!payload) return;
+    const { labels, values, colors } = buildStatusChartSeries(payload);
+    allStatusChart = upsertDoughnutChart(allStatusChart, canvas, 'allStatus', labels, values, colors);
   } catch (e) { console.warn('All ticket status load failed', e); }
 }
 
@@ -394,7 +421,23 @@ async function loadUserCount() {
 }
 
 async function refreshAll() {
-  await Promise.all([loadDashboardMetrics(), loadMyTicketStatus(), loadAllTicketStatus(), loadUserCount()]);
+  orgData = null;
+  userData = null;
+
+  const orgGrid = document.getElementById('orgMetricsGrid');
+  if (orgGrid && !orgGrid.classList.contains('d-none')) {
+    loadOrgMetrics();
+  } else {
+    loadUserMetrics();
+  }
+
+  await Promise.all([loadMyTicketStatus(), loadAllTicketStatus(), loadUserCount()]);
+}
+
+if (document.getElementById('tabOrg')) {
+  loadOrgMetrics();
+} else {
+  loadUserMetrics();
 }
 
 refreshAll();
