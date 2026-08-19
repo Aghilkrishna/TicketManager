@@ -58,6 +58,37 @@ public class DashboardRestController {
         return result;
     }
 
+    /**
+     * Back-compat chart endpoint for the dashboard My Ticket Status chart.
+     * Returns the current user's assigned counts by ticket status.
+     */
+    @PreAuthorize("hasAuthority('FEATURE_DASHBOARD_MY_TICKET_STATUS')")
+    @GetMapping("/my-ticket-status")
+    public Map<String, Long> myTicketStatus(Principal principal) {
+        AppUser user = userService.getByEmail(principal.getName());
+        return buildStatusMap(ticketRepository.countAssignedByStatus(user.getId()));
+    }
+
+    /**
+     * Back-compat chart endpoint for the dashboard All Ticket Status chart.
+     * Returns organization-wide counts grouped by ticket status.
+     */
+    @PreAuthorize("hasAuthority('FEATURE_DASHBOARD_ALL_TICKET_STATUS')")
+    @GetMapping("/all-ticket-status")
+    public Map<String, Long> allTicketStatus() {
+        return buildStatusMap(ticketRepository.countAllByStatus());
+    }
+
+    /**
+     * Back-compat chart endpoint for the dashboard User Count chart.
+     * Returns enabled active users grouped by role without the ROLE_ prefix.
+     */
+    @PreAuthorize("hasAuthority('FEATURE_DASHBOARD_USER_COUNT')")
+    @GetMapping("/user-count")
+    public Map<String, Long> userCount() {
+        return buildRoleCountMap(userRepository.countUsersByRole());
+    }
+
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
@@ -65,15 +96,32 @@ public class DashboardRestController {
     private Map<String, Long> buildStatusMap(List<Object[]> rows) {
         Map<String, Long> byStatus = new LinkedHashMap<>();
         for (Object[] row : rows) {
+            if (row == null || row.length < 2 || row[0] == null || row[1] == null) {
+                continue;
+            }
             TicketStatus status = (TicketStatus) row[0];
             long count = ((Number) row[1]).longValue();
             byStatus.put(status.name(), count);
         }
-        // Ensure every declared enum status is present (zero-filled if missing)
         Map<String, Long> result = new LinkedHashMap<>();
         for (TicketStatus s : TicketStatus.values()) {
             result.put(s.name(), byStatus.getOrDefault(s.name(), 0L));
         }
         return result;
+    }
+
+    private Map<String, Long> buildRoleCountMap(List<Object[]> rows) {
+        Map<String, Long> byRole = new LinkedHashMap<>();
+        for (Object[] row : rows) {
+            if (row == null || row.length < 2 || row[0] == null || row[1] == null) {
+                continue;
+            }
+            String roleName = String.valueOf(row[0]).trim();
+            if (roleName.startsWith("ROLE_")) {
+                roleName = roleName.substring("ROLE_".length());
+            }
+            byRole.put(roleName, ((Number) row[1]).longValue());
+        }
+        return byRole;
     }
 }
