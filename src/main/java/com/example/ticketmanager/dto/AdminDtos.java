@@ -174,7 +174,8 @@ public final class AdminDtos {
             BigDecimal totalPaidAmount,
             BigDecimal totalUnpaidAmount,
             String billingStatusLabel,
-            List<StaffBillingTicketLine> tickets
+            List<StaffBillingTicketLine> tickets,
+            List<StaffBillingTicketLine> settledTickets
     ) {
     }
 

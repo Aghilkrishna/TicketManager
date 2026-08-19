@@ -79,34 +79,18 @@ public class StaffBillingService {
         List<Ticket> allTickets = ticketRepository.findByAssignedToIdAndStatusInOrderByUpdatedAtDesc(userId, BILLING_RELEVANT_STATUSES);
         BillingAccumulator accumulator = new BillingAccumulator(user);
         List<AdminDtos.StaffBillingTicketLine> lines = new ArrayList<>();
+        List<AdminDtos.StaffBillingTicketLine> settledLines = new ArrayList<>();
         for (Ticket ticket : allTickets) {
             accumulator.add(ticket);
-            // Only include resolved tickets and UNPAID closed tickets in the visible list
+            // Only include resolved tickets and UNPAID closed tickets in the visible list.
             boolean isResolved = ticket.getStatus() == TicketStatus.RESOLVED;
             boolean isUnpaidClosed = ticket.getStatus() == TicketStatus.CLOSED
                     && ticket.getBillingStatus() != TicketBillingStatus.PAID;
             if (isResolved || isUnpaidClosed) {
-                Optional<TicketPayment> techPmt = getTechnicianPayment(ticket);
-                String paymentMode = techPmt
-                        .map(p -> p.getPaymentMode() == null ? null : p.getPaymentMode().name())
-                        .orElse(null);
-                LocalDateTime paymentDatetime = techPmt
-                        .map(TicketPayment::getPaymentDatetime)
-                        .orElse(null);
-                String paymentStatus = techPmt
-                        .map(TicketPayment::getStatus)
-                        .orElse(null);
-                lines.add(new AdminDtos.StaffBillingTicketLine(
-                        ticket.getId(),
-                        ticket.getTitle(),
-                        ticket.getStatus().name(),
-                        resolveBillAmount(ticket),
-                        toBillingStatusLabel(ticket.getBillingStatus()),
-                        ticket.getUpdatedAt(),
-                        paymentMode,
-                        paymentDatetime,
-                        paymentStatus
-                ));
+                lines.add(toTicketLine(ticket));
+            }
+            if (ticket.getStatus() == TicketStatus.CLOSED && ticket.getBillingStatus() == TicketBillingStatus.PAID) {
+                settledLines.add(toTicketLine(ticket));
             }
         }
 
@@ -130,7 +114,8 @@ public class StaffBillingService {
                 accumulator.paidAmount,
                 unpaidClosedAmount,
                 accumulator.billingStatusLabel(),
-                lines
+                lines,
+                settledLines
         );
     }
 
@@ -198,6 +183,31 @@ public class StaffBillingService {
         if (ticket.getActualCost() != null) return ticket.getActualCost();
         if (ticket.getEstimatedCost() != null) return ticket.getEstimatedCost();
         return BigDecimal.ZERO;
+    }
+
+    private AdminDtos.StaffBillingTicketLine toTicketLine(Ticket ticket) {
+        Optional<TicketPayment> techPmt = getTechnicianPayment(ticket);
+        String paymentMode = techPmt
+                .map(p -> p.getPaymentMode() == null ? null : p.getPaymentMode().name())
+                .orElse(null);
+        LocalDateTime paymentDatetime = techPmt
+                .map(TicketPayment::getPaymentDatetime)
+                .orElse(null);
+        String paymentStatus = techPmt
+                .map(TicketPayment::getStatus)
+                .orElse(null);
+
+        return new AdminDtos.StaffBillingTicketLine(
+                ticket.getId(),
+                ticket.getTitle(),
+                ticket.getStatus().name(),
+                resolveBillAmount(ticket),
+                toBillingStatusLabel(ticket.getBillingStatus()),
+                ticket.getUpdatedAt(),
+                paymentMode,
+                paymentDatetime,
+                paymentStatus
+        );
     }
 
     private Optional<TicketPayment> getTechnicianPayment(Ticket ticket) {
