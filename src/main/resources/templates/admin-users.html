@@ -68,6 +68,7 @@
                         <div class="col-md-6"><label class="form-label">Username</label><input id="userUsername" class="form-control" required></div>
                         <div class="col-md-6"><label class="form-label">Email</label><input id="userEmail" class="form-control" type="email" required></div>
                         <div class="col-md-6"><label class="form-label">Phone</label><input id="userPhone" class="form-control"></div>
+                        <div class="col-md-6"><label class="form-label">Password (optional)</label><input id="userPassword" class="form-control" type="password" minlength="6" placeholder="Leave blank to keep existing password"></div>
                         <div class="col-md-6 d-flex align-items-end"><div class="form-check"><input id="userEnabled" class="form-check-input" type="checkbox"><label class="form-check-label" for="userEnabled">Account active</label></div></div>
                         <div class="col-12">
                             <label class="form-label">Roles</label>
@@ -199,6 +200,7 @@ window.openUserModal = (userId) => {
   document.getElementById('userUsername').value = user.username;
   document.getElementById('userEmail').value = user.email;
   document.getElementById('userPhone').value = user.phone || '';
+  document.getElementById('userPassword').value = '';
   document.getElementById('userEnabled').checked = user.enabled;
   renderRoleOptions(user.roles || []);
   userModal.show();
@@ -297,7 +299,8 @@ document.getElementById('userForm').addEventListener('submit', async event => {
       email: document.getElementById('userEmail').value,
       phone: document.getElementById('userPhone').value,
       enabled: document.getElementById('userEnabled').checked,
-      roleIds
+      roleIds,
+      password: document.getElementById('userPassword') ? document.getElementById('userPassword').value : undefined
     })
   });
   if (!res.ok) {

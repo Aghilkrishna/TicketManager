@@ -267,14 +267,26 @@ public class UserService {
         String oldEmail = user.getEmail();
         boolean previousEnabled = user.isEnabled();
         Set<String> previousRoles = user.getRoles().stream().map(Role::getName).collect(Collectors.toSet());
+        String previousUsername = user.getUsername();
+        String previousPhone = user.getPhone();
+
         validateUniqueFields(user, request.username(), request.email());
         Set<Role> roles = resolveRoles(request.roleIds());
         preventUnsafeSelfUpdate(actor, user, request.enabled(), roles);
+
+        // Apply updates
         user.setUsername(request.username());
         user.setEmail(request.email());
         user.setPhone(request.phone());
         user.setEnabled(request.enabled());
         user.setRoles(roles);
+
+        boolean passwordChanged = false;
+        if (request.password() != null && !request.password().isBlank()) {
+            user.setPassword(passwordEncoder.encode(request.password()));
+            passwordChanged = true;
+        }
+
         AppUser saved = userRepository.save(user);
 
         // Evict both the old and new email so getByEmail always returns fresh data
@@ -293,6 +305,35 @@ public class UserService {
                     "rolesChanged", rolesChanged,
                     "updatedAt", LocalDateTime.now().toString()
             ));
+        }
+
+        // Build changed-fields map (exclude password)
+        Map<String, String> changedFields = new LinkedHashMap<>();
+        if (!Objects.equals(previousUsername, saved.getUsername())) {
+            changedFields.put("Username", saved.getUsername());
+        }
+        if (!Objects.equals(oldEmail, saved.getEmail())) {
+            changedFields.put("Email", saved.getEmail());
+        }
+        if (!Objects.equals(previousPhone, saved.getPhone())) {
+            changedFields.put("Phone", saved.getPhone() == null ? "-" : saved.getPhone());
+        }
+        if (statusChanged) {
+            changedFields.put("Account status", saved.isEnabled() ? "Enabled" : "Disabled");
+        }
+        if (rolesChanged) {
+            String roleLabels = saved.getRoles().stream().map(Role::getName).map(this::toRoleLabel).collect(Collectors.joining(", "));
+            changedFields.put("Roles", roleLabels);
+        }
+
+        // Send notification for general updates (excluding password)
+        if (!changedFields.isEmpty() && emailNotificationSettingsService.isEnabled(EmailNotificationAction.USER_UPDATED)) {
+            emailService.sendUserUpdatedEmail(saved, changedFields);
+        }
+
+        // Send separate notification if admin changed password
+        if (passwordChanged && emailNotificationSettingsService.isEnabled(EmailNotificationAction.ADMIN_UPDATED_PASSWORD)) {
+            emailService.sendAdminUpdatedPasswordEmail(saved);
         }
 
         return toUserSummary(saved);

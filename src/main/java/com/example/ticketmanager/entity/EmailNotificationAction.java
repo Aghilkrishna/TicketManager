@@ -13,7 +13,9 @@ public enum EmailNotificationAction {
     SCHEDULE_REMINDER_DAY_BEFORE("Day-Before Schedule Reminder", "Send reminder email to assigned users at 6 PM the day before the ticket's scheduled date."),
     SCHEDULE_REMINDER_ON_DAY("On-Day Schedule Reminder", "Send reminder email to assigned users at 9 AM on the ticket's scheduled date."),
     OPEN_TICKETS_DAILY_REMINDER("Open Tickets Daily Reminder", "Send daily digest to each user listing all their active tickets at 6 AM."),
-    FOLLOWUP_ADMIN_DAILY_REMINDER("Follow-up Tickets Admin Reminder", "Send daily digest to all admin users listing all follow-up and site-revisit tickets at 6 AM.");
+    FOLLOWUP_ADMIN_DAILY_REMINDER("Follow-up Tickets Admin Reminder", "Send daily digest to all admin users listing all follow-up and site-revisit tickets at 6 AM."),
+    USER_UPDATED("User Updated", "Notify users when their profile has been updated by an admin."),
+    ADMIN_UPDATED_PASSWORD("Admin Updated Password", "Notify users when an admin updates their account password.");
 
     private final String label;
     private final String description;

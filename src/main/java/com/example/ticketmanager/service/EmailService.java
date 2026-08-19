@@ -85,6 +85,25 @@ public class EmailService {
         );
     }
 
+    public void sendUserUpdatedEmail(AppUser user, Map<String, String> updatedFields) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("userDisplayName", displayName(user));
+        variables.put("headline", "Your account details were updated");
+        variables.put("intro", "An administrator updated your account details. Below are the changes made to your account:");
+        variables.put("updatedFields", updatedFields);
+        sendTemplate(user.getEmail(), "Your account was updated", "email/user-updated", variables);
+    }
+
+    public void sendAdminUpdatedPasswordEmail(AppUser user) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("userDisplayName", displayName(user));
+        variables.put("headline", "Your password was changed by an administrator");
+        variables.put("intro", "An administrator has updated your account password. For security, the password itself is not shown. If you did not request this change, please reset your password immediately.");
+        variables.put("actionUrl", appProperties.baseUrl() + "/reset-password");
+        variables.put("actionLabel", "Reset Password");
+        sendTemplate(user.getEmail(), "Your password was updated", "email/password-updated-by-admin", variables);
+    }
+
     public void sendScheduleReminderEmail(Ticket ticket, AppUser assignedUser, List<String> ccEmails, String reminderType) {
         boolean isDayBefore = "DAY_BEFORE".equals(reminderType);
         String headline = isDayBefore ? "Reminder: Scheduled Visit Tomorrow" : "Reminder: Scheduled Visit Today";
