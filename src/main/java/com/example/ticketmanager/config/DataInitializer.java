@@ -47,6 +47,7 @@ public class DataInitializer {
                     AppFeature.TICKETS_REVIEW,
                     AppFeature.TICKETS_ALL_VIEW,
                     AppFeature.CHAT_ACCESS,
+                    AppFeature.NOTIFICATION_ACCESS,
                     AppFeature.ADMIN_ACCESS,
                     AppFeature.ADMIN_SUPPORT_TICKETS,
                     AppFeature.ADMIN_USER_MANAGEMENT,
@@ -66,7 +67,8 @@ public class DataInitializer {
                     AppFeature.TICKETS_CREATE_STANDARD,
                     AppFeature.TICKETS_REVIEW,
                     AppFeature.TICKETS_ALL_VIEW,
-                    AppFeature.CHAT_ACCESS
+                    AppFeature.CHAT_ACCESS,
+                    AppFeature.NOTIFICATION_ACCESS
             ));
             seedRole("ROLE_AGENT", "Work assigned tickets and chat", Set.of(
                     AppFeature.DASHBOARD_ACCESS,
@@ -74,7 +76,8 @@ public class DataInitializer {
                     AppFeature.PROFILE_ACCESS,
                     AppFeature.TICKETS_VIEW,
                     AppFeature.SITE_VISIT_EDIT,
-                    AppFeature.CHAT_ACCESS
+                    AppFeature.CHAT_ACCESS,
+                    AppFeature.NOTIFICATION_ACCESS
             ));
             seedRole("ROLE_VENDOR", "Create and manage vendor-owned tickets", Set.of(
                     AppFeature.DASHBOARD_ACCESS,
@@ -83,13 +86,15 @@ public class DataInitializer {
                     AppFeature.TICKETS_VIEW,
                     AppFeature.TICKETS_MANAGE,
                     AppFeature.TICKETS_CREATE_VENDOR,
-                    AppFeature.TICKETS_CREATED_VIEW
+                    AppFeature.TICKETS_CREATED_VIEW,
+                    AppFeature.NOTIFICATION_ACCESS
             ));
             seedRole("ROLE_USER", "Standard end user access", Set.of(
                     AppFeature.DASHBOARD_ACCESS,
                     AppFeature.PROFILE_ACCESS,
                     AppFeature.TICKETS_VIEW,
-                    AppFeature.CHAT_ACCESS
+                    AppFeature.CHAT_ACCESS,
+                    AppFeature.NOTIFICATION_ACCESS
             ));
             // Seed email notification settings
             seedEmailNotificationSettings();
