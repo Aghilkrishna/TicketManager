@@ -149,6 +149,18 @@ public class AdminRestController {
         }
     }
 
+    @GetMapping("/staff-billing")
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_STAFF_BILLING') and hasAuthority('ROLE_ADMIN')")
+    public List<AdminDtos.StaffBillingSummary> listStaffBilling() {
+        return staffBillingService.listStaffBillingSummaries();
+    }
+
+    @GetMapping("/staff-billing/{userId}")
+    @PreAuthorize("hasAuthority('FEATURE_ADMIN_STAFF_BILLING') and hasAuthority('ROLE_ADMIN')")
+    public AdminDtos.StaffBillingDetails getStaffBilling(@PathVariable Long userId) {
+        return staffBillingService.getStaffBillingDetails(userId);
+    }
+
     @PutMapping("/staff-billing/{userId}/status")
     @PreAuthorize("hasAuthority('FEATURE_ADMIN_STAFF_BILLING') and hasAuthority('ROLE_ADMIN')")
     public Map<String, Object> updateStaffBillingStatus(@PathVariable Long userId,
