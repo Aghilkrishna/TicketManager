@@ -8,6 +8,7 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.messaging.context.SecurityContextChannelInterceptor;
 import org.springframework.web.socket.WebSocketHandler;
@@ -21,6 +22,12 @@ import java.util.Map;
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+    private final com.example.ticketmanager.security.JwtService jwtService;
+
+    public WebSocketConfig(com.example.ticketmanager.security.JwtService jwtService) {
+        this.jwtService = jwtService;
+    }
+
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         registry.enableSimpleBroker("/topic", "/queue");
@@ -52,6 +59,17 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                                                                    org.springframework.messaging.MessageChannel channel) {
                 StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
                 Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                if (StompCommand.CONNECT.equals(accessor.getCommand()) && accessor.getUser() == null) {
+                    String authorization = accessor.getFirstNativeHeader("Authorization");
+                    if (authorization != null && authorization.startsWith("Bearer ")) {
+                        String token = authorization.substring(7);
+                        if (jwtService.isValid(token)) {
+                            var principal = jwtService.extractPrincipal(token);
+                            authentication = new UsernamePasswordAuthenticationToken(
+                                    principal, null, principal.getAuthorities());
+                        }
+                    }
+                }
                 if (accessor.getUser() == null && authentication != null && authentication.isAuthenticated()) {
                     accessor.setUser(authentication);
                 }
